@@ -1,5 +1,5 @@
 # app/models/property.py
-from sqlalchemy import Column, Integer, String, Float, Boolean, Text, DateTime, JSON
+from sqlalchemy import JSON, Boolean, Column, DateTime, Float, Integer, String, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
 
@@ -59,7 +59,9 @@ class Property(Base):
     is_active = Column(Boolean, default=True, nullable=False, comment="掲載中フラグ")
     source = Column(String(50), default="homes", nullable=False, comment="取得元")
     created_at = Column(DateTime, default=func.now(), nullable=False, comment="作成日時")
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=True, comment="更新日時")
+    updated_at = Column(
+        DateTime, default=func.now(), onupdate=func.now(), nullable=True, comment="更新日時"
+    )
 
     def __repr__(self):
         return f"<Property(id={self.id}, title='{self.title}', contractor='{self.contractor_company_name}', price={self.price})>"

@@ -1,32 +1,34 @@
 # generators/claude_generator.py
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
+
 from .base_generator import BaseGenerator
+
 
 class ClaudeGenerator(BaseGenerator):
     """Claude用チャンク生成クラス"""
-    
+
     def generate(self) -> Dict[str, Any]:
         """Claude用チャンク生成"""
         chunks_dir = self.get_output_dir("claude_chunks")
-        
+
         # データベースチャンク
         self._generate_database_chunk(chunks_dir)
-        
+
         # APIチャンク
         self._generate_api_chunk(chunks_dir)
-        
+
         # 共通ライブラリチャンク
         self._generate_shared_chunk(chunks_dir)
-        
+
         self.print_status("✅ Claude用チャンク生成完了")
         return {"chunks": "completed"}
-    
+
     def _generate_database_chunk(self, chunks_dir: Path) -> None:
         """データベースチャンク生成"""
         db_chunks_dir = chunks_dir / "database_chunks"
         db_chunks_dir.mkdir(exist_ok=True)
-        
+
         db_chunk_content = f"""# 🤖 Claude専用：REAデータベース情報
 
 > **最適化済みチャンク** - Claude用に情報を最適化
@@ -68,14 +70,14 @@ A: いいえ。分割はデータ移行で安全に実行。
 **Q: DB接続エラーが頻発するのは？**
 A: shared/database.py を使えば解決。統一された接続システム。
 """
-        
+
         self.save_content(db_chunk_content, db_chunks_dir / "overview.md")
-    
+
     def _generate_api_chunk(self, chunks_dir: Path) -> None:
         """APIチャンク生成"""
         api_chunks_dir = chunks_dir / "api_chunks"
         api_chunks_dir.mkdir(exist_ok=True)
-        
+
         api_chunk_content = f"""# 🤖 Claude専用：REA API情報
 
 ## 🔌 重要な事実
@@ -99,14 +101,14 @@ A: shared/database.py を使えば解決。統一された接続システム。
 - PostgreSQL接続必須
 - 環境変数設定: `export DATABASE_URL="postgresql://rea_user:rea_password@localhost/real_estate_db"`
 """
-        
+
         self.save_content(api_chunk_content, api_chunks_dir / "overview.md")
-    
+
     def _generate_shared_chunk(self, chunks_dir: Path) -> None:
         """共通ライブラリチャンク生成"""
         shared_chunks_dir = chunks_dir / "shared_chunks"
         shared_chunks_dir.mkdir(exist_ok=True)
-        
+
         shared_chunk_content = f"""# 🤖 Claude専用：REA共通ライブラリ情報
 
 ## 📚 実装済みライブラリ
@@ -143,5 +145,5 @@ export DATABASE_URL="postgresql://rea_user:rea_password@localhost/real_estate_db
 
 **これを忘れると接続失敗する！**
 """
-        
+
         self.save_content(shared_chunk_content, shared_chunks_dir / "overview.md")

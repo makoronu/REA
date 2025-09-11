@@ -1,19 +1,25 @@
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-from shared.database import READatabase
 import os
+
 from dotenv import load_dotenv
+
+from shared.database import READatabase
 
 # .env読み込み
 load_dotenv()
 
+import json
+from datetime import datetime
+
 # scripts/auto_spec_generator/table_detail_generator.py
 from pathlib import Path
-from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
+
 from sqlalchemy import create_engine, inspect, text
-import json
+
 
 class TableDetailGenerator:
     """分割済みテーブルの詳細仕様生成器"""

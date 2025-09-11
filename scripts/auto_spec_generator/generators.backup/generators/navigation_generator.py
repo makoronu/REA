@@ -1,11 +1,13 @@
 # generators/navigation_generator.py
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
+
 from .base_generator import BaseGenerator
+
 
 class NavigationGenerator(BaseGenerator):
     """ナビゲーション生成クラス"""
-    
+
     def generate(self) -> Dict[str, Any]:
         """ナビゲーション生成"""
         content = f"""# 🏢 REA - Real Estate Automation System
@@ -130,9 +132,9 @@ python -m src.main process-batch --batch-size 10
 **最終更新**: {self.get_timestamp()}  
 **DB接続**: shared/database.py 統一システム使用
 """
-        
+
         # メインナビゲーション保存
         self.save_content(content, self.output_dir / "README.md")
-        
+
         self.print_status("✅ メインナビゲーション生成完了")
         return {"navigation": "completed"}

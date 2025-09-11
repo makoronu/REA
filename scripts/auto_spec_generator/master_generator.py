@@ -1,9 +1,12 @@
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-from shared.database import READatabase
 import os
+
 from dotenv import load_dotenv
+
+from shared.database import READatabase
 
 # .env読み込み
 load_dotenv()
@@ -14,15 +17,17 @@ REA統合仕様書生成システム - 改善版
 問題点を解決した統合実行システム
 """
 
+import json
 import os
+import subprocess
 import sys
 import time
-import subprocess
-from pathlib import Path
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Dict, List, Optional
+
 from sqlalchemy import create_engine, inspect
-import json
+
 
 class REAMasterGenerator:
     """REA統合仕様書生成システム - エラー耐性・自動更新対応版"""

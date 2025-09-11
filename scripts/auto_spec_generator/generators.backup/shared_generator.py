@@ -1,20 +1,22 @@
 # generators/shared_generator.py
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
+
 from .base_generator import BaseGenerator
+
 
 class SharedGenerator(BaseGenerator):
     """共通ライブラリ仕様生成クラス"""
-    
+
     def generate(self) -> Dict[str, Any]:
         """共通ライブラリ仕様生成"""
         shared_path = self.base_path / "shared"
-        
+
         shared_files = []
         if shared_path.exists():
             shared_files = list(shared_path.glob("*.py"))
             shared_files = [f for f in shared_files if f.name != "__init__.py"]
-        
+
         content = f"""# 📚 REA 共通ライブラリ仕様
 
 ## 📋 概要
@@ -119,10 +121,10 @@ def validate_property_data(data):
 ## 🚀 next step
 Phase 1（DB構造分析）完了後、技術的負債解消として実装予定
 """
-        
+
         # ファイル保存
         shared_dir = self.get_output_dir("04_shared")
         self.save_content(content, shared_dir / "README.md")
-        
+
         self.print_status("✅ 共通ライブラリ仕様生成完了")
         return {"shared_files": len(shared_files)}

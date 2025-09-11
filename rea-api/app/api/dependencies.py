@@ -4,8 +4,9 @@ API依存関係の定義
 主にデータベースセッションの管理
 """
 from typing import Generator
-from sqlalchemy.orm import Session
+
 from app.core.database import SessionLocal
+from sqlalchemy.orm import Session
 
 
 def get_db() -> Generator[Session, None, None]:
@@ -18,4 +19,3 @@ def get_db() -> Generator[Session, None, None]:
         yield db
     finally:
         db.close()
-    

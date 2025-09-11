@@ -1,127 +1,133 @@
 # generators/claude_memory_generator.py - 完全修正版
-import sys
 import os
-from pathlib import Path
+import sys
 from datetime import datetime
-from typing import Dict, Any
+from pathlib import Path
+from typing import Any, Dict
+
 from .base_generator import BaseGenerator
+
 
 class ClaudeMemoryGenerator(BaseGenerator):
     """Claude記憶システム生成クラス（DB接続エラー対応版）"""
-    
+
     def generate(self) -> Dict[str, Any]:
         """Claude記憶用ドキュメント生成"""
         try:
             # 最新状況を取得（エラー対応版）
             current_status = self._get_current_project_status()
-            
+
             # Claude用最適化コンテキスト生成
             memory_content = self._generate_memory_content(current_status)
-            
+
             # ファイル出力
             self._save_memory_files(memory_content, current_status)
-            
+
             return {
-                'status': 'success',
-                'generated_files': [
-                    'claude_memory/INSTANT_CONTEXT.md',
-                    'claude_memory/PROJECT_STATUS.md', 
-                    'claude_memory/QUICK_COMMANDS.md',
-                    'claude_memory/ERROR_SOLUTIONS.md'
+                "status": "success",
+                "generated_files": [
+                    "claude_memory/INSTANT_CONTEXT.md",
+                    "claude_memory/PROJECT_STATUS.md",
+                    "claude_memory/QUICK_COMMANDS.md",
+                    "claude_memory/ERROR_SOLUTIONS.md",
                 ],
-                'memory_size': len(memory_content),
-                'timestamp': datetime.now().isoformat()
+                "memory_size": len(memory_content),
+                "timestamp": datetime.now().isoformat(),
             }
-            
+
         except Exception as e:
             self.print_status(f"⚠️ Claude記憶システム警告: {e}")
-            return {'status': 'partial_success', 'error': str(e)}
-    
+            return {"status": "partial_success", "error": str(e)}
+
     def _get_current_project_status(self) -> Dict[str, Any]:
         """現在のプロジェクト状況を取得（エラー対応版）"""
         # デフォルト値
         default_status = {
-            'database': {
-                'status': 'unknown',
-                'table_count': 0,
-                'database_name': 'real_estate_db',
-                'error_info': '',
-                'connection_time': 0
+            "database": {
+                "status": "unknown",
+                "table_count": 0,
+                "database_name": "real_estate_db",
+                "error_info": "",
+                "connection_time": 0,
             },
-            'program_structure': {'total_files': 0},
-            'achievements': self._get_recent_achievements(),
-            'last_updated': datetime.now().isoformat()
+            "program_structure": {"total_files": 0},
+            "achievements": self._get_recent_achievements(),
+            "last_updated": datetime.now().isoformat(),
         }
-        
+
         try:
             # Pythonパス追加
             if str(self.base_path) not in sys.path:
                 sys.path.insert(0, str(self.base_path))
-            
+
             try:
                 # shared.database インポート（エラー対応）
                 from shared.database import READatabase
-                
+
                 try:
                     # DB接続テスト（シンプル版対応）
                     if READatabase.test_connection():
                         tables = READatabase.get_all_tables()
-                        default_status['database'] = {
-                            'status': 'healthy',
-                            'table_count': len(tables),
-                            'database_name': 'real_estate_db',
-                            'error_info': '',
-                            'connection_time': 0
+                        default_status["database"] = {
+                            "status": "healthy",
+                            "table_count": len(tables),
+                            "database_name": "real_estate_db",
+                            "error_info": "",
+                            "connection_time": 0,
                         }
                     else:
                         # DB接続失敗時
-                        error_msg = 'DB接続失敗 - Dockerが起動していない可能性'
-                        default_status['database'] = {
-                            'status': 'connection_failed',
-                            'table_count': 0,
-                            'database_name': 'real_estate_db',
-                            'error_info': error_msg,
-                            'connection_time': 0
+                        error_msg = "DB接続失敗 - Dockerが起動していない可能性"
+                        default_status["database"] = {
+                            "status": "connection_failed",
+                            "table_count": 0,
+                            "database_name": "real_estate_db",
+                            "error_info": error_msg,
+                            "connection_time": 0,
                         }
                         self.print_status(f"⚠️ DB接続失敗（Claude記憶システム）: {error_msg}")
-                        
+
                 except Exception as test_error:
                     # test_connection失敗
-                    default_status['database']['status'] = 'test_failed'
-                    default_status['database']['error_info'] = f"接続テストエラー: {test_error}"
+                    default_status["database"]["status"] = "test_failed"
+                    default_status["database"]["error_info"] = f"接続テストエラー: {test_error}"
                     self.print_status(f"⚠️ DB接続テスト失敗: {test_error}")
-                    
+
             except ImportError as import_error:
                 # shared.database インポートエラー
-                default_status['database']['status'] = 'import_error'
-                default_status['database']['error_info'] = f'shared.database インポート失敗: {import_error}'
+                default_status["database"]["status"] = "import_error"
+                default_status["database"][
+                    "error_info"
+                ] = f"shared.database インポート失敗: {import_error}"
                 self.print_status(f"⚠️ shared.database インポート失敗: {import_error}")
-            
+
             # プログラム構造情報取得（これは常に実行）
             program_files = self._count_program_files()
-            default_status['program_structure'] = program_files
-            
+            default_status["program_structure"] = program_files
+
             return default_status
-            
+
         except Exception as e:
             # 全体エラー
             self.print_status(f"⚠️ プロジェクト状況取得エラー: {e}")
-            default_status['database']['error_info'] = f'全体エラー: {str(e)}'
-            default_status['program_structure'] = self._count_program_files()
+            default_status["database"]["error_info"] = f"全体エラー: {str(e)}"
+            default_status["program_structure"] = self._count_program_files()
             return default_status
-    
+
     def _count_program_files(self) -> Dict[str, int]:
         """プログラムファイル数をカウント"""
         try:
             file_count = 0
-            
+
             # REAプロジェクトディレクトリを動的検出
             for item in self.base_path.iterdir():
                 if item.is_dir() and item.name.startswith("rea-"):
                     for py_file in item.rglob("*.py"):
-                        if "__pycache__" not in str(py_file) and "venv" not in str(py_file):
+                        if "__pycache__" not in str(py_file) and "venv" not in str(
+                            py_file
+                        ):
                             file_count += 1
-            
+
             # shared, scriptsも追加
             fixed_dirs = ["shared", "scripts/auto_spec_generator"]
             for fixed_dir in fixed_dirs:
@@ -130,43 +136,43 @@ class ClaudeMemoryGenerator(BaseGenerator):
                     for py_file in target_dir.rglob("*.py"):
                         if "__pycache__" not in str(py_file):
                             file_count += 1
-            
-            return {'total_files': file_count}
-            
+
+            return {"total_files": file_count}
+
         except Exception as e:
             self.print_status(f"⚠️ ファイル数カウントエラー: {e}")
-            return {'total_files': 150}  # フォールバック値
-    
+            return {"total_files": 150}  # フォールバック値
+
     def _get_recent_achievements(self) -> list:
         """最近の成果・実績を取得"""
         return [
             "✅ DB接続エラーハンドリング完全対応",
             "✅ shared詳細ログ出力完成（docstring・型ヒント表示）",
-            "✅ 分割リファクタリング完了 (700行→8ファイル)", 
+            "✅ 分割リファクタリング完了 (700行→8ファイル)",
             "✅ 新テーブル自動検出システム完成",
             "✅ プログラム構造自動保存システム完成",
             "✅ 動的ディレクトリ検出システム完成",
             "✅ Claude記憶システム完全自動化完成",
             "✅ 51ファイル自動仕様書生成システム稼働中",
-            "✅ エラー時フォールバック機能完備"
+            "✅ エラー時フォールバック機能完備",
         ]
-    
+
     def _generate_memory_content(self, status: Dict[str, Any]) -> str:
         """Claude記憶用コンテンツ生成（エラー対応版）"""
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
         # DB状態の詳細表示（エラー対応）
-        db_status = status['database']['status']
-        db_count = status['database']['table_count']
-        error_info = status['database'].get('error_info', '')
-        
-        if db_status == 'healthy':
+        db_status = status["database"]["status"]
+        db_count = status["database"]["table_count"]
+        error_info = status["database"].get("error_info", "")
+
+        if db_status == "healthy":
             db_display = f"healthy ({db_count}テーブル)"
         elif error_info:
             db_display = f"{db_status} - {error_info[:100]}..."  # エラー情報を短縮
         else:
             db_display = f"{db_status} ({db_count}テーブル)"
-        
+
         # コンテンツを返す
         content = f"""# 🧠 Claude即座復活コンテキスト
 
@@ -294,22 +300,22 @@ git add . && git commit -m "作業前バックアップ"
 このドキュメントでClaude記憶喪失問題も完全解決！ 🧠💪
 """
         return content
-    
+
     def _save_memory_files(self, content: str, status: Dict[str, Any]):
         """Claude記憶ファイルを保存（エラー対応版）"""
         try:
             memory_dir = self.output_dir / "claude_memory"
             memory_dir.mkdir(exist_ok=True)
-            
+
             # メインコンテキストファイル
             main_file = memory_dir / "INSTANT_CONTEXT.md"
-            main_file.write_text(content, encoding='utf-8')
-            
-            # プロジェクト状況ファイル  
+            main_file.write_text(content, encoding="utf-8")
+
+            # プロジェクト状況ファイル
             status_file = memory_dir / "PROJECT_STATUS.md"
-            db_status = status['database']['status']
-            db_count = status['database']['table_count']
-            
+            db_status = status["database"]["status"]
+            db_count = status["database"]["table_count"]
+
             status_content = f"""# 📊 REAプロジェクト現在状況
 
 ## データベース構造
@@ -332,13 +338,13 @@ git add . && git commit -m "作業前バックアップ"
 
 ## 最新の成果
 """
-            for achievement in status.get('achievements', []):
+            for achievement in status.get("achievements", []):
                 status_content += f"- {achievement}\n"
-                
+
             status_content += f"\n更新日時: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-            
-            status_file.write_text(status_content, encoding='utf-8')
-            
+
+            status_file.write_text(status_content, encoding="utf-8")
+
             # クイックコマンド集
             commands_file = memory_dir / "QUICK_COMMANDS.md"
             commands_content = """# ⚡ REA クイックコマンド集
@@ -378,8 +384,8 @@ pip list | grep fastapi
 - **フォールバック**: 既知情報での仕様書生成
 - **エラーログ**: 詳細な解決手順を表示
 """
-            commands_file.write_text(commands_content, encoding='utf-8')
-            
+            commands_file.write_text(commands_content, encoding="utf-8")
+
             # エラー解決ガイド
             error_file = memory_dir / "ERROR_SOLUTIONS.md"
             error_content = f"""# 🔧 REA エラー解決ガイド
@@ -415,7 +421,7 @@ code shared/database.py
 
 更新日時: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 """
-            error_file.write_text(error_content, encoding='utf-8')
-            
+            error_file.write_text(error_content, encoding="utf-8")
+
         except Exception as e:
             self.print_status(f"⚠️ Claude記憶ファイル保存エラー: {e}")

@@ -2,6 +2,7 @@
 """DB接続統一化テストスクリプト"""
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent))
 
 print("🔍 DB接続テスト開始...")
@@ -10,6 +11,7 @@ print("🔍 DB接続テスト開始...")
 print("\n1️⃣ shared/database.py テスト")
 try:
     from shared.database import READatabase
+
     if READatabase.test_connection():
         print("  ✅ 接続成功")
         tables = READatabase.get_all_tables()

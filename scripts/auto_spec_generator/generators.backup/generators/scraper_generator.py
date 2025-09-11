@@ -1,27 +1,29 @@
 # generators/scraper_generator.py
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
+
 from .base_generator import BaseGenerator
+
 
 class ScraperGenerator(BaseGenerator):
     """スクレイパー仕様生成クラス"""
-    
+
     def generate(self) -> Dict[str, Any]:
         """スクレイパー仕様生成"""
         scraper_path = self.base_path / "rea-scraper"
-        
+
         if not scraper_path.exists():
             self.print_status("⚠️ rea-scraperディレクトリが見つかりません")
             return {}
-        
+
         # スクレイパーファイルをスキャン
         scrapers_dir = scraper_path / "src" / "scrapers"
         scraper_files = []
-        
+
         if scrapers_dir.exists():
             scraper_files = list(scrapers_dir.rglob("*.py"))
             scraper_files = [f for f in scraper_files if f.name != "__init__.py"]
-        
+
         # スクレイパー概要生成
         content = f"""# 🕷️ REA スクレイパー仕様
 
@@ -109,10 +111,10 @@ source venv/bin/activate
 nohup ./scripts/monitor_scraper.sh > logs/monitor.log 2>&1 &
 ```
 """
-        
+
         # ファイル保存
         scraper_dir = self.get_output_dir("03_scraper")
         self.save_content(content, scraper_dir / "README.md")
-        
+
         self.print_status("✅ スクレイパー仕様生成完了")
         return {"scraper_path": str(scraper_path), "scraper_files": len(scraper_files)}

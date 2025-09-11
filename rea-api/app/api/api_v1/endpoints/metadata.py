@@ -2,24 +2,25 @@
 データベースメタデータAPI
 テーブル構造、カラム情報、ラベル情報を提供
 """
-from typing import List, Dict, Any, Optional
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from sqlalchemy import text, MetaData, Table
+from typing import Any, Dict, List, Optional
+
 from app.api import dependencies
 from app.core.database import engine
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import MetaData, Table, text
+from sqlalchemy.orm import Session
 
 router = APIRouter()
 
+
 @router.get("/tables", response_model=List[Dict[str, Any]])
-def get_all_tables(
-    db: Session = Depends(dependencies.get_db)
-) -> List[Dict[str, Any]]:
+def get_all_tables(db: Session = Depends(dependencies.get_db)) -> List[Dict[str, Any]]:
     """
     全テーブル一覧を取得
     """
     try:
-        query = text("""
+        query = text(
+            """
             SELECT 
                 t.table_name,
                 t.table_type,
@@ -41,49 +42,56 @@ def get_all_tables(
             WHERE t.table_schema = 'public'
             AND t.table_type = 'BASE TABLE'
             ORDER BY t.table_name
-        """)
-        
+        """
+        )
+
         result = db.execute(query)
         tables = []
         for row in result:
-            tables.append({
-                "table_name": row.table_name,
-                "table_type": row.table_type,
-                "table_comment": row.table_comment,
-                "column_count": row.column_count,
-                "has_primary_key": bool(row.has_primary_key)
-            })
-        
+            tables.append(
+                {
+                    "table_name": row.table_name,
+                    "table_type": row.table_type,
+                    "table_comment": row.table_comment,
+                    "column_count": row.column_count,
+                    "has_primary_key": bool(row.has_primary_key),
+                }
+            )
+
         return tables
-    
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/tables/{table_name}", response_model=Dict[str, Any])
 def get_table_details(
-    table_name: str,
-    db: Session = Depends(dependencies.get_db)
+    table_name: str, db: Session = Depends(dependencies.get_db)
 ) -> Dict[str, Any]:
     """
     特定テーブルの詳細情報を取得
     """
     try:
         # テーブル存在確認
-        check_query = text("""
+        check_query = text(
+            """
             SELECT EXISTS (
                 SELECT 1 FROM information_schema.tables 
                 WHERE table_schema = 'public' 
                 AND table_name = :table_name
             )
-        """)
+        """
+        )
         exists = db.execute(check_query, {"table_name": table_name}).scalar()
-        
+
         if not exists:
-            raise HTTPException(status_code=404, detail=f"Table '{table_name}' not found")
-        
+            raise HTTPException(
+                status_code=404, detail=f"Table '{table_name}' not found"
+            )
+
         # テーブル情報取得
-        table_info_query = text("""
+        table_info_query = text(
+            """
             SELECT 
                 t.table_name,
                 obj_description(c.oid) as table_comment,
@@ -95,10 +103,12 @@ def get_table_details(
             JOIN pg_class c ON c.relname = t.table_name
             WHERE t.table_schema = 'public'
             AND t.table_name = :table_name
-        """)
-        
+        """
+        )
+
         # カラム情報取得
-        columns_query = text("""
+        columns_query = text(
+            """
             SELECT 
                 c.column_name,
                 c.data_type,
@@ -145,11 +155,12 @@ def get_table_details(
             WHERE c.table_schema = 'public'
             AND c.table_name = :table_name
             ORDER BY c.ordinal_position
-        """)
-        
+        """
+        )
+
         columns_result = db.execute(columns_query, {"table_name": table_name})
         columns = []
-        
+
         for col in columns_result:
             column_info = {
                 "column_name": col.column_name,
@@ -164,21 +175,21 @@ def get_table_details(
                 "is_primary_key": col.is_primary_key,
                 "is_foreign_key": col.is_foreign_key,
                 "foreign_table_name": col.foreign_table_name,
-                "foreign_column_name": col.foreign_column_name
+                "foreign_column_name": col.foreign_column_name,
             }
             columns.append(column_info)
-        
+
         # レコード数取得（動的SQLは使えないので別途実行）
         count_query = text(f"SELECT COUNT(*)::int FROM {table_name}")
         record_count = db.execute(count_query).scalar()
-        
+
         return {
             "table_name": table_name,
             "record_count": record_count,
             "columns": columns,
-            "column_count": len(columns)
+            "column_count": len(columns),
         }
-    
+
     except HTTPException:
         raise
     except Exception as e:
@@ -187,15 +198,15 @@ def get_table_details(
 
 @router.get("/columns/{table_name}", response_model=List[Dict[str, Any]])
 def get_table_columns_with_labels(
-    table_name: str,
-    db: Session = Depends(dependencies.get_db)
+    table_name: str, db: Session = Depends(dependencies.get_db)
 ) -> List[Dict[str, Any]]:
     """
     テーブルのカラム情報をラベル付きで取得
     column_labelsテーブルの情報も結合
     """
     try:
-        query = text("""
+        query = text(
+            """
             SELECT 
                 c.column_name,
                 c.data_type,
@@ -235,11 +246,12 @@ def get_table_columns_with_labels(
             ORDER BY 
                 COALESCE(cl.display_order, c.ordinal_position),
                 c.ordinal_position
-        """)
-        
+        """
+        )
+
         result = db.execute(query, {"table_name": table_name})
         columns = []
-        
+
         for row in result:
             column_info = {
                 "column_name": row.column_name,
@@ -257,48 +269,53 @@ def get_table_columns_with_labels(
                 "input_type": row.input_type or _guess_input_type(row.data_type),
                 "validation_rules": None,  # 存在しない
                 "display_order": row.display_order or row.ordinal_position,
-                "is_required": row.is_required if row.is_required is not None else (row.is_nullable != "YES"),
+                "is_required": row.is_required
+                if row.is_required is not None
+                else (row.is_nullable != "YES"),
                 "is_searchable": False,  # 存在しない
                 "is_display_list": False,  # 存在しない
                 "group_name": row.group_name or "基本情報",
                 "placeholder": None,  # 存在しない
                 "help_text": row.description,  # descriptionを流用
                 "default_value": None,  # 存在しない
-                "options": row.enum_values  # enum_valuesをoptionsとして使用
+                "options": row.enum_values,  # enum_valuesをoptionsとして使用
             }
             columns.append(column_info)
-        
+
         return columns
-    
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/enums/{enum_name}", response_model=List[str])
 def get_enum_values(
-    enum_name: str,
-    db: Session = Depends(dependencies.get_db)
+    enum_name: str, db: Session = Depends(dependencies.get_db)
 ) -> List[str]:
     """
     ENUM型の値一覧を取得
     """
     try:
-        query = text("""
+        query = text(
+            """
             SELECT enumlabel 
             FROM pg_enum e
             JOIN pg_type t ON e.enumtypid = t.oid
             WHERE t.typname = :enum_name
             ORDER BY e.enumsortorder
-        """)
-        
+        """
+        )
+
         result = db.execute(query, {"enum_name": enum_name})
         values = [row.enumlabel for row in result]
-        
+
         if not values:
-            raise HTTPException(status_code=404, detail=f"Enum type '{enum_name}' not found")
-        
+            raise HTTPException(
+                status_code=404, detail=f"Enum type '{enum_name}' not found"
+            )
+
         return values
-    
+
     except HTTPException:
         raise
     except Exception as e:
@@ -324,7 +341,7 @@ def get_validation_rules() -> Dict[str, Any]:
             "pattern": "正規表現パターン",
             "date_format": "日付形式",
             "file_types": "許可ファイル形式",
-            "file_size": "最大ファイルサイズ"
+            "file_size": "最大ファイルサイズ",
         },
         "input_types": {
             "text": "テキスト入力",
@@ -339,8 +356,8 @@ def get_validation_rules() -> Dict[str, Any]:
             "textarea": "複数行テキスト",
             "file": "ファイルアップロード",
             "image": "画像アップロード",
-            "hidden": "非表示フィールド"
-        }
+            "hidden": "非表示フィールド",
+        },
     }
 
 
@@ -366,7 +383,7 @@ def _guess_input_type(data_type: str) -> str:
         "timestamp with time zone": "datetime",
         "time": "time",
         "json": "textarea",
-        "jsonb": "textarea"
+        "jsonb": "textarea",
     }
-    
+
     return type_mapping.get(data_type.lower(), "text")

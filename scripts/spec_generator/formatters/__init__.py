@@ -3,4 +3,4 @@
 """
 from .markdown import MarkdownFormatter
 
-__all__ = ['MarkdownFormatter']
+__all__ = ["MarkdownFormatter"]
