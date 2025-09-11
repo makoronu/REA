@@ -1,0 +1,136 @@
+# 🏢 REA Project Complete Specification
+
+**Generated**: 2025-07-19T13:37:06.945684
+**Mode**: static
+
+---
+
+## 🚀 Overview
+- **Project Name**: REA (Real Estate Automation)
+- **Description**: 不動産業務完全自動化システム Python版
+- **Project Path**: /Users/yaguchimakoto/my_programing/REA
+- **Current Phase**: Phase 2/5 完了（スクレイピング実装済み）
+- **Api Url**: http://localhost:8005
+- **Github**: https://github.com/makoronu/REA
+
+## 📁 Project Structure
+
+**Total Files**: 116
+**Total Lines**: 0
+
+### rea-api ✅ 完成・稼働中
+- Python Files: 33
+- Directories: app, tests, uploads, logs, alembic
+
+**Main Files:**
+- app/main.py
+
+**Config Files:**
+- .env
+- requirements.txt
+
+### rea-scraper ✅ Mac版実装完了
+- Python Files: 68
+- Directories: tests, models, logs, scripts, backup, data, downloads, src
+
+**Config Files:**
+- .env
+- .env.example
+- requirements.txt
+
+### rea-admin 🔄 Phase 3実装予定
+- Python Files: 0
+- Directories: public, src
+
+**Config Files:**
+- package.json
+
+### rea-search ⏳ Phase 5実装予定
+- Python Files: 0
+- Directories: public, src
+
+**Config Files:**
+- package.json
+
+### rea-publisher ⏳ Phase 3実装予定
+- Python Files: 15
+- Directories: tests, logs, src
+
+**Config Files:**
+- .env
+- requirements.txt
+
+### rea-wordpress ⏳ Phase 3実装予定
+- Python Files: 0
+- Directories: includes, admin, public, templates
+
+## 📊 Database Structure
+
+## 🔌 API Specification
+
+### Total Endpoints: 0
+**Base URL**: 
+
+
+## 💻 Implementation Status
+
+### ✅ Completed
+
+**Phase 1: データベース基盤・API**
+- PostgreSQL 15 + 11テーブル
+- FastAPI + 8エンドポイント
+- 元請会社情報管理機能
+
+**Phase 2: スクレイピング（Mac版）**
+- ホームズ対応完了
+- 段階処理システム実装
+- Bot対策実装済み
+
+### 🔄 In Progress
+**Phase 3: React管理画面・自動入稿** (設計段階)
+
+### ⏳ Planned
+- Phase 4: AI機能・検索最適化
+- Phase 5: 公開検索サイト
+
+## 📝 Recent Changes
+
+**Last Update**: 2025-07-19 13:37
+**Current Branch**: main
+
+**Recent Commits:**
+- f7b828c 🎉 REA Python版プロジェクト初期化
+
+**Total Commits**: 1
+
+## 🛠 Development Guide
+
+### Tech Stack
+
+**Backend:**
+- Python 3.9+
+- FastAPI 0.104.1
+- SQLAlchemy 2.0.23
+- PostgreSQL 15
+- Docker
+
+**Scraping:**
+- Selenium 4.15.2
+- undetected-chromedriver 3.5.3
+- BeautifulSoup4 4.12.2
+
+**Planned:**
+- React 18
+- TypeScript
+- Tailwind CSS
+
+### Code Patterns
+- **Api**: FastAPI + Pydantic + SQLAlchemy
+- **Scraping**: 段階処理 + Bot対策
+- **Error Handling**: 全体書き直し方式
+
+### Important Notes
+- Mac環境（macOS）で開発
+- プロジェクトパス: /Users/yaguchimakoto/my_programing/REA
+- Python仮想環境: ./venv
+- ポート: API=8005, DB=5432

@@ -8,50 +8,29 @@ venv/
 env/
 ENV/
 
-# 環境変数
-.env
-*/.env
-.env.local
-.env.production
-
-# ログ
-logs/
-*/logs/
-*.log
-
-# アップロード・ダウンロード
-uploads/
-*/uploads/
-downloads/
-*/downloads/
-
-# データベース
-*.db
-*.sqlite
-*.sqlite3
-
-# Node.js (React用)
-node_modules/
-*/node_modules/
-
-# IDEs
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# OS (Mac)
 .DS_Store
-.DS_Store?
-._*
 
-# Jupyter Notebook
-.ipynb_checkpoints
+# Project specific
+.env
+logs/
+*.log
+data/
+models/*.pkl
+models/*.joblib
+*.db
 
-# pytest
+# Jupyter
+.ipynb_checkpoints/
+
+# Testing
 .pytest_cache/
 .coverage
+htmlcov/
 
-# 一時ファイル
-tmp/
-temp/
+# Scrapy
+.scrapy/

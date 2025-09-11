@@ -1,0 +1,305 @@
+column_name,data_type
+id,integer
+homes_record_id,character varying
+company_property_number,character varying
+status,character varying
+property_type,character varying
+investment_property,USER-DEFINED
+building_property_name,character varying
+building_name_kana,character varying
+property_name_public,USER-DEFINED
+total_units,integer
+vacant_units,integer
+vacant_units_detail,text
+postal_code,character varying
+address_code,integer
+address_name,character varying
+address_detail_public,text
+address_detail_private,text
+latitude_longitude,character varying
+train_line_1,character varying
+station_1,character varying
+bus_stop_name_1,character varying
+bus_time_1,integer
+walking_distance_1,integer
+train_line_2,character varying
+station_2,character varying
+bus_stop_name_2,character varying
+bus_time_2,integer
+walking_distance_2,integer
+other_transportation,character varying
+land_category,character varying
+use_district,character varying
+city_planning,character varying
+topography,USER-DEFINED
+land_area_measurement,USER-DEFINED
+lot_area,numeric
+private_road_area,numeric
+private_road_ratio,integer
+land_ownership_ratio,integer
+setback,USER-DEFINED
+setback_amount,numeric
+building_coverage_ratio,numeric
+floor_area_ratio,numeric
+road_frontage_status,USER-DEFINED
+road_direction_1,USER-DEFINED
+road_frontage_width_1,integer
+road_type_1,USER-DEFINED
+road_width_1,integer
+designated_road_1,USER-DEFINED
+road_direction_2,USER-DEFINED
+road_frontage_width_2,integer
+road_type_2,USER-DEFINED
+road_width_2,integer
+designated_road_2,USER-DEFINED
+road_direction_3,USER-DEFINED
+road_frontage_width_3,integer
+road_type_3,USER-DEFINED
+road_width_3,integer
+designated_road_3,USER-DEFINED
+road_direction_4,USER-DEFINED
+road_frontage_width_4,integer
+road_type_4,USER-DEFINED
+road_width_4,integer
+designated_road_4,USER-DEFINED
+land_rights,integer
+land_transaction_notice,USER-DEFINED
+legal_restrictions,character varying
+building_structure,character varying
+building_area_measurement,USER-DEFINED
+building_exclusive_area,numeric
+total_site_area,numeric
+total_floor_area,numeric
+building_area,numeric
+building_floors_above,integer
+building_floors_below,integer
+construction_date,date
+building_manager,USER-DEFINED
+management_type,character varying
+management_association,USER-DEFINED
+management_company,character varying
+room_floor,integer
+balcony_area,numeric
+direction,USER-DEFINED
+room_count,integer
+room_type,USER-DEFINED
+floor_plan_type_1,USER-DEFINED
+floor_plan_tatami_1,integer
+floor_plan_floor_1,integer
+floor_plan_rooms_1,integer
+floor_plan_type_2,USER-DEFINED
+floor_plan_tatami_2,integer
+floor_plan_floor_2,integer
+floor_plan_rooms_2,integer
+floor_plan_type_3,USER-DEFINED
+floor_plan_tatami_3,integer
+floor_plan_floor_3,integer
+floor_plan_rooms_3,integer
+floor_plan_type_4,USER-DEFINED
+floor_plan_tatami_4,integer
+floor_plan_floor_4,integer
+floor_plan_rooms_4,integer
+floor_plan_type_5,USER-DEFINED
+floor_plan_tatami_5,integer
+floor_plan_floor_5,integer
+floor_plan_rooms_5,integer
+floor_plan_type_6,USER-DEFINED
+floor_plan_tatami_6,integer
+floor_plan_floor_6,integer
+floor_plan_rooms_6,integer
+floor_plan_type_7,USER-DEFINED
+floor_plan_tatami_7,integer
+floor_plan_floor_7,integer
+floor_plan_rooms_7,integer
+floor_plan_type_8,USER-DEFINED
+floor_plan_tatami_8,integer
+floor_plan_floor_8,integer
+floor_plan_rooms_8,integer
+floor_plan_type_9,USER-DEFINED
+floor_plan_tatami_9,integer
+floor_plan_floor_9,integer
+floor_plan_rooms_9,integer
+floor_plan_type_10,USER-DEFINED
+floor_plan_tatami_10,integer
+floor_plan_floor_10,integer
+floor_plan_rooms_10,integer
+floor_plan_notes,text
+property_features,text
+notes,text
+url,character varying
+internal_memo,text
+rent_price,integer
+price_status,USER-DEFINED
+tax,USER-DEFINED
+tax_amount,USER-DEFINED
+price_per_tsubo,integer
+common_management_fee,integer
+common_management_fee_tax,USER-DEFINED
+full_occupancy_yield,integer
+current_yield,integer
+housing_insurance,integer
+land_rent,integer
+contract_period_years,integer
+contract_period_months,integer
+contract_period_type,USER-DEFINED
+repair_reserve_fund,integer
+repair_reserve_fund_base,integer
+parking_fee,integer
+parking_fee_tax,USER-DEFINED
+parking_type,USER-DEFINED
+parking_distance,integer
+parking_available,integer
+parking_notes,text
+current_status,USER-DEFINED
+move_in_timing,USER-DEFINED
+move_in_date,date
+move_in_period,USER-DEFINED
+elementary_school_name,character varying
+elementary_school_distance,integer
+junior_high_school_name,character varying
+junior_high_school_distance,integer
+convenience_store_distance,integer
+supermarket_distance,integer
+general_hospital_distance,integer
+property_manager_name,character varying
+transaction_type,character varying
+listing_confirmation_date,character varying
+tenant_placement,USER-DEFINED
+brokerage_contract_date,date
+brokerage_fee,integer
+commission_split_ratio,numeric
+image_type_1,USER-DEFINED
+image_comment_1,text
+local_file_name_2,character varying
+image_type_2,USER-DEFINED
+image_comment_2,text
+local_file_name_3,character varying
+image_type_3,USER-DEFINED
+image_comment_3,text
+local_file_name_4,character varying
+image_type_4,USER-DEFINED
+image_comment_4,text
+local_file_name_5,character varying
+image_type_5,USER-DEFINED
+image_comment_5,text
+local_file_name_6,character varying
+image_type_6,USER-DEFINED
+image_comment_6,text
+affiliated_group,character varying
+facilities_conditions,character varying
+recommendation_points,integer
+move_in_consultation,USER-DEFINED
+image_type_7,USER-DEFINED
+image_comment_7,text
+local_file_name_8,character varying
+image_type_8,USER-DEFINED
+image_comment_8,text
+local_file_name_9,character varying
+image_type_9,USER-DEFINED
+image_comment_9,text
+local_file_name_10,character varying
+image_type_10,USER-DEFINED
+image_comment_10,text
+local_file_name_11,character varying
+image_type_11,USER-DEFINED
+image_comment_11,text
+local_file_name_12,character varying
+image_type_12,USER-DEFINED
+image_comment_12,text
+local_file_name_13,character varying
+image_type_13,USER-DEFINED
+image_comment_13,text
+local_file_name_14,character varying
+image_type_14,USER-DEFINED
+image_comment_14,text
+local_file_name_15,character varying
+image_type_15,USER-DEFINED
+image_comment_15,text
+local_file_name_16,character varying
+image_type_16,USER-DEFINED
+image_comment_16,text
+local_file_name_17,character varying
+image_type_17,USER-DEFINED
+image_comment_17,text
+local_file_name_18,character varying
+image_type_18,USER-DEFINED
+image_comment_18,text
+local_file_name_19,character varying
+image_type_19,USER-DEFINED
+image_comment_19,text
+local_file_name_20,character varying
+image_type_20,USER-DEFINED
+image_comment_20,text
+local_file_name_21,character varying
+image_type_21,USER-DEFINED
+image_comment_21,text
+local_file_name_22,character varying
+image_type_22,USER-DEFINED
+image_comment_22,text
+local_file_name_23,character varying
+image_type_23,USER-DEFINED
+image_comment_23,text
+local_file_name_24,character varying
+image_type_24,USER-DEFINED
+image_comment_24,text
+local_file_name_25,character varying
+image_type_25,USER-DEFINED
+image_comment_25,text
+local_file_name_26,character varying
+image_type_26,USER-DEFINED
+image_comment_26,text
+local_file_name_27,character varying
+image_type_27,USER-DEFINED
+image_comment_27,text
+local_file_name_28,character varying
+image_type_28,USER-DEFINED
+image_comment_28,text
+local_file_name_29,character varying
+image_type_29,USER-DEFINED
+image_comment_29,text
+local_file_name_30,character varying
+image_type_30,USER-DEFINED
+image_comment_30,text
+shopping_street_distance,integer
+drugstore_distance,integer
+park_distance,integer
+bank_distance,integer
+other_facility_name,character varying
+other_facility_distance,integer
+contract_type,USER-DEFINED
+property_publication_type,USER-DEFINED
+renovation_water,character varying
+renovation_water_other,character varying
+renovation_water_completion,date
+renovation_interior,character varying
+renovation_interior_other,character varying
+renovation_interior_completion,date
+renovation_exterior,character varying
+renovation_exterior_other,character varying
+renovation_exterior_completion,date
+renovation_common_area,character varying
+renovation_common_completion,date
+renovation_notes,text
+energy_consumption_min,integer
+energy_consumption_max,integer
+insulation_performance_min,integer
+insulation_performance_max,integer
+utility_cost_min,integer
+utility_cost_max,integer
+created_at,timestamp without time zone
+updated_at,timestamp without time zone
+building_structure_id,character varying
+current_status_id,character varying
+property_type_id,character varying
+zoning_district_id,character varying
+land_rights_id,character varying
+contractor_company_name,character varying
+contractor_contact_person,character varying
+contractor_phone,character varying
+contractor_email,character varying
+contractor_address,character varying
+contractor_license_number,character varying
+source_site,character varying
+extraction_confidence,double precision
+data_quality_score,double precision
+original_data,json

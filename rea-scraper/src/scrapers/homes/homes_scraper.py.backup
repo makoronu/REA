@@ -1,0 +1,432 @@
+"""
+ホームズ不動産売買物件スクレイパー
+売買専門・元請会社情報対応・汎用学習機能付き
+"""
+from typing import Dict, List, Optional, Any, Tuple
+from datetime import datetime
+import re
+import json
+from urllib.parse import urljoin, urlparse
+
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from bs4 import BeautifulSoup
+from loguru import logger
+
+from src.scrapers.base.base_scraper import BaseScraper
+from src.config.database import db_manager
+from src.utils.decorators import retry, measure_time, handle_errors
+
+
+class HomesPropertyScraper(BaseScraper):
+    """ホームズ売買物件専用スクレイパー"""
+    
+    def __init__(self):
+        super().__init__(
+            site_name="homes",
+            base_url="https://www.homes.co.jp",
+            login_required=False
+        )
+        
+        # 売買専用セレクタ定義
+        self.selectors = {
+            # リスト要素
+            'property_list': '.mod-bukkenList',
+            'property_items': '.moduleInner.prg-kksSictClickInfo',
+            
+            # 基本情報（売買専用）
+            'title': [
+                '.bukkenName',
+                'a[href*="/kodate/"]',
+                'a[href*="/tochi/"]'
+            ],
+            'price': [
+                '.bukkenSpec__data--price',
+                '.bukkenSpec dt:contains("価格") + dd',
+                '.bukkenSpec'
+            ],
+            'address': [
+                '.bukkenSpec__data--address',
+                '.bukkenSpec dt:contains("所在地") + dd',
+                '.bukkenSpec'
+            ],
+            
+            # 元請会社情報
+            'contractor_company': [
+                '.companyInfo__name',
+                '.company-name',
+                'div[class*="company"] a'
+            ],
+            'contractor_phone': [
+                '.companyInfo__tel',
+                'a[href^="tel:"]',
+                'span[class*="tel"]'
+            ],
+            
+            # 売買特有情報
+            'land_area': [
+                'th:contains("土地面積") + td',
+                'dt:contains("土地面積") + dd',
+                'span[class*="land-area"]'
+            ],
+            'building_area': [
+                'th:contains("建物面積") + td',
+                'dt:contains("建物面積") + dd',
+                'span[class*="building-area"]'
+            ],
+            'floor_plan': [
+                'th:contains("間取り") + td',
+                'dt:contains("間取り") + dd',
+                'span[class*="madori"]'
+            ]
+        }
+        
+        # 学習データ収集用
+        self.learning_data = {
+            'successful_selectors': {},
+            'failed_selectors': {},
+            'patterns_found': {},
+            'sample_data': []
+        }
+    
+    @retry(max_attempts=3)
+    @measure_time
+    def scrape_listing_page(self, url: str) -> List[Dict[str, Any]]:
+        """売買物件一覧ページをスクレイピング"""
+        logger.info(f"Scraping homes listing page: {url}")
+        
+        # 賃貸物件を除外するチェック
+        if any(keyword in url for keyword in ['chintai', 'rent', 'apartment-rent']):
+            logger.warning(f"Skipping rental URL: {url}")
+            return []
+        
+        html = self.get_page_source(url)
+        if not html:
+            return []
+        
+        soup = BeautifulSoup(html, 'html.parser')
+        properties = []
+        
+        # 物件リストを取得
+        property_items = soup.select(self.selectors['property_items'])
+        logger.info(f"Found {len(property_items)} property items")
+        
+        for item in property_items:
+            try:
+                property_data = self._extract_property_data(item, url)
+                if property_data and self._is_valid_sale_property(property_data):
+                    properties.append(property_data)
+                    
+                    # 学習データ収集
+                    if len(self.learning_data['sample_data']) < 10:
+                        self.learning_data['sample_data'].append({
+                            'html': str(item),
+                            'extracted_data': property_data
+                        })
+                        
+            except Exception as e:
+                logger.error(f"Error extracting property: {e}")
+                continue
+        
+        # 学習データを保存
+        self._save_learning_data(url)
+        
+        logger.info(f"Successfully scraped {len(properties)} sale properties")
+        return properties
+    
+    def _extract_property_data(self, item: BeautifulSoup, base_url: str) -> Optional[Dict[str, Any]]:
+        """売買物件データを抽出"""
+        property_data = {
+            'source_site': 'homes',
+            'transaction_type': '売買',
+            'scraped_at': datetime.now().isoformat()
+        }
+        
+        # タイトル抽出
+        title = self._extract_with_selectors(item, self.selectors['title'])
+        if not title:
+            return None
+        property_data['title'] = title.strip()
+        
+        # 価格抽出（売買価格チェック付き）
+        price_text = self._extract_with_selectors(item, self.selectors['price'])
+        if price_text:
+            price = self._parse_sale_price(price_text)
+            if price:
+                property_data['price'] = price
+            else:
+                return None  # 売買価格でない場合はスキップ
+        
+        # 住所抽出
+        address = self._extract_with_selectors(item, self.selectors['address'])
+        if address:
+            property_data['address'] = self._normalize_address(address)
+        
+        # 元請会社情報抽出
+        contractor_info = self._extract_contractor_info(item)
+        property_data.update(contractor_info)
+        
+        # 売買特有情報
+        land_area = self._extract_with_selectors(item, self.selectors['land_area'])
+        if land_area:
+            property_data['land_area'] = self._parse_area(land_area)
+        
+        building_area = self._extract_with_selectors(item, self.selectors['building_area'])
+        if building_area:
+            property_data['building_area'] = self._parse_area(building_area)
+        
+        floor_plan = self._extract_with_selectors(item, self.selectors['floor_plan'])
+        if floor_plan:
+            property_data['floor_plan'] = floor_plan.strip()
+        
+        # 詳細ページURL
+        detail_link = item.select_one('a[href*="/kodate/"], a[href*="/mansion/"]')
+        if detail_link:
+            property_data['source_url'] = urljoin(base_url, detail_link.get('href'))
+            property_data['listing_id'] = self._extract_listing_id(property_data['source_url'])
+        
+        return property_data
+    
+    def _extract_with_selectors(self, element: BeautifulSoup, selectors: List[str]) -> Optional[str]:
+        """複数のセレクタを試して最初に見つかった要素のテキストを返す"""
+        for selector in selectors:
+            try:
+                found = element.select_one(selector)
+                if found:
+                    text = found.get_text(strip=True)
+                    if text:
+                        # 成功したセレクタを記録（学習用）
+                        selector_key = selector.split('[')[0].split('.')[0]
+                        self.learning_data['successful_selectors'][selector_key] = selector
+                        return text
+            except Exception:
+                # 失敗したセレクタを記録（学習用）
+                self.learning_data['failed_selectors'][selector] = True
+                continue
+        return None
+    
+    def _extract_contractor_info(self, item: BeautifulSoup) -> Dict[str, Any]:
+        """元請会社情報を抽出（学習機能付き）"""
+        contractor_info = {}
+        
+        # 会社名
+        company_name = self._extract_with_selectors(item, self.selectors['contractor_company'])
+        if company_name:
+            contractor_info['contractor_company_name'] = company_name.strip()
+            
+            # 会社名パターンを学習
+            if any(keyword in company_name for keyword in ['株式会社', '(株)', '有限会社', '(有)']):
+                self.learning_data['patterns_found']['company_prefix'] = True
+        
+        # 電話番号
+        phone = self._extract_with_selectors(item, self.selectors['contractor_phone'])
+        if phone:
+            cleaned_phone = re.sub(r'[^\d-]', '', phone)
+            if re.match(r'^\d{2,4}-\d{2,4}-\d{3,4}$', cleaned_phone):
+                contractor_info['contractor_phone'] = cleaned_phone
+                self.learning_data['patterns_found']['phone_format'] = r'^\d{2,4}-\d{2,4}-\d{3,4}$'
+        
+        return contractor_info
+    
+    def _parse_sale_price(self, price_text: str) -> Optional[float]:
+        """売買価格をパース（賃料除外）"""
+        # 賃料キーワードをチェック
+        if any(keyword in price_text for keyword in ['賃', '家賃', '月', '/月', '共益費', '管理費']):
+            logger.debug(f"Skipping rental price: {price_text}")
+            return None
+        
+        # 価格パターンを学習
+        price_patterns = [
+            (r'(\d+)億(\d+)万円', lambda m: float(m.group(1)) * 100000000 + float(m.group(2)) * 10000),
+            (r'(\d+)億円', lambda m: float(m.group(1)) * 100000000),
+            (r'(\d+)万円', lambda m: float(m.group(1)) * 10000),
+            (r'(\d+),(\d+)万円', lambda m: float(m.group(1) + m.group(2)) * 10000),
+        ]
+        
+        for pattern, converter in price_patterns:
+            match = re.search(pattern, price_text)
+            if match:
+                price = converter(match)
+                # 売買価格の妥当性チェック（100万円〜10億円）
+                if 1000000 <= price <= 10000000000:
+                    self.learning_data['patterns_found']['price_pattern'] = pattern
+                    return price
+        
+        return None
+    
+    def _parse_area(self, area_text: str) -> Optional[float]:
+        """面積をパース"""
+        patterns = [
+            (r'(\d+\.?\d*)m²', lambda m: float(m.group(1))),
+            (r'(\d+\.?\d*)㎡', lambda m: float(m.group(1))),
+            (r'(\d+\.?\d*)平米', lambda m: float(m.group(1))),
+        ]
+        
+        for pattern, converter in patterns:
+            match = re.search(pattern, area_text)
+            if match:
+                self.learning_data['patterns_found']['area_pattern'] = pattern
+                return converter(match)
+        
+        return None
+    
+    def _normalize_address(self, address: str) -> str:
+        """住所を正規化"""
+        # 全角数字を半角に変換
+        address = address.translate(str.maketrans('０１２３４５６７８９', '0123456789'))
+        # 余分な空白を削除
+        address = re.sub(r'\s+', ' ', address).strip()
+        return address
+    
+    def _extract_listing_id(self, url: str) -> Optional[str]:
+        """URLから物件IDを抽出"""
+        patterns = [
+            r'/kodate/(\d+)/',
+            r'/mansion/(\d+)/',
+            r'id=(\d+)',
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, url)
+            if match:
+                return f"homes_{match.group(1)}"
+        
+        return None
+    
+    def _is_valid_sale_property(self, property_data: Dict[str, Any]) -> bool:
+        """売買物件として妥当かチェック"""
+        # 必須フィールド
+        if not all(property_data.get(field) for field in ['title', 'price']):
+            return False
+        
+        # 価格チェック（100万円〜10億円）
+        price = property_data.get('price', 0)
+        if not (1000000 <= price <= 10000000000):
+            return False
+        
+        # 取引種別チェック
+        if property_data.get('transaction_type') != '売買':
+            return False
+        
+        return True
+    
+    def _save_learning_data(self, url: str):
+        """学習データを保存"""
+        try:
+            learning_record = {
+                'site_name': 'homes',
+                'url_pattern': urlparse(url).path,
+                'patterns': {
+                    'selectors': self.learning_data['successful_selectors'],
+                    'regex_patterns': self.learning_data['patterns_found'],
+                },
+                'success_rate': len(self.learning_data['successful_selectors']) / 
+                              (len(self.learning_data['successful_selectors']) + 
+                               len(self.learning_data['failed_selectors']) + 0.1),
+                'sample_count': len(self.learning_data['sample_data'])
+            }
+            
+            db_manager.save_learning_data(learning_record)
+            logger.info(f"Learning data saved: {learning_record['success_rate']:.2%} success rate")
+            
+        except Exception as e:
+            logger.error(f"Failed to save learning data: {e}")
+    
+    @handle_errors
+    def scrape_detail_page(self, url: str) -> Optional[Dict[str, Any]]:
+        """物件詳細ページをスクレイピング（拡張情報取得）"""
+        logger.info(f"Scraping detail page: {url}")
+        
+        html = self.get_page_source(url)
+        if not html:
+            return None
+        
+        soup = BeautifulSoup(html, 'html.parser')
+        detail_data = {}
+        
+        # 追加の元請会社情報を取得
+        company_section = soup.select_one('.mod-companyProfile')
+        if company_section:
+            # 免許番号
+            license_elem = company_section.select_one('dt:contains("免許番号") + dd')
+            if license_elem:
+                detail_data['contractor_license_number'] = license_elem.get_text(strip=True)
+            
+            # 会社住所
+            address_elem = company_section.select_one('dt:contains("所在地") + dd')
+            if address_elem:
+                detail_data['contractor_address'] = self._normalize_address(
+                    address_elem.get_text(strip=True)
+                )
+            
+            # 担当者名
+            contact_elem = company_section.select_one('.staff-name')
+            if contact_elem:
+                detail_data['contractor_contact_person'] = contact_elem.get_text(strip=True)
+        
+        # その他の詳細情報
+        detail_table = soup.select_one('.bukkenSpec')
+        if detail_table:
+            # 築年月
+            built_elem = detail_table.select_one('th:contains("築年月") + td')
+            if built_elem:
+                built_text = built_elem.get_text(strip=True)
+                detail_data['construction_year'] = self._parse_construction_year(built_text)
+            
+            # 建物構造
+            structure_elem = detail_table.select_one('th:contains("構造") + td')
+            if structure_elem:
+                detail_data['structure'] = structure_elem.get_text(strip=True)
+        
+        return detail_data
+    
+    def _parse_construction_year(self, text: str) -> Optional[int]:
+        """築年月から年を抽出"""
+        patterns = [
+            r'(\d{4})年',
+            r'平成(\d+)年',
+            r'昭和(\d+)年',
+            r'令和(\d+)年',
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, text)
+            if match:
+                if '平成' in text:
+                    return 1988 + int(match.group(1))
+                elif '昭和' in text:
+                    return 1925 + int(match.group(1))
+                elif '令和' in text:
+                    return 2018 + int(match.group(1))
+                else:
+                    return int(match.group(1))
+        
+        return None
+    
+    def get_search_urls(self, area: str = "hokkaido", property_type: str = "kodate") -> List[str]:
+        """検索URLを生成（売買専門）"""
+        base_urls = {
+            'kodate': f'{self.base_url}/kodate/{area}/list/',
+            'mansion': f'{self.base_url}/mansion/{area}/list/',
+        }
+        
+        url = base_urls.get(property_type, base_urls['kodate'])
+        return [url]
+
+
+# テスト実行
+if __name__ == "__main__":
+    scraper = HomesPropertyScraper()
+    
+    # 戸建て売買物件をテスト
+    test_url = "https://www.homes.co.jp/kodate/hokkaido/list/"
+    properties = scraper.scrape_listing_page(test_url)
+    
+    if properties:
+        logger.info(f"✓ Scraped {len(properties)} properties")
+        logger.info(f"Sample property: {json.dumps(properties[0], ensure_ascii=False, indent=2)}")
+    else:
+        logger.error("✗ No properties scraped")
+    
+    scraper.close()

@@ -1,0 +1,121 @@
+[?1049h[22;0;0t[?1h=          column_name           |          data_type          
+--------------------------------+-----------------------------
+ id                             | integer
+ homes_record_id                | character varying
+ company_property_number        | character varying
+ status                         | character varying
+ property_type                  | character varying
+ investment_property            | USER-DEFINED
+ building_property_name         | character varying
+ building_name_kana             | character varying
+ property_name_public           | USER-DEFINED
+ total_units                    | integer
+ vacant_units                   | integer
+ vacant_units_detail            | text
+ postal_code                    | character varying
+ address_code                   | integer
+ address_name                   | character varying
+ address_detail_public          | text
+ address_detail_private         | text
+ latitude_longitude             | character varying
+ train_line_1                   | character varying
+ station_1                      | character varying
+ bus_stop_name_1                | character varying
+:[K[K:[K[K:[K[K[7mNo next tag  (press RETURN)[27m[24;1H[K[K:[K[K[K[7mDetermining length of file... (interrupt to abort)[27m[K[K:[K[K...skipping...
+          column_name           |          data_type          
+--------------------------------+-----------------------------
+ id                             | integer
+ homes_record_id                | character varying
+ company_property_number        | character varying
+ status                         | character varying
+ property_type                  | character varying
+ investment_property            | USER-DEFINED
+ building_property_name         | character varying
+ building_name_kana             | character varying
+ property_name_public           | USER-DEFINED
+ total_units                    | integer
+ vacant_units                   | integer
+ vacant_units_detail            | text
+ postal_code                    | character varying
+ address_code                   | integer
+ address_name                   | character varying
+ address_detail_public          | text
+ address_detail_private         | text
+ latitude_longitude             | character varying
+ train_line_1                   | character varying
+ station_1                      | character varying
+ bus_stop_name_1                | character varying
+:[K[K:[K[K[K:[K[K bus_time_1                     | integer
+:[K[K...skipping...
+--------------------------------+-----------------------------
+ id                             | integer
+ homes_record_id                | character varying
+ company_property_number        | character varying
+ status                         | character varying
+ property_type                  | character varying
+ investment_property            | USER-DEFINED
+ building_property_name         | character varying
+ building_name_kana             | character varying
+ property_name_public           | USER-DEFINED
+ total_units                    | integer
+ vacant_units                   | integer
+ vacant_units_detail            | text
+ postal_code                    | character varying
+ address_code                   | integer
+ address_name                   | character varying
+ address_detail_public          | text
+ address_detail_private         | text
+ latitude_longitude             | character varying
+ train_line_1                   | character varying
+ station_1                      | character varying
+ bus_stop_name_1                | character varying
+ bus_time_1                     | integer
+:[K[K[7mNo next tag  (press RETURN)[27m[24;1H[K[K:[K[K walking_distance_1             | integer
+:[K[K-[Klog file: [K__[Kcc[Koo[Kll[Kuu[Kmm[Knn[Kss[K..[Ktt[Kxx[Ktt[H[2J[H id                             | integer
+ homes_record_id                | character varying
+ company_property_number        | character varying
+ status                         | character varying
+ property_type                  | character varying
+ investment_property            | USER-DEFINED
+ building_property_name         | character varying
+ building_name_kana             | character varying
+ property_name_public           | USER-DEFINED
+ total_units                    | integer
+ vacant_units                   | integer
+ vacant_units_detail            | text
+ postal_code                    | character varying
+ address_code                   | integer
+ address_name                   | character varying
+ address_detail_public          | text
+ address_detail_private         | text
+ latitude_longitude             | character varying
+ train_line_1                   | character varying
+ station_1                      | character varying
+ bus_stop_name_1                | character varying
+ bus_time_1                     | integer
+ walking_distance_1             | integer
+:[KCancel request sent
+[H[2J[H id                             | integer
+ homes_record_id                | character varying
+ company_property_number        | character varying
+ status                         | character varying
+ property_type                  | character varying
+ investment_property            | USER-DEFINED
+ building_property_name         | character varying
+ building_name_kana             | character varying
+ property_name_public           | USER-DEFINED
+ total_units                    | integer
+ vacant_units                   | integer
+ vacant_units_detail            | text
+ postal_code                    | character varying
+ address_code                   | integer
+ address_name                   | character varying
+ address_detail_public          | text
+ address_detail_private         | text
+ latitude_longitude             | character varying
+ train_line_1                   | character varying
+ station_1                      | character varying
+ bus_stop_name_1                | character varying
+ bus_time_1                     | integer
+ walking_distance_1             | integer
+:[KCancel request sent
