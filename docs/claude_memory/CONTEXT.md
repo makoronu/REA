@@ -1,12 +1,12 @@
 # REAプロジェクトコンテキスト
 
-更新日時: 2025-09-11 20:01:56
+更新日時: 2025-09-18 07:09:31
 プロジェクトパス: /Users/yaguchimakoto/my_programing/REA
 
 ## 現在の状態
 
-- データベース: connected (15テーブル)
-- プログラムファイル: 2289ファイル
+- データベース: disconnected (0テーブル)
+- プログラムファイル: 165ファイル
 - API: FastAPI (port 8005)
 - DB: PostgreSQL (Docker: real_estate_db)
 
@@ -49,6 +49,9 @@ kill -9 <PID>
 ```bash
 pip install -r requirements.txt
 ```
+
+## 現在のエラー
+- DB接続失敗
 
 
 ## プロジェクト構造

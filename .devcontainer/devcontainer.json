@@ -1,0 +1,50 @@
+{
+  "name": "REA Development Container",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-toolsai.jupyter",
+        "ms-azuretools.vscode-docker",
+        "GitHub.copilot",
+        "eamodio.gitlens"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.linting.enabled": true,
+        "python.linting.pylintEnabled": true,
+        "python.formatting.provider": "black",
+        "files.autoSave": "afterDelay",
+        "files.autoSaveDelay": 1000,
+        "editor.formatOnSave": true,
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  },
+
+  "postCreateCommand": "pip install -r requirements.txt && pip install psycopg2-binary",
+  
+  "postStartCommand": "docker-compose up -d postgres redis",
+  
+  "forwardPorts": [5432, 6379, 8000, 8005],
+  
+  "remoteUser": "vscode",
+  
+  "mounts": [],
+  
+  "runArgs": ["--init"],
+  
+  "containerEnv": {
+    "PYTHONPATH": "/workspaces/REA",
+    "PROJECT_ROOT": "/workspaces/REA"
+  }
+}

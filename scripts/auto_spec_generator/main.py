@@ -3,6 +3,15 @@ import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
+import sys
+import os
+
+# プロジェクトルートを動的に検出
+SCRIPT_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = SCRIPT_DIR.parent.parent  # scripts/auto_spec_generator -> REA
+
+# Pythonパスに追加
+sys.path.insert(0, str(PROJECT_ROOT))
 
 from generators.api_generator import APIGenerator
 from generators.claude_generator import ClaudeGenerator
@@ -18,9 +27,22 @@ from generators.shared_library_analyzer import SharedLibraryAnalyzer
 class REASpecGeneratorController:
     """REA仕様書生成コントローラー（分割版）"""
 
-    def __init__(self, base_path: str = "/Users/yaguchimakoto/my_programing/REA"):
-        self.base_path = Path(base_path)
+    def __init__(self, base_path: str = None):
+        # base_pathが指定されない場合は、動的に検出
+        if base_path is None:
+            self.base_path = PROJECT_ROOT
+        else:
+            self.base_path = Path(base_path)
+        
         self.output_dir = self.base_path / "docs"
+        
+        # 環境情報を表示
+        print(f"🔍 実行環境:")
+        print(f"   プロジェクトルート: {self.base_path}")
+        if os.environ.get('CODESPACES'):
+            print(f"   環境: GitHub Codespaces ✅")
+        else:
+            print(f"   環境: ローカル")
 
     def generate_all(self):
         """全仕様書生成"""
@@ -154,6 +176,7 @@ class REASpecGeneratorController:
 
 
 if __name__ == "__main__":
+    # base_pathを指定せずに動的に検出
     controller = REASpecGeneratorController()
 
     # 仕様書を生成
