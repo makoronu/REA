@@ -22,7 +22,7 @@ if env_path.exists():
 
 # 環境変数から接続情報を取得
 DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = os.getenv("DB_PORT", "5432")
+DB_PORT = os.getenv("DB_PORT", "5433")
 DB_NAME = os.getenv("DB_NAME", "real_estate_db")
 DB_USER = os.getenv("DB_USER", "rea_user")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "rea_password")

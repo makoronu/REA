@@ -1,14 +1,15 @@
+from decimal import Decimal
 from typing import List, Optional
 
 from app.core.database import get_db
-from app.crud import property as property_crud
+from app.crud.property import property_crud
 from app.schemas.property import (
     Property,
     PropertyCreate,
     PropertySearchParams,
     PropertyUpdate,
 )
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 router = APIRouter()
@@ -18,16 +19,11 @@ router = APIRouter()
 def read_properties(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
-    price_min: Optional[float] = Query(None),
-    price_max: Optional[float] = Query(None),
-    area_min: Optional[float] = Query(None),
-    area_max: Optional[float] = Query(None),
-    property_type: Optional[str] = Query(None),
-    prefecture: Optional[str] = Query(None),
-    city: Optional[str] = Query(None),
-    station_name: Optional[str] = Query(None),
-    layout: Optional[str] = Query(None),
-    # 🏢 元請会社検索パラメータ（新規追加）
+    sale_price_min: Optional[Decimal] = Query(None, description="最低価格"),
+    sale_price_max: Optional[Decimal] = Query(None, description="最高価格"),
+    property_type: Optional[str] = Query(None, description="物件種別"),
+    property_name: Optional[str] = Query(None, description="物件名"),
+    sales_status: Optional[str] = Query(None, description="販売状況"),
     contractor_company_name: Optional[str] = Query(None, description="元請会社名"),
     contractor_contact_person: Optional[str] = Query(None, description="担当者名"),
     contractor_license_number: Optional[str] = Query(None, description="宅建免許番号"),
@@ -35,15 +31,11 @@ def read_properties(
 ):
     """物件一覧取得（検索条件付き）"""
     search_params = PropertySearchParams(
-        price_min=price_min,
-        price_max=price_max,
-        area_min=area_min,
-        area_max=area_max,
+        sale_price_min=sale_price_min,
+        sale_price_max=sale_price_max,
         property_type=property_type,
-        prefecture=prefecture,
-        city=city,
-        station_name=station_name,
-        layout=layout,
+        property_name=property_name,
+        sales_status=sales_status,
         contractor_company_name=contractor_company_name,
         contractor_contact_person=contractor_contact_person,
         contractor_license_number=contractor_license_number,
@@ -68,16 +60,6 @@ def read_property(property_id: int, db: Session = Depends(get_db)):
 @router.post("/", response_model=Property)
 def create_property(property: PropertyCreate, db: Session = Depends(get_db)):
     """物件新規作成"""
-    # ホームズIDの重複チェック
-    if property.homes_id:
-        existing_property = property_crud.get_property_by_homes_id(
-            db, homes_id=property.homes_id
-        )
-        if existing_property:
-            raise HTTPException(
-                status_code=400, detail="Property with this homes_id already exists"
-            )
-
     return property_crud.create_property(db=db, property=property)
 
 
@@ -103,16 +85,7 @@ def delete_property(property_id: int, db: Session = Depends(get_db)):
     return {"message": "Property deleted successfully"}
 
 
-@router.patch("/{property_id}/deactivate", response_model=Property)
-def deactivate_property(property_id: int, db: Session = Depends(get_db)):
-    """物件非表示"""
-    db_property = property_crud.deactivate_property(db, property_id=property_id)
-    if db_property is None:
-        raise HTTPException(status_code=404, detail="Property not found")
-    return db_property
-
-
-# 🏢 元請会社管理専用エンドポイント
+# 元請会社管理専用エンドポイント
 @router.get("/by-contractor/{company_name}", response_model=List[Property])
 def get_properties_by_contractor(
     company_name: str,

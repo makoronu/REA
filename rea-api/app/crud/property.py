@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional
 
 from app.models.property import Property
 from app.schemas.property import PropertyCreate, PropertySearchParams, PropertyUpdate
-from sqlalchemy import and_, desc, func, or_
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 
@@ -19,40 +19,26 @@ class PropertyCRUD:
 
         if search_params:
             # 価格範囲
-            if search_params.price_min is not None:
-                query = query.filter(Property.price >= search_params.price_min)
-            if search_params.price_max is not None:
-                query = query.filter(Property.price <= search_params.price_max)
-
-            # 面積範囲
-            if search_params.area_min is not None:
-                query = query.filter(Property.area_building >= search_params.area_min)
-            if search_params.area_max is not None:
-                query = query.filter(Property.area_building <= search_params.area_max)
+            if search_params.sale_price_min is not None:
+                query = query.filter(Property.sale_price >= search_params.sale_price_min)
+            if search_params.sale_price_max is not None:
+                query = query.filter(Property.sale_price <= search_params.sale_price_max)
 
             # 物件種別
             if search_params.property_type:
+                query = query.filter(Property.property_type == search_params.property_type)
+
+            # 物件名検索
+            if search_params.property_name:
                 query = query.filter(
-                    Property.property_type == search_params.property_type
+                    Property.property_name.ilike(f"%{search_params.property_name}%")
                 )
 
-            # 地域検索
-            if search_params.prefecture:
-                query = query.filter(
-                    Property.prefecture.ilike(f"%{search_params.prefecture}%")
-                )
-            if search_params.city:
-                query = query.filter(Property.city.ilike(f"%{search_params.city}%"))
-            if search_params.station_name:
-                query = query.filter(
-                    Property.station_name.ilike(f"%{search_params.station_name}%")
-                )
+            # 販売状況
+            if search_params.sales_status:
+                query = query.filter(Property.sales_status == search_params.sales_status)
 
-            # 間取り検索
-            if search_params.layout:
-                query = query.filter(Property.layout.ilike(f"%{search_params.layout}%"))
-
-            # 🏢 元請会社検索
+            # 元請会社検索
             if search_params.contractor_company_name:
                 query = query.filter(
                     Property.contractor_company_name.ilike(
@@ -67,8 +53,7 @@ class PropertyCRUD:
                 )
             if search_params.contractor_license_number:
                 query = query.filter(
-                    Property.contractor_license_number
-                    == search_params.contractor_license_number
+                    Property.contractor_license_number == search_params.contractor_license_number
                 )
 
         return query.offset(skip).limit(limit).all()
@@ -77,15 +62,9 @@ class PropertyCRUD:
         """物件詳細取得"""
         return db.query(Property).filter(Property.id == property_id).first()
 
-    def get_property_by_homes_id(
-        self, db: Session, homes_id: str
-    ) -> Optional[Property]:
-        """ホームズIDで物件取得"""
-        return db.query(Property).filter(Property.homes_id == homes_id).first()
-
     def create_property(self, db: Session, property: PropertyCreate) -> Property:
         """物件新規作成"""
-        db_property = Property(**property.dict())
+        db_property = Property(**property.model_dump())
         db.add(db_property)
         db.commit()
         db.refresh(db_property)
@@ -97,7 +76,7 @@ class PropertyCRUD:
         """物件更新"""
         db_property = db.query(Property).filter(Property.id == property_id).first()
         if db_property:
-            update_data = property_update.dict(exclude_unset=True)
+            update_data = property_update.model_dump(exclude_unset=True)
             for field, value in update_data.items():
                 setattr(db_property, field, value)
             db.commit()
@@ -113,25 +92,13 @@ class PropertyCRUD:
             return True
         return False
 
-    def deactivate_property(self, db: Session, property_id: int) -> Optional[Property]:
-        """物件非表示"""
-        db_property = db.query(Property).filter(Property.id == property_id).first()
-        if db_property:
-            db_property.is_active = False
-            db.commit()
-            db.refresh(db_property)
-        return db_property
-
     def get_by_contractor(
         self, db: Session, company_name: str, skip: int = 0, limit: int = 100
     ) -> List[Property]:
         """元請会社名で物件を検索"""
         return (
             db.query(Property)
-            .filter(
-                Property.contractor_company_name.ilike(f"%{company_name}%"),
-                Property.is_active == True,
-            )
+            .filter(Property.contractor_company_name.ilike(f"%{company_name}%"))
             .offset(skip)
             .limit(limit)
             .all()
@@ -149,9 +116,7 @@ class PropertyCRUD:
                 Property.contractor_license_number,
                 func.count(Property.id).label("property_count"),
             )
-            .filter(
-                Property.contractor_company_name.isnot(None), Property.is_active == True
-            )
+            .filter(Property.contractor_company_name.isnot(None))
             .group_by(
                 Property.contractor_company_name,
                 Property.contractor_contact_person,

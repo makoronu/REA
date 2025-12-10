@@ -203,11 +203,13 @@ def get_table_columns_with_labels(
     """
     テーブルのカラム情報をラベル付きで取得
     column_labelsテーブルの情報も結合
+    仮想カラム（DBに存在しないがcolumn_labelsに定義されているカラム）も含む
     """
     try:
+        # 1. DBカラム + column_labels
         query = text(
             """
-            SELECT 
+            SELECT
                 c.column_name,
                 c.data_type,
                 c.character_maximum_length,
@@ -225,13 +227,13 @@ def get_table_columns_with_labels(
                 cl.max_length,
                 cl.enum_values,
                 -- 主キー判定
-                CASE 
-                    WHEN pk.column_name IS NOT NULL THEN true 
-                    ELSE false 
+                CASE
+                    WHEN pk.column_name IS NOT NULL THEN true
+                    ELSE false
                 END as is_primary_key
             FROM information_schema.columns c
-            LEFT JOIN column_labels cl 
-                ON cl.table_name = c.table_name 
+            LEFT JOIN column_labels cl
+                ON cl.table_name = c.table_name
                 AND cl.column_name = c.column_name
             LEFT JOIN (
                 SELECT kcu.column_name
@@ -243,7 +245,7 @@ def get_table_columns_with_labels(
             ) pk ON pk.column_name = c.column_name
             WHERE c.table_schema = 'public'
             AND c.table_name = :table_name
-            ORDER BY 
+            ORDER BY
                 COALESCE(cl.display_order, c.ordinal_position),
                 c.ordinal_position
         """
@@ -251,8 +253,10 @@ def get_table_columns_with_labels(
 
         result = db.execute(query, {"table_name": table_name})
         columns = []
+        existing_column_names = set()
 
         for row in result:
+            existing_column_names.add(row.column_name)
             column_info = {
                 "column_name": row.column_name,
                 "data_type": row.data_type,
@@ -279,6 +283,61 @@ def get_table_columns_with_labels(
                 "help_text": row.description,  # descriptionを流用
                 "default_value": None,  # 存在しない
                 "options": row.enum_values,  # enum_valuesをoptionsとして使用
+                "is_virtual": False,  # 実カラム
+            }
+            columns.append(column_info)
+
+        # 2. 仮想カラム（column_labelsにのみ存在するカラム）を追加
+        virtual_query = text(
+            """
+            SELECT
+                cl.column_name,
+                cl.japanese_label,
+                cl.description,
+                cl.input_type,
+                cl.display_order,
+                cl.is_required,
+                cl.group_name,
+                cl.max_length,
+                cl.enum_values,
+                cl.data_type
+            FROM column_labels cl
+            WHERE cl.table_name = :table_name
+            AND cl.column_name NOT IN (
+                SELECT c.column_name
+                FROM information_schema.columns c
+                WHERE c.table_schema = 'public' AND c.table_name = :table_name
+            )
+            ORDER BY cl.display_order
+        """
+        )
+
+        virtual_result = db.execute(virtual_query, {"table_name": table_name})
+        for row in virtual_result:
+            column_info = {
+                "column_name": row.column_name,
+                "data_type": row.data_type or "virtual",
+                "character_maximum_length": None,
+                "numeric_precision": None,
+                "is_nullable": True,
+                "column_default": None,
+                "ordinal_position": row.display_order or 999,
+                "is_primary_key": False,
+                "label_ja": row.japanese_label or row.column_name,
+                "label_en": row.column_name,
+                "description": row.description,
+                "input_type": row.input_type or "text",
+                "validation_rules": None,
+                "display_order": row.display_order or 999,
+                "is_required": row.is_required or False,
+                "is_searchable": False,
+                "is_display_list": False,
+                "group_name": row.group_name or "その他",
+                "placeholder": None,
+                "help_text": row.description,
+                "default_value": None,
+                "options": row.enum_values,
+                "is_virtual": True,  # 仮想カラム
             }
             columns.append(column_info)
 

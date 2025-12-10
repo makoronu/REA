@@ -222,7 +222,7 @@ export const useMetadataForm = ({
   return {
     form: {
       ...form,
-      handleSubmit
+      handleSubmit: handleSubmit as unknown as UseFormReturn<FieldValues>['handleSubmit']
     },
     columns,
     groupedColumns,

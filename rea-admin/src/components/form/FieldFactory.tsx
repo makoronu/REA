@@ -1,6 +1,14 @@
 import React from 'react';
 import { Controller, useFormContext } from 'react-hook-form';
 import { ColumnWithLabel } from '../../services/metadataService';
+import {
+  RoadInfoEditor,
+  FloorPlansEditor,
+  FacilitiesEditor,
+  TransportationEditor,
+  RenovationsEditor
+} from './JsonEditors';
+import { ImageUploader } from './ImageUploader';
 
 interface FieldFactoryProps {
   column: ColumnWithLabel;
@@ -86,17 +94,20 @@ export const FieldFactory: React.FC<FieldFactoryProps> = ({ column, disabled = f
   // エラーメッセージ
   const renderError = () => {
     if (!error) return null;
+    const errorMessage = typeof error === 'object' && 'message' in error
+      ? String(error.message)
+      : 'このフィールドは必須です';
     return (
       <p className="mt-1 text-sm text-red-600">
-        {error.message || 'このフィールドは必須です'}
+        {errorMessage}
       </p>
     );
   };
 
   // フィールドレンダリング
   const renderField = () => {
-    // ENUM値の処理（修正：optionsフィールドを使用）
-    const enumSource = column.options || column.enum_values;
+    // ENUM値の処理（optionsフィールドを使用）
+    const enumSource = column.options;
     
     // USER-DEFINED型または optionsフィールドがある場合はセレクトボックス
     if ((column.data_type === 'USER-DEFINED' || enumSource) && 
@@ -286,10 +297,110 @@ export const FieldFactory: React.FC<FieldFactoryProps> = ({ column, disabled = f
                 placeholder={column.placeholder || '090-1234-5678'}
                 disabled={disabled || isReadOnly}
                 className={`block w-full rounded-md shadow-sm sm:text-sm ${
-                  error 
-                    ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+                  error
+                    ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
                     : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
                 } ${isReadOnly ? 'bg-gray-100' : ''}`}
+              />
+            )}
+          />
+        );
+
+      // =================================================================
+      // JSON専用フィールド
+      // =================================================================
+
+      // 接道情報（複数の接道を入力可能）
+      case 'json_road_info':
+        return (
+          <Controller
+            name={column.column_name}
+            control={control}
+            render={({ field }) => (
+              <RoadInfoEditor
+                value={field.value || []}
+                onChange={field.onChange}
+                disabled={disabled || isReadOnly}
+              />
+            )}
+          />
+        );
+
+      // 間取り詳細
+      case 'json_floor_plans':
+        return (
+          <Controller
+            name={column.column_name}
+            control={control}
+            render={({ field }) => (
+              <FloorPlansEditor
+                value={field.value || []}
+                onChange={field.onChange}
+                disabled={disabled || isReadOnly}
+              />
+            )}
+          />
+        );
+
+      // 設備リスト
+      case 'json_facilities':
+        return (
+          <Controller
+            name={column.column_name}
+            control={control}
+            render={({ field }) => (
+              <FacilitiesEditor
+                value={field.value || []}
+                onChange={field.onChange}
+                disabled={disabled || isReadOnly}
+              />
+            )}
+          />
+        );
+
+      // 交通情報（最寄り駅など）
+      case 'json_transportation':
+        return (
+          <Controller
+            name={column.column_name}
+            control={control}
+            render={({ field }) => (
+              <TransportationEditor
+                value={field.value || []}
+                onChange={field.onChange}
+                disabled={disabled || isReadOnly}
+              />
+            )}
+          />
+        );
+
+      // リフォーム履歴
+      case 'json_renovations':
+        return (
+          <Controller
+            name={column.column_name}
+            control={control}
+            render={({ field }) => (
+              <RenovationsEditor
+                value={field.value || []}
+                onChange={field.onChange}
+                disabled={disabled || isReadOnly}
+              />
+            )}
+          />
+        );
+
+      // 画像アップロード
+      case 'images':
+        return (
+          <Controller
+            name={column.column_name}
+            control={control}
+            render={({ field }) => (
+              <ImageUploader
+                value={field.value || []}
+                onChange={field.onChange}
+                disabled={disabled || isReadOnly}
               />
             )}
           />
@@ -366,11 +477,19 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
 
   // フィールドタイプ別分類
   const textareaFields = visibleColumns.filter(col => col.input_type === 'textarea');
-  const checkboxFields = visibleColumns.filter(col => 
+  const checkboxFields = visibleColumns.filter(col =>
     col.input_type === 'checkbox' || col.data_type?.toLowerCase().includes('bool')
   );
-  const regularFields = visibleColumns.filter(col => 
-    !textareaFields.includes(col) && !checkboxFields.includes(col)
+  // JSON専用フィールド（フル幅表示）
+  const jsonFields = visibleColumns.filter(col =>
+    col.input_type?.startsWith('json_')
+  );
+  // 画像アップロードフィールド（フル幅表示）
+  const imageFields = visibleColumns.filter(col =>
+    col.input_type === 'images'
+  );
+  const regularFields = visibleColumns.filter(col =>
+    !textareaFields.includes(col) && !checkboxFields.includes(col) && !jsonFields.includes(col) && !imageFields.includes(col)
   );
 
   // グループアイコン
@@ -446,14 +565,45 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
         </div>
       )}
 
+      {/* JSON専用フィールド - フル幅 */}
+      {jsonFields.length > 0 && (
+        <div className="space-y-4 mb-6">
+          {jsonFields.map(column => (
+            <div key={column.column_name} className="w-full">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {column.label_ja || column.column_name}
+              </label>
+              <FieldFactory
+                column={column}
+                disabled={disabled}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 画像アップロードフィールド - フル幅 */}
+      {imageFields.length > 0 && (
+        <div className="space-y-4 mb-6">
+          {imageFields.map(column => (
+            <div key={column.column_name} className="w-full">
+              <FieldFactory
+                column={column}
+                disabled={disabled}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* テキストエリア - フル幅 */}
       {textareaFields.length > 0 && (
         <div className="space-y-4">
           <h4 className="text-sm font-medium text-gray-700">詳細項目</h4>
           {textareaFields.map(column => (
             <div key={column.column_name} className="w-full">
-              <FieldFactory 
-                column={column} 
+              <FieldFactory
+                column={column}
                 disabled={disabled}
               />
             </div>

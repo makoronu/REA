@@ -1,0 +1,775 @@
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8005';
+
+// =================================================================
+// 共通インターフェース
+// =================================================================
+
+interface JsonEditorProps<T> {
+  value: T[];
+  onChange: (value: T[]) => void;
+  disabled?: boolean;
+}
+
+// =================================================================
+// 接道情報エディタ
+// =================================================================
+
+interface RoadInfo {
+  direction: string;
+  road_type: string;
+  road_width: number;
+  frontage: number;
+  road_status: string;
+}
+
+const ROAD_DIRECTIONS = [
+  { value: '1', label: '北' },
+  { value: '2', label: '北東' },
+  { value: '3', label: '東' },
+  { value: '4', label: '南東' },
+  { value: '5', label: '南' },
+  { value: '6', label: '南西' },
+  { value: '7', label: '西' },
+  { value: '8', label: '北西' },
+];
+
+const ROAD_TYPES = [
+  { value: '1', label: '公道' },
+  { value: '2', label: '私道' },
+];
+
+const ROAD_STATUS = [
+  { value: '1', label: '建築基準法上の道路' },
+  { value: '2', label: '42条1項1号' },
+  { value: '3', label: '42条1項2号' },
+  { value: '4', label: '42条1項3号' },
+  { value: '5', label: '42条2項道路' },
+  { value: '9', label: 'その他' },
+];
+
+export const RoadInfoEditor: React.FC<JsonEditorProps<RoadInfo>> = ({
+  value = [],
+  onChange,
+  disabled
+}) => {
+  const addItem = () => {
+    onChange([...value, {
+      direction: '',
+      road_type: '',
+      road_width: 0,
+      frontage: 0,
+      road_status: ''
+    }]);
+  };
+
+  const removeItem = (index: number) => {
+    onChange(value.filter((_, i) => i !== index));
+  };
+
+  const updateItem = (index: number, field: keyof RoadInfo, fieldValue: string | number) => {
+    const newValue = [...value];
+    newValue[index] = { ...newValue[index], [field]: fieldValue };
+    onChange(newValue);
+  };
+
+  return (
+    <div className="space-y-3">
+      {value.map((item, index) => (
+        <div
+          key={index}
+          className="p-4 border border-gray-200 rounded-lg bg-white"
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr) auto', gap: '12px', alignItems: 'end' }}
+        >
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">接道方向</label>
+            <select
+              value={item.direction}
+              onChange={(e) => updateItem(index, 'direction', e.target.value)}
+              disabled={disabled}
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+            >
+              <option value="">選択</option>
+              {ROAD_DIRECTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">接道種別</label>
+            <select
+              value={item.road_type}
+              onChange={(e) => updateItem(index, 'road_type', e.target.value)}
+              disabled={disabled}
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+            >
+              <option value="">選択</option>
+              {ROAD_TYPES.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">道路幅員(m)</label>
+            <input
+              type="number"
+              step="0.1"
+              value={item.road_width || ''}
+              onChange={(e) => updateItem(index, 'road_width', parseFloat(e.target.value) || 0)}
+              disabled={disabled}
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+              placeholder="4.0"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => removeItem(index)}
+            disabled={disabled}
+            className="px-3 py-2 text-red-600 hover:bg-red-50 rounded text-sm"
+          >
+            削除
+          </button>
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">間口(m)</label>
+            <input
+              type="number"
+              step="0.1"
+              value={item.frontage || ''}
+              onChange={(e) => updateItem(index, 'frontage', parseFloat(e.target.value) || 0)}
+              disabled={disabled}
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+              placeholder="5.0"
+            />
+          </div>
+          <div style={{ gridColumn: 'span 2' }}>
+            <label className="block text-xs text-gray-600 mb-1">接道状況</label>
+            <select
+              value={item.road_status}
+              onChange={(e) => updateItem(index, 'road_status', e.target.value)}
+              disabled={disabled}
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+            >
+              <option value="">選択</option>
+              {ROAD_STATUS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={addItem}
+        disabled={disabled}
+        className="w-full py-2 px-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors"
+      >
+        + 接道情報を追加
+      </button>
+    </div>
+  );
+};
+
+// =================================================================
+// 間取り詳細エディタ
+// =================================================================
+
+interface FloorPlan {
+  floor: number;
+  room_type: string;
+  room_size: number;
+  room_count: number;
+}
+
+const ROOM_TYPES = [
+  { value: '10', label: 'R' },
+  { value: '20', label: 'K' },
+  { value: '25', label: 'SK' },
+  { value: '30', label: 'DK' },
+  { value: '35', label: 'SDK' },
+  { value: '40', label: 'LK' },
+  { value: '45', label: 'SLK' },
+  { value: '50', label: 'LDK' },
+  { value: '55', label: 'SLDK' },
+];
+
+export const FloorPlansEditor: React.FC<JsonEditorProps<FloorPlan>> = ({
+  value = [],
+  onChange,
+  disabled
+}) => {
+  const addItem = () => {
+    onChange([...value, { floor: 1, room_type: '', room_size: 0, room_count: 1 }]);
+  };
+
+  const removeItem = (index: number) => {
+    onChange(value.filter((_, i) => i !== index));
+  };
+
+  const updateItem = (index: number, field: keyof FloorPlan, fieldValue: string | number) => {
+    const newValue = [...value];
+    newValue[index] = { ...newValue[index], [field]: fieldValue };
+    onChange(newValue);
+  };
+
+  return (
+    <div className="space-y-3">
+      {value.map((item, index) => (
+        <div
+          key={index}
+          className="p-4 border border-gray-200 rounded-lg bg-white"
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr) auto', gap: '12px', alignItems: 'end' }}
+        >
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">階数</label>
+            <input
+              type="number"
+              value={item.floor || ''}
+              onChange={(e) => updateItem(index, 'floor', parseInt(e.target.value) || 1)}
+              disabled={disabled}
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+              min="1"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">間取タイプ</label>
+            <select
+              value={item.room_type}
+              onChange={(e) => updateItem(index, 'room_type', e.target.value)}
+              disabled={disabled}
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+            >
+              <option value="">選択</option>
+              {ROOM_TYPES.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">広さ(帖)</label>
+            <input
+              type="number"
+              step="0.5"
+              value={item.room_size || ''}
+              onChange={(e) => updateItem(index, 'room_size', parseFloat(e.target.value) || 0)}
+              disabled={disabled}
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">室数</label>
+            <input
+              type="number"
+              value={item.room_count || ''}
+              onChange={(e) => updateItem(index, 'room_count', parseInt(e.target.value) || 1)}
+              disabled={disabled}
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+              min="1"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => removeItem(index)}
+            disabled={disabled}
+            className="px-3 py-2 text-red-600 hover:bg-red-50 rounded text-sm"
+          >
+            削除
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={addItem}
+        disabled={disabled}
+        className="w-full py-2 px-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors"
+      >
+        + 間取り情報を追加
+      </button>
+    </div>
+  );
+};
+
+// =================================================================
+// 設備エディタ（API連携版）
+// =================================================================
+
+interface Facility {
+  code: string;
+  name: string;
+  category: string;
+}
+
+interface EquipmentItem {
+  id: string;
+  item_name: string;
+  display_name: string;
+}
+
+export const FacilitiesEditor: React.FC<JsonEditorProps<Facility>> = ({
+  value = [],
+  onChange,
+  disabled
+}) => {
+  const [categories, setCategories] = useState<Record<string, EquipmentItem[]>>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // APIから設備マスターを取得
+  useEffect(() => {
+    const fetchEquipment = async () => {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/api/v1/equipment/grouped`);
+        setCategories(response.data);
+        setLoading(false);
+      } catch (err) {
+        console.error('設備マスター取得エラー:', err);
+        setError('設備マスターの取得に失敗しました');
+        setLoading(false);
+      }
+    };
+    fetchEquipment();
+  }, []);
+
+  const isSelected = (code: string) => value.some(v => v.code === code);
+
+  const toggleFacility = (code: string, name: string, category: string) => {
+    if (isSelected(code)) {
+      onChange(value.filter(v => v.code !== code));
+    } else {
+      onChange([...value, { code, name, category }]);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8 text-gray-500">
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-2"></div>
+        設備マスターを読み込み中...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-600">
+        {error}
+      </div>
+    );
+  }
+
+  // カテゴリをグループ化（親カテゴリ/子カテゴリ形式）
+  const groupedCategories = Object.keys(categories).reduce((acc, fullCategoryName) => {
+    const parts = fullCategoryName.split('/');
+    const parentCategory = parts[0] || 'その他';
+    const childCategory = parts.slice(1).join('/') || fullCategoryName;
+
+    if (!acc[parentCategory]) {
+      acc[parentCategory] = [];
+    }
+    acc[parentCategory].push({
+      fullName: fullCategoryName,
+      displayName: childCategory,
+      items: categories[fullCategoryName]
+    });
+    return acc;
+  }, {} as Record<string, { fullName: string; displayName: string; items: EquipmentItem[] }[]>);
+
+  // 親カテゴリの表示順序（使用頻度順）
+  const parentCategoryOrder = ['条件・設備', '金銭・建物', '土地', '金銭・条件'];
+  const sortedParentCategories = parentCategoryOrder.filter(cat => groupedCategories[cat]);
+
+  // 子カテゴリの表示順序（インフラ優先→使用頻度順）
+  const childCategoryPriority: Record<string, number> = {
+    // 最優先：インフラ系（ガス・水道・電気・排水）
+    '設備(左) ガス': 1,
+    '設備(左) 水道': 2,
+    '設備(左) 電気': 3,
+    '設備(左) 排水': 4,
+    // 高優先：よく使う設備
+    '設備(右) キッチン': 10,
+    '設備(左) バス・トイレ': 11,
+    '設備(左) 設備': 12,
+    '設備(右) 収納': 13,
+    '設備(右) セキュリティ': 14,
+    '設備(右) 放送・通信・回線': 15,
+    // 中優先
+    '駐車場': 20,
+    '設備(右) 駐輪・バイク': 21,
+    '設備(左) 共有': 22,
+    '設備(左) 構造・性能・仕様': 23,
+    '設備(右) 構造・性能・仕様': 24,
+    // 低優先：その他
+    '設備(左) その他バス・トイレ': 30,
+    '設備(右) その他キッチン': 31,
+    '設備(左) その他設備': 32,
+    '設備(右) その他': 33,
+    // 土地系
+    '権利・制限': 40,
+    '面積・区画': 41,
+    // 検査・証明系
+    '設備(左) 建物検査': 50,
+    '設備(左) 評価・証明書': 51,
+    '空き家バンク': 52,
+    // 建物
+    '建物': 60,
+    '部屋': 61,
+  };
+
+  // 子カテゴリをソート
+  Object.keys(groupedCategories).forEach(parentCat => {
+    groupedCategories[parentCat].sort((a, b) => {
+      const priorityA = childCategoryPriority[a.displayName] || 100;
+      const priorityB = childCategoryPriority[b.displayName] || 100;
+      return priorityA - priorityB;
+    });
+  });
+
+  // カテゴリアイコン取得
+  const getCategoryIcon = (name: string) => {
+    if (name.includes('キッチン')) return '🍳';
+    if (name.includes('バス') || name.includes('トイレ')) return '🛁';
+    if (name.includes('セキュリティ')) return '🔒';
+    if (name.includes('収納')) return '🗄️';
+    if (name.includes('通信') || name.includes('回線')) return '📡';
+    if (name.includes('駐輪') || name.includes('バイク')) return '🚴';
+    if (name.includes('駐車場')) return '🚗';
+    if (name.includes('ガス')) return '🔥';
+    if (name.includes('水道')) return '💧';
+    if (name.includes('電気')) return '⚡';
+    if (name.includes('排水')) return '🚿';
+    if (name.includes('構造') || name.includes('性能')) return '🏗️';
+    if (name.includes('評価') || name.includes('証明')) return '📜';
+    if (name.includes('検査')) return '🔍';
+    if (name.includes('共有')) return '🏢';
+    if (name.includes('空き家')) return '🏚️';
+    if (name.includes('土地')) return '🗺️';
+    if (name.includes('建物')) return '🏠';
+    if (name.includes('部屋')) return '🚪';
+    if (name.includes('権利')) return '📋';
+    if (name.includes('面積')) return '📐';
+    return '⚙️';
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-sm text-gray-600">
+          選択中: <span className="font-semibold text-blue-600">{value.length}件</span>
+        </span>
+        {value.length > 0 && (
+          <button
+            type="button"
+            onClick={() => onChange([])}
+            disabled={disabled}
+            className="text-sm text-red-500 hover:text-red-700"
+          >
+            すべて解除
+          </button>
+        )}
+      </div>
+
+      {/* 親カテゴリごとに表示 */}
+      {sortedParentCategories.map(parentCategory => (
+        <div key={parentCategory} className="border border-gray-300 rounded-lg overflow-hidden">
+          <div className="bg-gray-100 px-4 py-2 font-bold text-gray-700 border-b">
+            {parentCategory === '条件・設備' && '🔧'}
+            {parentCategory === '土地' && '🗺️'}
+            {parentCategory === '金銭・建物' && '🏠'}
+            {parentCategory === '金銭・条件' && '💰'}
+            {' '}{parentCategory}
+          </div>
+          <div className="p-4 space-y-4">
+            {groupedCategories[parentCategory]?.map(subCat => (
+              <div key={subCat.fullName} className="p-3 border border-gray-200 rounded-lg bg-white">
+                <h5 className="font-medium text-gray-700 mb-2 flex items-center text-sm">
+                  <span className="text-base mr-2">{getCategoryIcon(subCat.displayName)}</span>
+                  {subCat.displayName}
+                  <span className="ml-2 text-xs text-gray-400">
+                    ({subCat.items?.filter(item => isSelected(item.id)).length || 0}/{subCat.items?.length || 0})
+                  </span>
+                </h5>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '6px' }}>
+                  {subCat.items?.map(item => (
+                    <label
+                      key={item.id}
+                      className={`flex items-center p-2 rounded cursor-pointer transition-colors text-xs ${
+                        isSelected(item.id)
+                          ? 'bg-blue-50 border-2 border-blue-400'
+                          : 'bg-gray-50 border border-gray-200 hover:bg-gray-100'
+                      } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected(item.id)}
+                        onChange={() => toggleFacility(item.id, item.display_name, subCat.fullName)}
+                        disabled={disabled}
+                        className="mr-2 h-3 w-3"
+                      />
+                      <span className={isSelected(item.id) ? 'font-medium text-blue-700' : ''}>
+                        {item.display_name}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// =================================================================
+// 交通情報エディタ
+// =================================================================
+
+interface Transportation {
+  line_name: string;
+  station_name: string;
+  walk_minutes: number;
+  bus_minutes?: number;
+  bus_stop_name?: string;
+}
+
+export const TransportationEditor: React.FC<JsonEditorProps<Transportation>> = ({
+  value = [],
+  onChange,
+  disabled
+}) => {
+  const addItem = () => {
+    onChange([...value, {
+      line_name: '',
+      station_name: '',
+      walk_minutes: 0
+    }]);
+  };
+
+  const removeItem = (index: number) => {
+    onChange(value.filter((_, i) => i !== index));
+  };
+
+  const updateItem = (index: number, field: keyof Transportation, fieldValue: string | number | undefined) => {
+    const newValue = [...value];
+    newValue[index] = { ...newValue[index], [field]: fieldValue };
+    onChange(newValue);
+  };
+
+  return (
+    <div className="space-y-3">
+      {value.map((item, index) => (
+        <div
+          key={index}
+          className="p-4 border border-gray-200 rounded-lg bg-white"
+        >
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr) auto', gap: '12px', alignItems: 'end' }}>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">路線名</label>
+              <input
+                type="text"
+                value={item.line_name}
+                onChange={(e) => updateItem(index, 'line_name', e.target.value)}
+                disabled={disabled}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                placeholder="JR山手線"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">駅名</label>
+              <input
+                type="text"
+                value={item.station_name}
+                onChange={(e) => updateItem(index, 'station_name', e.target.value)}
+                disabled={disabled}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                placeholder="渋谷"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">徒歩(分)</label>
+              <input
+                type="number"
+                value={item.walk_minutes || ''}
+                onChange={(e) => updateItem(index, 'walk_minutes', parseInt(e.target.value) || 0)}
+                disabled={disabled}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                min="0"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => removeItem(index)}
+              disabled={disabled}
+              className="px-3 py-2 text-red-600 hover:bg-red-50 rounded text-sm"
+            >
+              削除
+            </button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginTop: '12px' }}>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">バス(分)※任意</label>
+              <input
+                type="number"
+                value={item.bus_minutes || ''}
+                onChange={(e) => updateItem(index, 'bus_minutes', e.target.value ? parseInt(e.target.value) : undefined)}
+                disabled={disabled}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                min="0"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">バス停名※任意</label>
+              <input
+                type="text"
+                value={item.bus_stop_name || ''}
+                onChange={(e) => updateItem(index, 'bus_stop_name', e.target.value)}
+                disabled={disabled}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+              />
+            </div>
+          </div>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={addItem}
+        disabled={disabled}
+        className="w-full py-2 px-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors"
+      >
+        + 交通情報を追加
+      </button>
+    </div>
+  );
+};
+
+// =================================================================
+// リフォーム履歴エディタ
+// =================================================================
+
+interface Renovation {
+  year: number;
+  month?: number;
+  item: string;
+  description?: string;
+}
+
+const RENOVATION_ITEMS = [
+  'キッチン',
+  '浴室',
+  'トイレ',
+  '洗面台',
+  '床',
+  '壁紙',
+  '外壁',
+  '屋根',
+  '給湯器',
+  '配管',
+  '窓・サッシ',
+  '電気設備',
+  '防水工事',
+  'その他',
+];
+
+export const RenovationsEditor: React.FC<JsonEditorProps<Renovation>> = ({
+  value = [],
+  onChange,
+  disabled
+}) => {
+  const currentYear = new Date().getFullYear();
+
+  const addItem = () => {
+    onChange([...value, { year: currentYear, item: '' }]);
+  };
+
+  const removeItem = (index: number) => {
+    onChange(value.filter((_, i) => i !== index));
+  };
+
+  const updateItem = (index: number, field: keyof Renovation, fieldValue: string | number | undefined) => {
+    const newValue = [...value];
+    newValue[index] = { ...newValue[index], [field]: fieldValue };
+    onChange(newValue);
+  };
+
+  return (
+    <div className="space-y-3">
+      {value.map((item, index) => (
+        <div
+          key={index}
+          className="p-4 border border-gray-200 rounded-lg bg-white"
+        >
+          <div style={{ display: 'grid', gridTemplateColumns: '100px 80px 1fr auto', gap: '12px', alignItems: 'end' }}>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">実施年</label>
+              <input
+                type="number"
+                value={item.year || ''}
+                onChange={(e) => updateItem(index, 'year', parseInt(e.target.value) || currentYear)}
+                disabled={disabled}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                min="1900"
+                max={currentYear}
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">月</label>
+              <select
+                value={item.month || ''}
+                onChange={(e) => updateItem(index, 'month', e.target.value ? parseInt(e.target.value) : undefined)}
+                disabled={disabled}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+              >
+                <option value="">--</option>
+                {[...Array(12)].map((_, i) => (
+                  <option key={i + 1} value={i + 1}>{i + 1}月</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">項目</label>
+              <select
+                value={item.item}
+                onChange={(e) => updateItem(index, 'item', e.target.value)}
+                disabled={disabled}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+              >
+                <option value="">選択</option>
+                {RENOVATION_ITEMS.map(opt => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={() => removeItem(index)}
+              disabled={disabled}
+              className="px-3 py-2 text-red-600 hover:bg-red-50 rounded text-sm"
+            >
+              削除
+            </button>
+          </div>
+          <div style={{ marginTop: '12px' }}>
+            <label className="block text-xs text-gray-600 mb-1">詳細説明※任意</label>
+            <input
+              type="text"
+              value={item.description || ''}
+              onChange={(e) => updateItem(index, 'description', e.target.value)}
+              disabled={disabled}
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+              placeholder="リフォーム内容の詳細"
+            />
+          </div>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={addItem}
+        disabled={disabled}
+        className="w-full py-2 px-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors"
+      >
+        + リフォーム履歴を追加
+      </button>
+    </div>
+  );
+};

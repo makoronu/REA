@@ -1,50 +1,75 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import Any, List, Optional
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel
 
 
 class PropertyBase(BaseModel):
-    title: str
-    price: float
-    price_unit: Optional[str] = "その他"
+    # 基本情報
+    company_property_number: Optional[str] = None
+    external_property_id: Optional[str] = None
+    property_name: Optional[str] = None
+    property_name_kana: Optional[str] = None
+    property_name_public: Optional[str] = None
+    property_type: Optional[str] = None
+    investment_property: Optional[bool] = False
+
+    # ステータス
+    sales_status: Optional[str] = None
+    publication_status: Optional[str] = None
+    affiliated_group: Optional[str] = None
+    priority_score: Optional[int] = None
+    property_url: Optional[str] = None
+
+    # 価格情報
+    sale_price: Optional[Decimal] = None
+    price_per_tsubo: Optional[Decimal] = None
+    price_status: Optional[str] = None
+    tax_type: Optional[str] = None
+
+    # 利回り・費用
+    yield_rate: Optional[Decimal] = None
+    current_yield: Optional[Decimal] = None
+    management_fee: Optional[Decimal] = None
+    repair_reserve_fund: Optional[Decimal] = None
+    repair_reserve_fund_base: Optional[Decimal] = None
+    parking_fee: Optional[Decimal] = None
+    housing_insurance: Optional[Decimal] = None
+
+    # 入居・引渡し
+    current_status: Optional[str] = None
+    delivery_date: Optional[str] = None
+    delivery_timing: Optional[str] = None
+    move_in_consultation: Optional[bool] = False
+
+    # 取引情報
+    transaction_type: Optional[str] = None
+    brokerage_fee: Optional[Decimal] = None
+    commission_split_ratio: Optional[str] = None
+    brokerage_contract_date: Optional[datetime] = None
+    listing_start_date: Optional[datetime] = None
+    listing_confirmation_date: Optional[datetime] = None
+
+    # 元請会社情報
     contractor_company_name: Optional[str] = None
     contractor_contact_person: Optional[str] = None
     contractor_phone: Optional[str] = None
     contractor_email: Optional[str] = None
     contractor_address: Optional[str] = None
     contractor_license_number: Optional[str] = None
-    property_type: Optional[str] = None
-    building_structure: Optional[str] = None
-    floors_total: Optional[int] = None
-    floor_current: Optional[int] = None
-    area_building: Optional[float] = None
-    area_land: Optional[float] = None
-    layout: Optional[str] = None
-    rooms: Optional[int] = None
-    built_year: Optional[int] = None
-    station_name: Optional[str] = None
-    station_walk_time: Optional[int] = None
-    station_line: Optional[str] = None
-    prefecture: Optional[str] = None
-    city: Optional[str] = None
-    address: Optional[str] = None
-    equipments: Optional[List[str]] = []
-    images: Optional[List[str]] = []
-    homes_id: Optional[str] = None
-    homes_url: Optional[str] = None
-    description: Optional[str] = None
-    is_active: Optional[bool] = True
-    source: Optional[str] = "homes"
+
+    # 管理情報
+    property_manager_name: Optional[str] = None
+    internal_memo: Optional[str] = None
 
 
 class PropertyCreate(PropertyBase):
-    pass
+    property_name: str  # 必須
 
 
 class PropertyUpdate(PropertyBase):
-    title: Optional[str] = None
-    price: Optional[float] = None
+    pass
 
 
 class PropertyInDBBase(PropertyBase):
@@ -61,15 +86,11 @@ class Property(PropertyInDBBase):
 
 
 class PropertySearchParams(BaseModel):
-    price_min: Optional[float] = None
-    price_max: Optional[float] = None
+    sale_price_min: Optional[Decimal] = None
+    sale_price_max: Optional[Decimal] = None
     property_type: Optional[str] = None
-    prefecture: Optional[str] = None
-    city: Optional[str] = None
-    station_name: Optional[str] = None
-    layout: Optional[str] = None
-    area_min: Optional[float] = None
-    area_max: Optional[float] = None
+    property_name: Optional[str] = None
+    sales_status: Optional[str] = None
     contractor_company_name: Optional[str] = None
     contractor_contact_person: Optional[str] = None
     contractor_license_number: Optional[str] = None

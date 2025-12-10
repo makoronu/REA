@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { FormProvider } from 'react-hook-form';
-import { FieldGroup, SmartFieldGroup } from './FieldFactory';
+import { FieldGroup } from './FieldFactory';
 import { useMetadataForm } from '../../hooks/useMetadataForm';
 import { ColumnWithLabel } from '../../services/metadataService';
 
@@ -51,40 +51,6 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
   });
 
   const isLoading = metadataLoading || externalLoading;
-
-  // フィールドグループの優先度とレイアウト設定
-  const getGroupSettings = (tableName: string, groupName: string) => {
-    const settings: Record<string, Record<string, { priority: 'high' | 'medium' | 'low'; layout: 'single' | 'double' | 'auto' }>> = {
-      'properties': {
-        '基本情報': { priority: 'high', layout: 'double' },
-        '基本・取引情報': { priority: 'high', layout: 'double' },
-        '価格情報': { priority: 'high', layout: 'double' },
-        '契約条件': { priority: 'medium', layout: 'double' },
-        '元請会社': { priority: 'medium', layout: 'double' },
-        '管理情報': { priority: 'low', layout: 'single' },
-        'システム': { priority: 'low', layout: 'single' }
-      },
-      'land_info': {
-        '基本情報': { priority: 'high', layout: 'double' },
-        '権利関係': { priority: 'high', layout: 'double' },
-        '詳細情報': { priority: 'medium', layout: 'auto' }
-      },
-      'building_info': {
-        '基本情報': { priority: 'high', layout: 'double' },
-        '構造・設備': { priority: 'high', layout: 'double' },
-        '詳細情報': { priority: 'medium', layout: 'auto' }
-      },
-      'amenities': {
-        '設備': { priority: 'medium', layout: 'auto' },
-        '周辺環境': { priority: 'medium', layout: 'auto' }
-      },
-      'property_images': {
-        '画像管理': { priority: 'medium', layout: 'single' }
-      }
-    };
-
-    return settings[tableName]?.[groupName] || { priority: 'medium', layout: 'auto' };
-  };
 
   // エラー表示
   if (error) {
@@ -176,20 +142,15 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <FormProvider {...form}>
-          <form onSubmit={form.handleSubmit} className="space-y-6">
-            {Object.entries(groupedColumns).map(([groupName, groupColumns]) => {
-              const { priority, layout } = getGroupSettings(tableName, groupName);
-              return (
-                <FieldGroup
-                  key={groupName}
-                  groupName={groupName}
-                  columns={groupColumns}
-                  disabled={isSubmitting}
-                  priority={priority}
-                  layout={layout}
-                />
-              );
-            })}
+          <form onSubmit={form.handleSubmit as any} className="space-y-6">
+            {Object.entries(groupedColumns).map(([groupName, groupColumns]) => (
+              <FieldGroup
+                key={groupName}
+                groupName={groupName}
+                columns={groupColumns}
+                disabled={isSubmitting}
+              />
+            ))}
 
             <div className="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-3 pt-6 border-t">
               <button
@@ -270,7 +231,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
     return (
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <FormProvider {...form}>
-          <form onSubmit={form.handleSubmit} className="w-full">
+          <form onSubmit={form.handleSubmit as any} className="w-full">
             {/* 進行状況インジケーター */}
             <div className="mb-4 bg-blue-50 p-4 rounded-lg border border-blue-200">
               <div className="flex justify-between items-center">
