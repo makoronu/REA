@@ -12,7 +12,7 @@ interface DynamicFormProps {
   submitButtonText?: string;
   isLoading?: boolean;
   showDebug?: boolean;
-  layoutMode?: 'compact' | 'spacious' | 'auto'; // レイアウトモード追加
+  layoutMode?: 'compact' | 'spacious' | 'auto';
 }
 
 export const DynamicForm: React.FC<DynamicFormProps> = ({
@@ -23,14 +23,12 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
   submitButtonText = '保存',
   isLoading: externalLoading = false,
   showDebug = false,
-  layoutMode = 'auto'
 }) => {
   const [activeTab, setActiveTab] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
     form,
-    columns,
     groupedColumns,
     tables,
     allColumns,
@@ -52,23 +50,37 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
 
   const isLoading = metadataLoading || externalLoading;
 
-  // エラー表示
+  // エラー表示 - 枠線なし
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded">
-        <strong className="font-bold">エラー:</strong>
-        <span className="block sm:inline"> メタデータの取得に失敗しました。</span>
-        <pre className="mt-2 text-sm">{error.message}</pre>
+      <div style={{
+        backgroundColor: 'rgba(239, 68, 68, 0.08)',
+        color: '#DC2626',
+        padding: '16px 20px',
+        borderRadius: '8px',
+      }}>
+        <strong style={{ fontWeight: 600 }}>エラー:</strong>
+        <span> メタデータの取得に失敗しました。</span>
+        <pre style={{ marginTop: '8px', fontSize: '13px', opacity: 0.8 }}>{error.message}</pre>
       </div>
     );
   }
 
-  // ローディング表示
+  // ローディング - スケルトン（スピナー禁止）
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center p-8">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        <span className="ml-3 text-gray-600">フォームを生成中...</span>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '24px' }}>
+        <div className="skeleton" style={{ width: '200px', height: '32px' }} />
+        <div style={{ display: 'flex', gap: '12px' }}>
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="skeleton" style={{ width: '120px', height: '44px', borderRadius: '8px' }} />
+          ))}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginTop: '16px' }}>
+          {[1, 2, 3, 4, 5, 6].map(i => (
+            <div key={i} className="skeleton" style={{ height: '56px', borderRadius: '6px' }} />
+          ))}
+        </div>
       </div>
     );
   }
@@ -78,61 +90,14 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
     if (!showDebug) return null;
 
     return (
-      <div className="mt-8 p-4 bg-gray-100 rounded">
-        <h4 className="font-bold mb-2">デバッグ情報</h4>
+      <div style={{ marginTop: '32px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+        <h4 style={{ fontWeight: 600, marginBottom: '8px' }}>デバッグ情報</h4>
         <details>
-          <summary className="cursor-pointer text-sm text-blue-600">フォームデータ</summary>
-          <pre className="mt-2 text-xs overflow-auto">
+          <summary style={{ cursor: 'pointer', fontSize: '14px', color: '#3B82F6' }}>フォームデータ</summary>
+          <pre style={{ marginTop: '8px', fontSize: '12px', overflow: 'auto' }}>
             {JSON.stringify(form.watch(), null, 2)}
           </pre>
         </details>
-        <details className="mt-2">
-          <summary className="cursor-pointer text-sm text-blue-600">エラー</summary>
-          <pre className="mt-2 text-xs overflow-auto">
-            {JSON.stringify(form.formState.errors, null, 2)}
-          </pre>
-        </details>
-        <details className="mt-2">
-          <summary className="cursor-pointer text-sm text-blue-600">カラム情報</summary>
-          <pre className="mt-2 text-xs overflow-auto">
-            {JSON.stringify(columns.map(c => ({
-              name: c.column_name,
-              type: c.input_type,
-              required: c.is_required
-            })), null, 2)}
-          </pre>
-        </details>
-      </div>
-    );
-  };
-
-  // 進行状況インジケーター（複数テーブル時）
-  const renderProgressIndicator = (tabGroups: any[]) => {
-    if (tabGroups.length <= 1) return null;
-
-    return (
-      <div className="mb-6 bg-gray-50 p-4 rounded-lg">
-        <div className="flex justify-between items-center">
-          <span className="text-sm font-medium text-gray-700">
-            進行状況: {activeTab + 1} / {tabGroups.length}
-          </span>
-          <div className="flex space-x-1">
-            {tabGroups.map((_, index) => (
-              <div
-                key={index}
-                className={`w-2 h-2 rounded-full ${
-                  index <= activeTab ? 'bg-blue-500' : 'bg-gray-300'
-                }`}
-              />
-            ))}
-          </div>
-        </div>
-        <div className="mt-2 bg-gray-200 rounded-full h-2">
-          <div
-            className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-            style={{ width: `${((activeTab + 1) / tabGroups.length) * 100}%` }}
-          />
-        </div>
       </div>
     );
   };
@@ -140,9 +105,9 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
   // 単一テーブルモード
   if (tableName && !tableNames) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 16px' }}>
         <FormProvider {...form}>
-          <form onSubmit={form.handleSubmit as any} className="space-y-6">
+          <form onSubmit={form.handleSubmit as any} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             {Object.entries(groupedColumns).map(([groupName, groupColumns]) => (
               <FieldGroup
                 key={groupName}
@@ -152,19 +117,45 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
               />
             ))}
 
-            <div className="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-3 pt-6 border-t">
+            {/* ボタン - 枠線なし */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '12px',
+              paddingTop: '24px',
+            }}>
               <button
                 type="button"
                 onClick={() => form.reset()}
-                className="w-full sm:w-auto px-6 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
                 disabled={isSubmitting}
+                style={{
+                  padding: '12px 24px',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  color: '#6B7280',
+                  backgroundColor: '#F3F4F6',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  transition: 'background-color 150ms',
+                }}
               >
                 リセット
               </button>
               <button
                 type="submit"
-                className="w-full sm:w-auto px-6 py-3 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
                 disabled={isSubmitting}
+                style={{
+                  padding: '12px 32px',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  color: '#fff',
+                  backgroundColor: '#3B82F6',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  transition: 'all 150ms',
+                }}
               >
                 {isSubmitting ? '送信中...' : submitButtonText}
               </button>
@@ -179,8 +170,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
 
   // 複数テーブルモード（タブ形式）
   if (tableNames && tableNames.length > 0 && tables) {
-    // tableNamesの順序に従ってtablesを並び替え
-    const orderedTables = tableNames.map(tableName => 
+    const orderedTables = tableNames.map(tableName =>
       tables.find(table => table.table_name === tableName)
     ).filter(table => table !== undefined);
 
@@ -195,29 +185,17 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
         return acc;
       }, {} as Record<string, ColumnWithLabel[]>);
 
-      // 日本語のテーブル名マッピング - 新テーブル構造に対応
       const tableLabels: Record<string, { label: string; icon: string }> = {
         'properties': { label: '基本・取引情報', icon: '🏠' },
         'land_info': { label: '土地情報', icon: '🗺️' },
         'building_info': { label: '建物情報', icon: '🏗️' },
         'amenities': { label: '設備・周辺環境', icon: '🔧' },
         'property_images': { label: '画像情報', icon: '📸' },
-        // 旧テーブル名も残しておく（互換性のため）
-        'properties_location': { label: '所在地', icon: '📍' },
-        'properties_pricing': { label: '価格', icon: '💰' },
-        'properties_building': { label: '建物', icon: '🏗️' },
-        'properties_contract': { label: '契約', icon: '📋' },
-        'properties_facilities': { label: '周辺施設', icon: '🏪' },
-        'properties_floor_plans': { label: '間取り', icon: '📐' },
-        'properties_images': { label: '画像', icon: '📸' },
-        'properties_roads': { label: '接道', icon: '🛣️' },
-        'properties_transportation': { label: '交通', icon: '🚃' },
-        'properties_other': { label: 'その他', icon: '📄' }
       };
 
-      const tableInfo = tableLabels[table.table_name] || { 
-        label: table.table_comment || table.table_name, 
-        icon: '📄' 
+      const tableInfo = tableLabels[table.table_name] || {
+        label: table.table_comment || table.table_name,
+        icon: '📄'
       };
 
       return {
@@ -229,92 +207,112 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
     });
 
     return (
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 16px' }}>
         <FormProvider {...form}>
-          <form onSubmit={form.handleSubmit as any} className="w-full">
-            {/* 進行状況インジケーター */}
-            <div className="mb-4 bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-blue-800">
-                  進行状況: {activeTab + 1} / {tabGroups.length}
+          <form onSubmit={form.handleSubmit as any} style={{ width: '100%' }}>
+
+            {/* 進行状況 - シンプルなバー、枠線なし */}
+            <div style={{
+              marginBottom: '24px',
+              padding: '16px',
+              backgroundColor: 'rgba(59, 130, 246, 0.06)',
+              borderRadius: '12px',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 500, color: '#1D4ED8' }}>
+                  {activeTab + 1} / {tabGroups.length}
                 </span>
-                <div className="flex space-x-1">
+                <div style={{ display: 'flex', gap: '6px' }}>
                   {tabGroups.map((_, index) => (
                     <div
                       key={index}
-                      className={`w-3 h-3 rounded-full ${
-                        index <= activeTab ? 'bg-blue-600' : 'bg-blue-200'
-                      }`}
+                      style={{
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        backgroundColor: index <= activeTab ? '#3B82F6' : 'rgba(59, 130, 246, 0.2)',
+                        transition: 'background-color 200ms',
+                      }}
                     />
                   ))}
                 </div>
               </div>
-              <div className="mt-2 bg-blue-200 rounded-full h-2">
+              <div style={{ backgroundColor: 'rgba(59, 130, 246, 0.15)', borderRadius: '4px', height: '4px' }}>
                 <div
-                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${((activeTab + 1) / tabGroups.length) * 100}%` }}
+                  style={{
+                    backgroundColor: '#3B82F6',
+                    height: '4px',
+                    borderRadius: '4px',
+                    transition: 'width 300ms ease-out',
+                    width: `${((activeTab + 1) / tabGroups.length) * 100}%`
+                  }}
                 />
               </div>
             </div>
 
-            {/* シンプルなタブヘッダー */}
-            <div className="mb-6 overflow-x-auto">
-              <div className="flex gap-3 min-w-max pb-2">
+            {/* タブヘッダー - 枠線なし、背景色のみ */}
+            <div style={{ marginBottom: '24px', overflowX: 'auto' }}>
+              <div style={{ display: 'flex', gap: '8px', minWidth: 'max-content', paddingBottom: '8px' }}>
                 {tabGroups.map((tabGroup, index) => (
                   <button
                     key={tabGroup.tableName}
                     type="button"
                     onClick={() => setActiveTab(index)}
                     style={{
-                      backgroundColor: activeTab === index ? '#2563eb' : '#ffffff',
-                      color: activeTab === index ? '#ffffff' : '#374151',
-                      border: '2px solid',
-                      borderColor: activeTab === index ? '#2563eb' : '#d1d5db',
+                      backgroundColor: activeTab === index ? '#3B82F6' : 'transparent',
+                      color: activeTab === index ? '#ffffff' : '#6B7280',
+                      border: 'none',
                       padding: '12px 20px',
                       borderRadius: '8px',
                       fontSize: '14px',
-                      fontWeight: '600',
+                      fontWeight: 600,
                       cursor: 'pointer',
-                      transition: 'all 0.2s',
+                      transition: 'all 150ms',
                       whiteSpace: 'nowrap',
-                      minWidth: 'fit-content'
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
                     }}
                     onMouseEnter={(e) => {
                       if (activeTab !== index) {
-                        e.currentTarget.style.backgroundColor = '#f3f4f6';
-                        e.currentTarget.style.borderColor = '#9ca3af';
+                        e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.04)';
                       }
                     }}
                     onMouseLeave={(e) => {
                       if (activeTab !== index) {
-                        e.currentTarget.style.backgroundColor = '#ffffff';
-                        e.currentTarget.style.borderColor = '#d1d5db';
+                        e.currentTarget.style.backgroundColor = 'transparent';
                       }
                     }}
                   >
-                    <span style={{ marginRight: '8px' }}>{tabGroup.tableIcon}</span>
+                    <span>{tabGroup.tableIcon}</span>
                     {tabGroup.tableLabel}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* タブコンテンツ */}
-            <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6 min-h-96 w-full overflow-hidden">
+            {/* タブコンテンツ - 枠線なし */}
+            <div style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '12px',
+              padding: '24px',
+              minHeight: '400px',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+            }}>
               {tabGroups.map((tabGroup, index) => (
                 <div
                   key={tabGroup.tableName}
-                  style={{
-                    display: activeTab === index ? 'block' : 'none'
-                  }}
+                  style={{ display: activeTab === index ? 'block' : 'none' }}
                 >
-                  {/* 現在のタブ情報 */}
-                  <div className="mb-6 pb-4 border-b border-gray-200">
-                    <div className="flex items-center space-x-3">
+                  {/* タブタイトル - 下線なし */}
+                  <div style={{ marginBottom: '24px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <span style={{ fontSize: '32px' }}>{tabGroup.tableIcon}</span>
                       <div>
-                        <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{tabGroup.tableLabel}</h2>
-                        <p className="text-sm text-gray-500">
+                        <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1A1A1A', margin: 0 }}>
+                          {tabGroup.tableLabel}
+                        </h2>
+                        <p style={{ fontSize: '13px', color: '#9CA3AF', margin: '4px 0 0' }}>
                           {Object.keys(tabGroup.groups).length}つのセクション
                         </p>
                       </div>
@@ -322,9 +320,9 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                   </div>
 
                   {/* フィールドグループ */}
-                  <div className="space-y-6 w-full">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                     {Object.entries(tabGroup.groups).map(([groupName, groupColumns]) => (
-                      <div key={`${tabGroup.tableName}-${groupName}`} className="w-full">
+                      <div key={`${tabGroup.tableName}-${groupName}`}>
                         <FieldGroup
                           groupName={groupName}
                           columns={groupColumns}
@@ -337,78 +335,89 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
               ))}
             </div>
 
-            {/* ナビゲーションボタン */}
-            <div className="mt-6 bg-gray-50 p-4 rounded-lg w-full">
-              <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+            {/* ナビゲーションボタン - 枠線なし */}
+            <div style={{
+              marginTop: '24px',
+              padding: '16px',
+              backgroundColor: '#F9FAFB',
+              borderRadius: '12px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '12px',
+            }}>
+              <button
+                type="button"
+                onClick={() => setActiveTab(Math.max(0, activeTab - 1))}
+                disabled={activeTab === 0}
+                style={{
+                  backgroundColor: activeTab === 0 ? '#E5E7EB' : '#fff',
+                  color: activeTab === 0 ? '#9CA3AF' : '#374151',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '8px',
+                  cursor: activeTab === 0 ? 'not-allowed' : 'pointer',
+                  fontWeight: 500,
+                  boxShadow: activeTab === 0 ? 'none' : '0 1px 2px rgba(0,0,0,0.05)',
+                }}
+              >
+                ← 前へ
+              </button>
+
+              <div style={{ display: 'flex', gap: '12px' }}>
                 <button
                   type="button"
-                  onClick={() => setActiveTab(Math.max(0, activeTab - 1))}
-                  disabled={activeTab === 0}
+                  onClick={() => form.reset()}
+                  disabled={isSubmitting}
                   style={{
-                    backgroundColor: activeTab === 0 ? '#f3f4f6' : '#ffffff',
-                    color: activeTab === 0 ? '#9ca3af' : '#374151',
-                    border: '1px solid #d1d5db',
-                    padding: '8px 16px',
-                    borderRadius: '6px',
-                    cursor: activeTab === 0 ? 'not-allowed' : 'pointer',
-                    minWidth: '80px'
+                    backgroundColor: '#fff',
+                    color: '#6B7280',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: 500,
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
                   }}
                 >
-                  ← 前へ
+                  リセット
                 </button>
-
-                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
-                  <button
-                    type="button"
-                    onClick={() => form.reset()}
-                    disabled={isSubmitting}
-                    style={{
-                      backgroundColor: '#ffffff',
-                      color: '#374151',
-                      border: '1px solid #d1d5db',
-                      padding: '10px 20px',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      minWidth: '100px'
-                    }}
-                  >
-                    🔄 リセット
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    style={{
-                      backgroundColor: '#2563eb',
-                      color: '#ffffff',
-                      border: 'none',
-                      padding: '10px 24px',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontWeight: '600',
-                      minWidth: '100px'
-                    }}
-                  >
-                    {isSubmitting ? '💾 保存中...' : '💾 保存'}
-                  </button>
-                </div>
-
                 <button
-                  type="button"
-                  onClick={() => setActiveTab(Math.min(tabGroups.length - 1, activeTab + 1))}
-                  disabled={activeTab === tabGroups.length - 1}
+                  type="submit"
+                  disabled={isSubmitting}
                   style={{
-                    backgroundColor: activeTab === tabGroups.length - 1 ? '#f3f4f6' : '#ffffff',
-                    color: activeTab === tabGroups.length - 1 ? '#9ca3af' : '#374151',
-                    border: '1px solid #d1d5db',
-                    padding: '8px 16px',
-                    borderRadius: '6px',
-                    cursor: activeTab === tabGroups.length - 1 ? 'not-allowed' : 'pointer',
-                    minWidth: '80px'
+                    backgroundColor: '#3B82F6',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '10px 28px',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    boxShadow: '0 1px 2px rgba(59, 130, 246, 0.3)',
                   }}
                 >
-                  次へ →
+                  {isSubmitting ? '保存中...' : '保存'}
                 </button>
               </div>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab(Math.min(tabGroups.length - 1, activeTab + 1))}
+                disabled={activeTab === tabGroups.length - 1}
+                style={{
+                  backgroundColor: activeTab === tabGroups.length - 1 ? '#E5E7EB' : '#fff',
+                  color: activeTab === tabGroups.length - 1 ? '#9CA3AF' : '#374151',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '8px',
+                  cursor: activeTab === tabGroups.length - 1 ? 'not-allowed' : 'pointer',
+                  fontWeight: 500,
+                  boxShadow: activeTab === tabGroups.length - 1 ? 'none' : '0 1px 2px rgba(0,0,0,0.05)',
+                }}
+              >
+                次へ →
+              </button>
             </div>
 
             {renderDebugInfo()}
@@ -420,24 +429,21 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
 
   // テーブルが指定されていない場合
   return (
-    <div className="text-center text-gray-500 p-8">
+    <div style={{ textAlign: 'center', color: '#9CA3AF', padding: '32px' }}>
       テーブルが指定されていません。
     </div>
   );
 };
 
-// 使いやすいプリセット版
-
-// 単一のpropertiesテーブル用
+// プリセット版
 export const PropertyForm: React.FC<Omit<DynamicFormProps, 'tableName'>> = (props) => {
   return <DynamicForm {...props} tableName="properties" />;
 };
 
-// 全property系テーブル統合フォーム - 新テーブル構造に対応
 export const PropertyFullForm: React.FC<Omit<DynamicFormProps, 'tableNames'>> = (props) => {
   const propertyTables = [
     'properties',
-    'land_info', 
+    'land_info',
     'building_info',
     'amenities',
     'property_images'
