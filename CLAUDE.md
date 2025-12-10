@@ -398,6 +398,60 @@ git push origin main
 
 ---
 
+## DBバックアップ運用
+
+**データは取り戻せない。こまめにバックアップを取る。**
+
+### バックアップ保存先
+
+```
+~/my_programing/REA/backups/
+```
+
+### バックアップコマンド
+
+```bash
+# ローカル環境
+/usr/local/bin/docker compose exec -T postgres pg_dump -U rea_user real_estate_db > ~/my_programing/REA/backups/backup_$(date +%Y%m%d_%H%M%S).sql
+
+# Codespaces
+docker compose exec -T postgres pg_dump -U rea_user real_estate_db > /workspaces/REA/backups/backup_$(date +%Y%m%d_%H%M%S).sql
+```
+
+### 復元コマンド
+
+```bash
+# ローカル環境
+cat ~/my_programing/REA/backups/backup_YYYYMMDD_HHMMSS.sql | /usr/local/bin/docker compose exec -T postgres psql -U rea_user real_estate_db
+
+# Codespaces
+cat /workspaces/REA/backups/backup_YYYYMMDD_HHMMSS.sql | docker compose exec -T postgres psql -U rea_user real_estate_db
+```
+
+### バックアップを取るタイミング（必須）
+
+| タイミング | 理由 |
+|-----------|------|
+| **作業開始時** | 何かやらかしても戻れる |
+| **DB構造変更前** | ALTER TABLE, DROP等の前 |
+| **大量データ投入前** | INSERT, UPDATE, DELETEの前 |
+| **マイグレーション前** | スキーマ変更の前 |
+| **1日の終わり** | 日次バックアップとして |
+
+### 古いバックアップの整理
+
+1週間以上前のバックアップは削除してOK（容量節約）。ただし、重要なマイルストーン時点のバックアップは残す。
+
+```bash
+# 7日以上前のバックアップを確認
+find ~/my_programing/REA/backups -name "backup_*.sql" -mtime +7
+
+# 削除する場合（慎重に）
+find ~/my_programing/REA/backups -name "backup_*.sql" -mtime +7 -delete
+```
+
+---
+
 ## 環境変数
 
 **バックエンド（.env）**
