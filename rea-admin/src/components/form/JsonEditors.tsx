@@ -343,16 +343,31 @@ export const FacilitiesEditor: React.FC<JsonEditorProps<Facility>> = ({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8 text-gray-500">
-        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-2"></div>
-        設備マスターを読み込み中...
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '16px' }}>
+        {/* スケルトンローディング - スピナー禁止 */}
+        {[1, 2, 3].map(i => (
+          <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div className="skeleton" style={{ width: '120px', height: '20px' }} />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+              {[1, 2, 3, 4, 5, 6, 7, 8].map(j => (
+                <div key={j} className="skeleton" style={{ height: '36px', borderRadius: '6px' }} />
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-600">
+      <div style={{
+        padding: '16px',
+        backgroundColor: 'rgba(239, 68, 68, 0.08)',
+        borderRadius: '8px',
+        color: '#DC2626',
+        fontSize: '14px',
+      }}>
         {error}
       </div>
     );
@@ -452,61 +467,132 @@ export const FacilitiesEditor: React.FC<JsonEditorProps<Facility>> = ({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-sm text-gray-600">
-          選択中: <span className="font-semibold text-blue-600">{value.length}件</span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+      {/* ヘッダー - 選択数表示 */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '12px 16px',
+        backgroundColor: value.length > 0 ? 'rgba(59, 130, 246, 0.08)' : 'transparent',
+        borderRadius: '8px',
+      }}>
+        <span style={{ fontSize: '14px', color: '#6B7280' }}>
+          選択中: <span style={{ fontWeight: 600, color: '#3B82F6' }}>{value.length}件</span>
         </span>
         {value.length > 0 && (
           <button
             type="button"
             onClick={() => onChange([])}
             disabled={disabled}
-            className="text-sm text-red-500 hover:text-red-700"
+            style={{
+              fontSize: '13px',
+              color: '#EF4444',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '4px 8px',
+            }}
           >
             すべて解除
           </button>
         )}
       </div>
 
-      {/* 親カテゴリごとに表示 */}
+      {/* 親カテゴリごとに表示 - 線なし、余白で区切る */}
       {sortedParentCategories.map(parentCategory => (
-        <div key={parentCategory} className="border border-gray-300 rounded-lg overflow-hidden">
-          <div className="bg-gray-100 px-4 py-2 font-bold text-gray-700 border-b">
-            {parentCategory === '条件・設備' && '🔧'}
-            {parentCategory === '土地' && '🗺️'}
-            {parentCategory === '金銭・建物' && '🏠'}
-            {parentCategory === '金銭・条件' && '💰'}
-            {' '}{parentCategory}
-          </div>
-          <div className="p-4 space-y-4">
+        <div key={parentCategory}>
+          {/* 親カテゴリヘッダー - 線なし */}
+          <h4 style={{
+            fontSize: '15px',
+            fontWeight: 700,
+            color: '#1A1A1A',
+            marginBottom: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}>
+            <span style={{ fontSize: '18px' }}>
+              {parentCategory === '条件・設備' && '🔧'}
+              {parentCategory === '土地' && '🗺️'}
+              {parentCategory === '金銭・建物' && '🏠'}
+              {parentCategory === '金銭・条件' && '💰'}
+            </span>
+            {parentCategory}
+          </h4>
+
+          {/* 子カテゴリ - 余白で区切る */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', paddingLeft: '8px' }}>
             {groupedCategories[parentCategory]?.map(subCat => (
-              <div key={subCat.fullName} className="p-3 border border-gray-200 rounded-lg bg-white">
-                <h5 className="font-medium text-gray-700 mb-2 flex items-center text-sm">
-                  <span className="text-base mr-2">{getCategoryIcon(subCat.displayName)}</span>
+              <div key={subCat.fullName}>
+                {/* 子カテゴリタイトル */}
+                <div style={{
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: '#6B7280',
+                  marginBottom: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}>
+                  <span>{getCategoryIcon(subCat.displayName)}</span>
                   {subCat.displayName}
-                  <span className="ml-2 text-xs text-gray-400">
-                    ({subCat.items?.filter(item => isSelected(item.id)).length || 0}/{subCat.items?.length || 0})
+                  <span style={{
+                    fontSize: '11px',
+                    color: '#9CA3AF',
+                    marginLeft: '4px',
+                  }}>
+                    {subCat.items?.filter(item => isSelected(item.id)).length || 0}/{subCat.items?.length || 0}
                   </span>
-                </h5>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '6px' }}>
+                </div>
+
+                {/* チェックボックスグリッド - 枠線なし */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+                  gap: '4px'
+                }}>
                   {subCat.items?.map(item => (
                     <label
                       key={item.id}
-                      className={`flex items-center p-2 rounded cursor-pointer transition-colors text-xs ${
-                        isSelected(item.id)
-                          ? 'bg-blue-50 border-2 border-blue-400'
-                          : 'bg-gray-50 border border-gray-200 hover:bg-gray-100'
-                      } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '8px 10px',
+                        borderRadius: '6px',
+                        cursor: disabled ? 'not-allowed' : 'pointer',
+                        transition: 'background-color 150ms',
+                        backgroundColor: isSelected(item.id) ? 'rgba(59, 130, 246, 0.12)' : 'transparent',
+                        opacity: disabled ? 0.5 : 1,
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!disabled && !isSelected(item.id)) {
+                          e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.04)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!disabled && !isSelected(item.id)) {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }
+                      }}
                     >
                       <input
                         type="checkbox"
                         checked={isSelected(item.id)}
                         onChange={() => toggleFacility(item.id, item.display_name, subCat.fullName)}
                         disabled={disabled}
-                        className="mr-2 h-3 w-3"
+                        style={{
+                          marginRight: '8px',
+                          width: '16px',
+                          height: '16px',
+                          accentColor: '#3B82F6',
+                        }}
                       />
-                      <span className={isSelected(item.id) ? 'font-medium text-blue-700' : ''}>
+                      <span style={{
+                        fontSize: '13px',
+                        color: isSelected(item.id) ? '#1D4ED8' : '#374151',
+                        fontWeight: isSelected(item.id) ? 500 : 400,
+                      }}>
                         {item.display_name}
                       </span>
                     </label>
