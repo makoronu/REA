@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { FormProvider } from 'react-hook-form';
 import { FieldGroup } from './FieldFactory';
 import { useMetadataForm } from '../../hooks/useMetadataForm';
+import { useAutoSave } from '../../hooks/useAutoSave';
 import { ColumnWithLabel } from '../../services/metadataService';
 
 interface DynamicFormProps {
@@ -9,10 +10,10 @@ interface DynamicFormProps {
   tableNames?: string[];
   onSubmit: (data: any) => void | Promise<void>;
   defaultValues?: any;
-  submitButtonText?: string;
   isLoading?: boolean;
   showDebug?: boolean;
-  layoutMode?: 'compact' | 'spacious' | 'auto';
+  autoSave?: boolean; // 自動保存有効/無効
+  autoSaveDelay?: number; // デバウンス時間（ms）
 }
 
 export const DynamicForm: React.FC<DynamicFormProps> = ({
@@ -20,12 +21,12 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
   tableNames,
   onSubmit,
   defaultValues,
-  submitButtonText = '保存',
   isLoading: externalLoading = false,
   showDebug = false,
+  autoSave = true,
+  autoSaveDelay = 2000,
 }) => {
   const [activeTab, setActiveTab] = useState(0);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
     form,
@@ -37,20 +38,25 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
   } = useMetadataForm({
     tableName,
     tableNames,
-    onSubmit: async (data) => {
-      setIsSubmitting(true);
-      try {
-        await onSubmit(data);
-      } finally {
-        setIsSubmitting(false);
-      }
-    },
+    onSubmit,
     defaultValues
+  });
+
+  // フォームデータを監視
+  const formData = form.watch();
+
+  // 自動保存フック
+  useAutoSave(formData, {
+    onSave: async (data) => {
+      await Promise.resolve(onSubmit(data));
+    },
+    delay: autoSaveDelay,
+    enabled: autoSave && !metadataLoading && !externalLoading,
   });
 
   const isLoading = metadataLoading || externalLoading;
 
-  // エラー表示 - 枠線なし
+  // エラー表示
   if (error) {
     return (
       <div style={{
@@ -66,7 +72,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
     );
   }
 
-  // ローディング - スケルトン（スピナー禁止）
+  // ローディング - スケルトン
   if (isLoading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '24px' }}>
@@ -88,14 +94,13 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
   // デバッグ情報
   const renderDebugInfo = () => {
     if (!showDebug) return null;
-
     return (
       <div style={{ marginTop: '32px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
         <h4 style={{ fontWeight: 600, marginBottom: '8px' }}>デバッグ情報</h4>
         <details>
           <summary style={{ cursor: 'pointer', fontSize: '14px', color: '#3B82F6' }}>フォームデータ</summary>
           <pre style={{ marginTop: '8px', fontSize: '12px', overflow: 'auto' }}>
-            {JSON.stringify(form.watch(), null, 2)}
+            {JSON.stringify(formData, null, 2)}
           </pre>
         </details>
       </div>
@@ -107,62 +112,17 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
     return (
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 16px' }}>
         <FormProvider {...form}>
-          <form onSubmit={form.handleSubmit as any} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             {Object.entries(groupedColumns).map(([groupName, groupColumns]) => (
               <FieldGroup
                 key={groupName}
                 groupName={groupName}
                 columns={groupColumns}
-                disabled={isSubmitting}
+                disabled={false}
               />
             ))}
-
-            {/* ボタン - 枠線なし */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              gap: '12px',
-              paddingTop: '24px',
-            }}>
-              <button
-                type="button"
-                onClick={() => form.reset()}
-                disabled={isSubmitting}
-                style={{
-                  padding: '12px 24px',
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  color: '#6B7280',
-                  backgroundColor: '#F3F4F6',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  transition: 'background-color 150ms',
-                }}
-              >
-                リセット
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                style={{
-                  padding: '12px 32px',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  color: '#fff',
-                  backgroundColor: '#3B82F6',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  transition: 'all 150ms',
-                }}
-              >
-                {isSubmitting ? '送信中...' : submitButtonText}
-              </button>
-            </div>
-
             {renderDebugInfo()}
-          </form>
+          </div>
         </FormProvider>
       </div>
     );
@@ -209,9 +169,9 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
     return (
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 16px' }}>
         <FormProvider {...form}>
-          <form onSubmit={form.handleSubmit as any} style={{ width: '100%' }}>
+          <div style={{ width: '100%' }}>
 
-            {/* 進行状況 - シンプルなバー、枠線なし */}
+            {/* 進行状況バー */}
             <div style={{
               marginBottom: '24px',
               padding: '16px',
@@ -250,7 +210,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
               </div>
             </div>
 
-            {/* タブヘッダー - 枠線なし、背景色のみ */}
+            {/* タブヘッダー */}
             <div style={{ marginBottom: '24px', overflowX: 'auto' }}>
               <div style={{ display: 'flex', gap: '8px', minWidth: 'max-content', paddingBottom: '8px' }}>
                 {tabGroups.map((tabGroup, index) => (
@@ -291,7 +251,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
               </div>
             </div>
 
-            {/* タブコンテンツ - 枠線なし */}
+            {/* タブコンテンツ */}
             <div style={{
               backgroundColor: '#ffffff',
               borderRadius: '12px',
@@ -304,7 +264,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                   key={tabGroup.tableName}
                   style={{ display: activeTab === index ? 'block' : 'none' }}
                 >
-                  {/* タブタイトル - 下線なし */}
+                  {/* タブタイトル */}
                   <div style={{ marginBottom: '24px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <span style={{ fontSize: '32px' }}>{tabGroup.tableIcon}</span>
@@ -326,7 +286,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                         <FieldGroup
                           groupName={groupName}
                           columns={groupColumns}
-                          disabled={isSubmitting}
+                          disabled={false}
                         />
                       </div>
                     ))}
@@ -335,7 +295,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
               ))}
             </div>
 
-            {/* ナビゲーションボタン - 枠線なし */}
+            {/* ナビゲーションボタン（保存ボタンなし） */}
             <div style={{
               marginTop: '24px',
               padding: '16px',
@@ -344,8 +304,6 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: '12px',
             }}>
               <button
                 type="button"
@@ -365,41 +323,10 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                 ← 前へ
               </button>
 
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <button
-                  type="button"
-                  onClick={() => form.reset()}
-                  disabled={isSubmitting}
-                  style={{
-                    backgroundColor: '#fff',
-                    color: '#6B7280',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontWeight: 500,
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                  }}
-                >
-                  リセット
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  style={{
-                    backgroundColor: '#3B82F6',
-                    color: '#fff',
-                    border: 'none',
-                    padding: '10px 28px',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontWeight: 600,
-                    boxShadow: '0 1px 2px rgba(59, 130, 246, 0.3)',
-                  }}
-                >
-                  {isSubmitting ? '保存中...' : '保存'}
-                </button>
-              </div>
+              {/* 中央: 自動保存のヒント */}
+              <span style={{ fontSize: '12px', color: '#9CA3AF' }}>
+                変更は自動的に保存されます
+              </span>
 
               <button
                 type="button"
@@ -421,7 +348,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
             </div>
 
             {renderDebugInfo()}
-          </form>
+          </div>
         </FormProvider>
       </div>
     );
@@ -449,5 +376,5 @@ export const PropertyFullForm: React.FC<Omit<DynamicFormProps, 'tableNames'>> = 
     'property_images'
   ];
 
-  return <DynamicForm {...props} tableNames={propertyTables} layoutMode="spacious" />;
+  return <DynamicForm {...props} tableNames={propertyTables} />;
 };

@@ -1,9 +1,83 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useSaveStatusDisplay, SaveStatus } from '../../hooks/useAutoSave';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
+
+// 保存ステータス表示コンポーネント
+const SaveStatusIndicator: React.FC = () => {
+  const { status, lastSaved } = useSaveStatusDisplay();
+
+  const formatTime = (date: Date | null) => {
+    if (!date) return '';
+    return date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const getStatusDisplay = (status: SaveStatus) => {
+    switch (status) {
+      case 'idle':
+        return null; // 何も表示しない
+      case 'unsaved':
+        return {
+          icon: '●',
+          text: '変更あり',
+          color: '#F59E0B', // オレンジ
+        };
+      case 'saving':
+        return {
+          icon: '↻',
+          text: '保存中...',
+          color: '#3B82F6', // 青
+          animate: true,
+        };
+      case 'saved':
+        return {
+          icon: '✓',
+          text: `保存済み ${formatTime(lastSaved)}`,
+          color: '#9CA3AF', // 薄いグレー
+        };
+      case 'error':
+        return {
+          icon: '✗',
+          text: '保存失敗',
+          color: '#EF4444', // 赤
+        };
+    }
+  };
+
+  const display = getStatusDisplay(status);
+  if (!display) return null;
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        fontSize: '13px',
+        color: display.color,
+        padding: '4px 12px',
+        borderRadius: '6px',
+        backgroundColor: status === 'error' ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
+        cursor: status === 'error' ? 'pointer' : 'default',
+        transition: 'all 150ms',
+      }}
+      title={status === 'error' ? 'クリックして再試行' : undefined}
+    >
+      <span
+        style={{
+          animation: display.animate ? 'spin 1s linear infinite' : undefined,
+          display: 'inline-block',
+        }}
+      >
+        {display.icon}
+      </span>
+      <span style={{ fontWeight: 500 }}>{display.text}</span>
+    </div>
+  );
+};
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
@@ -15,7 +89,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
-  // メニュー項目
   const menuItems = [
     { path: '/properties', label: '物件一覧', icon: '🏠' },
     { path: '/properties/new', label: '新規登録', icon: '➕' },
@@ -29,7 +102,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       display: 'flex',
       flexDirection: 'column',
     }}>
-      {/* ヘッダー - 最小限 */}
+      {/* ヘッダー */}
       <header style={{
         backgroundColor: 'var(--color-bg-white)',
         borderBottom: '1px solid var(--color-border)',
@@ -52,7 +125,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </h1>
         </Link>
 
-        {/* デスクトップナビ（768px以上） */}
+        {/* 中央: デスクトップナビ */}
         <nav style={{
           display: 'flex',
           gap: '24px',
@@ -75,13 +148,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </Link>
           ))}
         </nav>
+
+        {/* 右側: 保存ステータス（常時表示） */}
+        <SaveStatusIndicator />
       </header>
 
-      {/* メインコンテンツ - 下部ナビ分のpaddingを確保 */}
+      {/* メインコンテンツ */}
       <main style={{
         flex: 1,
         padding: '16px',
-        paddingBottom: '80px', // ボトムナビの高さ分
+        paddingBottom: '80px',
         maxWidth: '1200px',
         width: '100%',
         margin: '0 auto',
@@ -90,7 +166,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         {children}
       </main>
 
-      {/* ボトムナビゲーション（モバイル） - 親指が届く位置 */}
+      {/* ボトムナビゲーション（モバイル） */}
       <nav className="mobile-nav" style={{
         position: 'fixed',
         bottom: 0,
@@ -101,7 +177,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         display: 'flex',
         justifyContent: 'space-around',
         padding: '8px 0',
-        paddingBottom: 'max(8px, env(safe-area-inset-bottom))', // iPhone対応
+        paddingBottom: 'max(8px, env(safe-area-inset-bottom))',
         zIndex: 100,
       }}>
         {menuItems.map(item => (
@@ -133,9 +209,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         ))}
       </nav>
 
-      {/* レスポンシブCSS */}
+      {/* レスポンシブCSS + アニメーション */}
       <style>{`
-        /* デスクトップ（768px以上）*/
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
         @media (min-width: 768px) {
           .mobile-nav {
             display: none !important;
@@ -145,7 +225,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           }
         }
 
-        /* モバイル（768px未満）*/
         @media (max-width: 767px) {
           .mobile-nav {
             display: flex !important;
