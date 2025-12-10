@@ -77,6 +77,7 @@ export const useAutoSave = (data: any, options: UseAutoSaveOptions) => {
   });
 
   const saveDataRef = useRef(data);
+  const prevDataJsonRef = useRef<string>('');
   const isFirstRender = useRef(true);
   const hasUnsavedChanges = useRef(false);
 
@@ -124,24 +125,35 @@ export const useAutoSave = (data: any, options: UseAutoSaveOptions) => {
     }
   }, [performSave, debouncedSave]);
 
-  // データ変更時
+  // データ変更時（JSON比較で本当に変わった場合のみ）
   useEffect(() => {
-    saveDataRef.current = data;
+    if (!enabled || !data) return;
 
+    const currentJson = JSON.stringify(data);
+
+    // 初回は保存せず、前回値を記録
     if (isFirstRender.current) {
       isFirstRender.current = false;
+      prevDataJsonRef.current = currentJson;
+      saveDataRef.current = data;
       return;
     }
 
-    if (enabled && data) {
-      // 変更ありマーク
-      if (!hasUnsavedChanges.current) {
-        hasUnsavedChanges.current = true;
-        setState(prev => ({ ...prev, saveStatus: 'unsaved' }));
-        setGlobalStatus('unsaved');
-      }
-      debouncedSave(data);
+    // 本当にデータが変わった場合のみ処理
+    if (currentJson === prevDataJsonRef.current) {
+      return;
     }
+
+    prevDataJsonRef.current = currentJson;
+    saveDataRef.current = data;
+
+    // 変更ありマーク
+    if (!hasUnsavedChanges.current) {
+      hasUnsavedChanges.current = true;
+      setState(prev => ({ ...prev, saveStatus: 'unsaved' }));
+      setGlobalStatus('unsaved');
+    }
+    debouncedSave(data);
 
     return () => {
       debouncedSave.cancel();
