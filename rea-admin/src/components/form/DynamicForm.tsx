@@ -939,12 +939,15 @@ interface DynamicFormProps {
 // 物件種別によるフィールド表示判定
 const isFieldVisibleForPropertyType = (
   visibleFor: string[] | null | undefined,
-  propertyType: string | null | undefined
+  propertyType: string | null | undefined,
+  columnName: string
 ): boolean => {
+  // 物件種別と新築フィールドは常に表示
+  if (columnName === 'property_type' || columnName === 'is_new_construction') return true;
+  // 種別未選択なら他のフィールドは非表示
+  if (!propertyType) return false;
   // visible_forがnull/undefinedなら全種別表示
   if (!visibleFor || visibleFor.length === 0) return true;
-  // 種別未選択なら全表示
-  if (!propertyType) return true;
   // 種別が含まれているか
   return visibleFor.includes(propertyType);
 };
@@ -1085,7 +1088,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
     const propertiesColumns = allColumns?.['properties'] || [];
     const locationColumns = propertiesColumns.filter(col =>
       locationGroups.includes(col.group_name || '') &&
-      isFieldVisibleForPropertyType(col.visible_for, currentPropertyType)
+      isFieldVisibleForPropertyType(col.visible_for, currentPropertyType, col.column_name)
     );
     if (locationColumns.length > 0) {
       const locationGrouped = locationColumns.reduce((acc, column) => {
@@ -1116,7 +1119,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
           return false;
         }
         // 物件種別によるフィルタリング
-        return isFieldVisibleForPropertyType(col.visible_for, currentPropertyType);
+        return isFieldVisibleForPropertyType(col.visible_for, currentPropertyType, col.column_name);
       });
 
       const grouped = filteredColumns.reduce((acc, column) => {
@@ -1151,6 +1154,47 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
         });
       }
     });
+
+    // 物件種別未選択時の表示
+    if (!currentPropertyType) {
+      // property_typeとis_new_constructionのみ抽出
+      const propertyTypeFields = propertiesColumns.filter(col =>
+        col.column_name === 'property_type' || col.column_name === 'is_new_construction'
+      );
+
+      return (
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 16px' }}>
+          <FormProvider {...form}>
+            <div style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '12px',
+              padding: '32px',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+            }}>
+              {/* アイコンとタイトル */}
+              <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+                <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏠</div>
+                <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1A1A1A', margin: '0 0 8px' }}>
+                  物件種別を選択してください
+                </h2>
+                <p style={{ fontSize: '14px', color: '#6B7280', margin: 0 }}>
+                  種別を選ぶと、その物件に必要な入力項目が表示されます
+                </p>
+              </div>
+
+              {/* 物件種別選択フィールド */}
+              <div style={{ maxWidth: '400px', margin: '0 auto' }}>
+                <FieldGroup
+                  groupName=""
+                  columns={propertyTypeFields}
+                  disabled={false}
+                />
+              </div>
+            </div>
+          </FormProvider>
+        </div>
+      );
+    }
 
     return (
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 16px' }}>
