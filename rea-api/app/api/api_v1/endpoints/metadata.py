@@ -256,8 +256,18 @@ def get_table_columns_with_labels(
         columns = []
         existing_column_names = set()
 
+        # property_typesから動的に選択肢を取得
+        property_type_options = _get_property_type_options(db)
+
         for row in result:
             existing_column_names.add(row.column_name)
+
+            # property_typeカラムの場合はproperty_typesテーブルから選択肢を取得
+            if row.column_name == "property_type":
+                options = property_type_options
+            else:
+                options = row.enum_values
+
             column_info = {
                 "column_name": row.column_name,
                 "data_type": row.data_type,
@@ -283,7 +293,7 @@ def get_table_columns_with_labels(
                 "placeholder": None,  # 存在しない
                 "help_text": row.description,  # descriptionを流用
                 "default_value": None,  # 存在しない
-                "options": row.enum_values,  # enum_valuesをoptionsとして使用
+                "options": options,  # enum_valuesまたはproperty_typesから取得
                 "is_virtual": False,  # 実カラム
                 "visible_for": row.visible_for,  # 物件種別による表示制御
             }
@@ -422,6 +432,30 @@ def get_validation_rules() -> Dict[str, Any]:
             "hidden": "非表示フィールド",
         },
     }
+
+
+def _get_property_type_options(db: Session) -> List[Dict[str, str]]:
+    """
+    property_typesテーブルから物件種別の選択肢を取得
+    グループごとにソートして返す
+    """
+    query = text("""
+        SELECT id, label, group_name
+        FROM property_types
+        ORDER BY
+            CASE group_name
+                WHEN '居住用' THEN 1
+                WHEN '事業用' THEN 2
+                WHEN '投資用' THEN 3
+                ELSE 4
+            END,
+            label
+    """)
+    result = db.execute(query)
+    return [
+        {"value": row.id, "label": row.label, "group": row.group_name}
+        for row in result
+    ]
 
 
 def _guess_input_type(data_type: str) -> str:
