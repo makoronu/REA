@@ -656,8 +656,27 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
   columns,
   disabled = false
 }) => {
+  const { watch } = useFormContext();
+
+  // 引渡時期の値を監視（条件付き表示用）
+  const deliveryTiming = watch('delivery_timing');
+
+  // 条件付き表示フィールドのフィルタリング
+  const shouldShowField = (columnName: string): boolean => {
+    // delivery_date は「3:期日指定」の場合のみ表示
+    if (columnName === 'delivery_date') {
+      return deliveryTiming === '3:期日指定';
+    }
+    // move_in_consultation は「2:相談」の場合のみ表示
+    if (columnName === 'move_in_consultation') {
+      return deliveryTiming === '2:相談';
+    }
+    return true;
+  };
+
   const visibleColumns = columns.filter(col =>
-    !['id', 'property_id', 'created_at', 'updated_at'].includes(col.column_name)
+    !['id', 'property_id', 'created_at', 'updated_at'].includes(col.column_name) &&
+    shouldShowField(col.column_name)
   );
 
   if (visibleColumns.length === 0) return null;
