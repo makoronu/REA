@@ -30,6 +30,58 @@
 
 ---
 
+## 最重要原則：ハードコーディング禁止
+
+**マジックナンバー、定数、繰り返しロジックは必ず共通化する。**
+
+### なぜ最重要か
+
+- 機能が増えるほど、ハードコーディングは**指数関数的に負債になる**
+- 1箇所の変更が10箇所の修正を要求する状態は**開発スピード・保守スピードを殺す**
+- 他社販売を前提としたシステムでは**致命的なコスト増**になる
+
+### 共通化ファイル
+
+| ファイル | 役割 |
+|---------|------|
+| `shared/constants.py` | 定数・計算関数（徒歩分数、学校種別コード、検索半径等） |
+| `rea-admin/src/components/common/` | 共通UIコンポーネント |
+
+### 具体的なルール
+
+**バックエンド:**
+```python
+# ❌ ハードコーディング
+walk_min = max(1, round(distance_m / 80))  # 6箇所に同じコード
+WHERE school_type = '16001'  # マジックナンバー
+
+# ✅ 共通化
+from shared.constants import calc_walk_minutes, SCHOOL_TYPE_CODES
+walk_min = calc_walk_minutes(distance_m)
+WHERE school_type = %s, (SCHOOL_TYPE_CODES['elementary'],)
+```
+
+**フロントエンド:**
+```tsx
+// ❌ ハードコーディング
+const FACILITY_CATEGORIES = [
+  { value: 'convenience', label: 'コンビニ' },
+  // ... 12個手動管理
+];
+
+// ✅ APIから取得（DBが唯一の真実）
+const categories = await fetch('/api/v1/geo/facility-categories');
+```
+
+### 新規実装時のチェックリスト
+
+1. **同じ値が2箇所以上に出現しないか？** → 定数化
+2. **同じ計算ロジックが複数箇所にないか？** → 関数化
+3. **フロントにマスターデータを直書きしていないか？** → API経由に
+4. **既存の共通化ファイルに追加できないか？** → `shared/constants.py`確認
+
+---
+
 ## クイックスタート
 
 ### ローカル環境（Mac + Claude Code）
