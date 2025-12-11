@@ -45,13 +45,35 @@ const selectStyle: React.CSSProperties = {
 };
 
 // ENUM値をパースする関数
-const parseEnumValues = (enumString: string): { value: string; label: string }[] => {
-  if (!enumString) return [];
-  const options = enumString.split(',').map(item => item.trim());
-  return options.map(option => {
-    const [value, label] = option.split(':').map(s => s.trim());
-    return { value: value || option, label: label || option };
-  });
+// optionsは文字列（カンマ区切り）またはオブジェクト配列の両方に対応
+const parseEnumValues = (options: any): { value: string; label: string; group?: string }[] => {
+  if (!options) return [];
+
+  // 配列の場合（property_types等から取得したオブジェクト配列）
+  if (Array.isArray(options)) {
+    return options.map(opt => {
+      if (typeof opt === 'object' && opt !== null) {
+        return {
+          value: opt.value || opt.id || '',
+          label: opt.label || opt.name || opt.value || '',
+          group: opt.group || opt.group_name,
+        };
+      }
+      // 文字列配列の場合
+      return { value: String(opt), label: String(opt) };
+    });
+  }
+
+  // 文字列の場合（従来のカンマ区切り形式）
+  if (typeof options === 'string') {
+    const items = options.split(',').map(item => item.trim());
+    return items.map(option => {
+      const [value, label] = option.split(':').map(s => s.trim());
+      return { value: value || option, label: label || option };
+    });
+  }
+
+  return [];
 };
 
 // 郵便番号フィールド - 住所自動入力機能付き
@@ -215,12 +237,28 @@ export const FieldFactory: React.FC<FieldFactoryProps> = ({ column, disabled = f
   const renderField = () => {
     const enumSource = column.options;
 
+    // マスター参照チェック（文字列の場合のみ）
+    const isMasterRef = typeof enumSource === 'string' && enumSource.includes('マスター参照');
+
     // ENUM型セレクト
     if ((column.data_type === 'USER-DEFINED' || enumSource) &&
         enumSource &&
-        !enumSource.includes('マスター参照')) {
+        !isMasterRef) {
       const enumOptions = parseEnumValues(enumSource);
       if (enumOptions.length > 0) {
+        // グループがあるかチェック
+        const hasGroups = enumOptions.some(opt => opt.group);
+
+        // グループ別にまとめる
+        const groupedOptions = hasGroups
+          ? enumOptions.reduce((acc, opt) => {
+              const group = opt.group || 'その他';
+              if (!acc[group]) acc[group] = [];
+              acc[group].push(opt);
+              return acc;
+            }, {} as Record<string, typeof enumOptions>)
+          : null;
+
         return (
           <Controller
             name={column.column_name}
@@ -239,11 +277,25 @@ export const FieldFactory: React.FC<FieldFactoryProps> = ({ column, disabled = f
                 onBlur={(e) => e.target.style.borderBottomColor = error ? '#EF4444' : '#E5E7EB'}
               >
                 <option value="">選択してください</option>
-                {enumOptions.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
+                {groupedOptions ? (
+                  // グループ別表示
+                  Object.entries(groupedOptions).map(([groupName, options]) => (
+                    <optgroup key={groupName} label={groupName}>
+                      {options.map(option => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))
+                ) : (
+                  // フラット表示
+                  enumOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))
+                )}
               </select>
             )}
           />
