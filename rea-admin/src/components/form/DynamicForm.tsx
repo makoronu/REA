@@ -879,6 +879,10 @@ const FacilityAutoFetchButton: React.FC = () => {
 
   // カテゴリ表示順と日本語ラベル、アイコン
   const categoryConfig: Record<string, { label: string; icon: string; color: string }> = {
+    supermarket: { label: 'スーパー', icon: '🛒', color: '#10B981' },
+    convenience: { label: 'コンビニ', icon: '🏪', color: '#8B5CF6' },
+    drugstore: { label: 'ドラッグストア', icon: '💊', color: '#EC4899' },
+    home_center: { label: 'ホームセンター', icon: '🔧', color: '#F59E0B' },
     hospital: { label: '病院', icon: '🏥', color: '#EF4444' },
     clinic: { label: '診療所', icon: '🩺', color: '#F97316' },
     park: { label: '公園', icon: '🌳', color: '#22C55E' },

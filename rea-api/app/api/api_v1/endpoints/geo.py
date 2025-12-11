@@ -96,6 +96,10 @@ class NearestFacilitiesResponse(BaseModel):
 
 # カテゴリコード→日本語名マッピング
 FACILITY_CATEGORY_NAMES = {
+    'supermarket': 'スーパー',
+    'convenience': 'コンビニ',
+    'drugstore': 'ドラッグストア',
+    'home_center': 'ホームセンター',
     'hospital': '病院',
     'clinic': '診療所',
     'park': '公園',

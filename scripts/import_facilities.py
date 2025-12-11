@@ -3,6 +3,8 @@
 国土数値情報から施設データをダウンロード・インポート
 - P04: 医療機関データ
 - P13: 都市公園データ
+- P14: 福祉施設データ
+- P27: 文化施設データ
 - P30: 郵便局データ
 """
 import os
@@ -43,6 +45,8 @@ def download_data(data_type: str, pref_code: str) -> Path:
     url_patterns = {
         'P04': ('P04-20', 'https://nlftp.mlit.go.jp/ksj/gml/data/P04/P04-20/P04-20_{}_GML.zip'),  # 医療機関
         'P13': ('P13-11', 'https://nlftp.mlit.go.jp/ksj/gml/data/P13/P13-11/P13-11_{}_GML.zip'),  # 都市公園
+        'P14': ('P14-15', 'https://nlftp.mlit.go.jp/ksj/gml/data/P14/P14-15/P14-15_{}_GML.zip'),  # 福祉施設
+        'P27': ('P27-13', 'https://nlftp.mlit.go.jp/ksj/gml/data/P27/P27-13/P27-13_{}.zip'),  # 文化施設
         'P30': ('P30-13', 'https://nlftp.mlit.go.jp/ksj/gml/data/P30/P30-13/P30-13_{}.zip'),  # 郵便局（GMLなし）
     }
 
@@ -180,6 +184,95 @@ def parse_post_office_shapefile(shp_path: Path) -> list:
     return facilities
 
 
+def parse_welfare_shapefile(shp_path: Path) -> list:
+    """福祉施設Shapefileをパース (P14)"""
+    # 福祉施設大分類コード → カテゴリ
+    WELFARE_CATEGORIES = {
+        16: 'nursery',      # 児童福祉 → 保育所
+        19: 'nursing_home', # 高齢者福祉 → 老人ホーム
+    }
+
+    facilities = []
+
+    sf = shapefile.Reader(str(shp_path), encoding='cp932')
+    fields = [f[0] for f in sf.fields[1:]]
+
+    for sr in sf.shapeRecords():
+        shape = sr.shape
+        record = dict(zip(fields, sr.record))
+
+        if shape.shapeType != shapefile.POINT:
+            continue
+
+        coords = shape.points[0] if shape.points else None
+        if not coords:
+            continue
+
+        # P14_004: 福祉施設大分類コード
+        welfare_code = record.get('P14_004', 0) or 0
+        category = WELFARE_CATEGORIES.get(welfare_code, 'welfare')
+
+        # P14_007: 施設名
+        name = record.get('P14_007', '') or ''
+        # P14_001 + P14_002 + P14_003: 住所
+        pref = record.get('P14_001', '') or ''
+        city = record.get('P14_002', '') or ''
+        addr = record.get('P14_003', '') or ''
+        address = '{}{}{}'.format(pref, city, addr)
+
+        facilities.append({
+            'name': name,
+            'address': address,
+            'category_code': category,
+            'latitude': coords[1],
+            'longitude': coords[0],
+            'metadata': {'welfare_code': welfare_code}
+        })
+
+    return facilities
+
+
+def parse_culture_shapefile(shp_path: Path) -> list:
+    """文化施設Shapefileをパース (P27)"""
+    facilities = []
+
+    sf = shapefile.Reader(str(shp_path), encoding='cp932')
+    fields = [f[0] for f in sf.fields[1:]]
+
+    for sr in sf.shapeRecords():
+        shape = sr.shape
+        record = dict(zip(fields, sr.record))
+
+        if shape.shapeType != shapefile.POINT:
+            continue
+
+        coords = shape.points[0] if shape.points else None
+        if not coords:
+            continue
+
+        # P27_005: 施設名
+        name = record.get('P27_005', '') or ''
+        # P27_006: 住所
+        address = record.get('P27_006', '') or ''
+
+        # 施設名で分類（図書館を特定）
+        if '図書館' in name:
+            category = 'library'
+        else:
+            category = 'culture'  # 美術館・博物館等
+
+        facilities.append({
+            'name': name,
+            'address': address,
+            'category_code': category,
+            'latitude': coords[1],
+            'longitude': coords[0],
+            'metadata': {}
+        })
+
+    return facilities
+
+
 def extract_and_parse(zip_path: Path, data_type: str) -> list:
     """ZIPを展開してパース（GeoJSON → Shapefile の順で探す）"""
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -201,6 +294,10 @@ def extract_and_parse(zip_path: Path, data_type: str) -> list:
             shp_path = shp_files[0]
             if data_type == 'P13':
                 return parse_park_shapefile(shp_path)
+            elif data_type == 'P14':
+                return parse_welfare_shapefile(shp_path)
+            elif data_type == 'P27':
+                return parse_culture_shapefile(shp_path)
             elif data_type == 'P30':
                 return parse_post_office_shapefile(shp_path)
 
@@ -280,7 +377,7 @@ def import_data_type(data_type: str, description: str):
 def main():
     import argparse
     parser = argparse.ArgumentParser(description='施設データインポート')
-    parser.add_argument('--type', choices=['P04', 'P13', 'P30', 'all'], default='all',
+    parser.add_argument('--type', choices=['P04', 'P13', 'P14', 'P27', 'P30', 'all'], default='all',
                        help='インポートするデータタイプ')
     args = parser.parse_args()
 
@@ -291,6 +388,12 @@ def main():
 
     if args.type in ['P13', 'all']:
         results['公園'] = import_data_type('P13', '都市公園データ')
+
+    if args.type in ['P14', 'all']:
+        results['福祉施設'] = import_data_type('P14', '福祉施設データ')
+
+    if args.type in ['P27', 'all']:
+        results['文化施設'] = import_data_type('P27', '文化施設データ')
 
     if args.type in ['P30', 'all']:
         results['郵便局'] = import_data_type('P30', '郵便局データ')
