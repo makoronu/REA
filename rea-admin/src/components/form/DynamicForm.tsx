@@ -7,11 +7,24 @@ import { ColumnWithLabel } from '../../services/metadataService';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8005';
 
-// 学区自動取得ボタンコンポーネント
+// 学校候補の型
+interface SchoolCandidate {
+  school_name: string;
+  address: string | null;
+  admin_type: string | null;
+  distance_meters: number;
+  walk_minutes: number;
+  is_in_district: boolean;
+}
+
+// 学区自動取得・選択コンポーネント
 const SchoolDistrictAutoFetchButton: React.FC = () => {
   const { getValues, setValue } = useFormContext();
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [elementaryCandidates, setElementaryCandidates] = useState<SchoolCandidate[]>([]);
+  const [juniorHighCandidates, setJuniorHighCandidates] = useState<SchoolCandidate[]>([]);
+  const [showCandidates, setShowCandidates] = useState(false);
 
   const handleFetch = async () => {
     const lat = getValues('latitude');
@@ -32,33 +45,109 @@ const SchoolDistrictAutoFetchButton: React.FC = () => {
       );
 
       if (!response.ok) {
-        throw new Error('学区の取得に失敗しました');
+        throw new Error('学校情報の取得に失敗しました');
       }
 
       const data = await response.json();
+      setElementaryCandidates(data.elementary || []);
+      setJuniorHighCandidates(data.junior_high || []);
+      setShowCandidates(true);
 
-      // フォームに値をセット
-      if (data.elementary) {
-        setValue('elementary_school', data.elementary.school_name, { shouldDirty: true });
-        if (data.elementary.walk_minutes) {
-          setValue('elementary_school_minutes', data.elementary.walk_minutes, { shouldDirty: true });
-        }
-      }
-      if (data.junior_high) {
-        setValue('junior_high_school', data.junior_high.school_name, { shouldDirty: true });
-        if (data.junior_high.walk_minutes) {
-          setValue('junior_high_school_minutes', data.junior_high.walk_minutes, { shouldDirty: true });
-        }
-      }
-
-      setMessage({ type: 'success', text: '学区を取得しました' });
-      setTimeout(() => setMessage(null), 3000);
+      setMessage({ type: 'success', text: '学校候補を取得しました。選択してください。' });
     } catch (err: any) {
-      setMessage({ type: 'error', text: err.message || '学区の取得に失敗しました' });
+      setMessage({ type: 'error', text: err.message || '学校情報の取得に失敗しました' });
       setTimeout(() => setMessage(null), 3000);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const selectSchool = (type: 'elementary' | 'junior_high', school: SchoolCandidate) => {
+    if (type === 'elementary') {
+      setValue('elementary_school', school.school_name, { shouldDirty: true });
+      setValue('elementary_school_minutes', school.walk_minutes, { shouldDirty: true });
+    } else {
+      setValue('junior_high_school', school.school_name, { shouldDirty: true });
+      setValue('junior_high_school_minutes', school.walk_minutes, { shouldDirty: true });
+    }
+  };
+
+  const renderCandidateList = (
+    title: string,
+    candidates: SchoolCandidate[],
+    type: 'elementary' | 'junior_high'
+  ) => {
+    const currentValue = getValues(type === 'elementary' ? 'elementary_school' : 'junior_high_school');
+
+    return (
+      <div style={{ marginBottom: '16px' }}>
+        <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '8px', color: '#374151' }}>
+          {title}
+        </h4>
+        {candidates.length === 0 ? (
+          <p style={{ fontSize: '13px', color: '#6B7280' }}>候補が見つかりませんでした</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            {candidates.map((school, index) => {
+              const isSelected = currentValue === school.school_name;
+              return (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => selectSchool(type, school)}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '10px 12px',
+                    backgroundColor: isSelected ? '#EFF6FF' : school.is_in_district ? '#FEF2F2' : '#F9FAFB',
+                    border: isSelected ? '2px solid #3B82F6' : school.is_in_district ? '2px solid #EF4444' : '1px solid #E5E7EB',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <div>
+                    <div style={{
+                      fontSize: '14px',
+                      fontWeight: school.is_in_district ? 600 : 500,
+                      color: school.is_in_district ? '#DC2626' : '#1F2937',
+                    }}>
+                      {school.is_in_district && '● '}
+                      {school.school_name}
+                      {school.is_in_district && (
+                        <span style={{
+                          marginLeft: '8px',
+                          fontSize: '11px',
+                          backgroundColor: '#DC2626',
+                          color: '#fff',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                        }}>
+                          学区内
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
+                      {school.address || '住所不明'}
+                    </div>
+                  </div>
+                  <div style={{
+                    fontSize: '13px',
+                    color: '#374151',
+                    whiteSpace: 'nowrap',
+                    marginLeft: '12px',
+                  }}>
+                    徒歩{school.walk_minutes}分（{school.distance_meters.toLocaleString()}m）
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -71,8 +160,8 @@ const SchoolDistrictAutoFetchButton: React.FC = () => {
           backgroundColor: isLoading ? '#9CA3AF' : '#059669',
           color: '#fff',
           border: 'none',
-          padding: '8px 16px',
-          borderRadius: '6px',
+          padding: '10px 20px',
+          borderRadius: '8px',
           cursor: isLoading ? 'not-allowed' : 'pointer',
           fontWeight: 500,
           fontSize: '14px',
@@ -95,14 +184,15 @@ const SchoolDistrictAutoFetchButton: React.FC = () => {
             取得中...
           </>
         ) : (
-          <>🏫 座標から学区を自動取得</>
+          <>🏫 座標から学校候補を取得</>
         )}
       </button>
+
       {message && (
         <div style={{
-          marginTop: '8px',
-          padding: '8px 12px',
-          borderRadius: '6px',
+          marginTop: '12px',
+          padding: '10px 14px',
+          borderRadius: '8px',
           fontSize: '13px',
           backgroundColor: message.type === 'success' ? '#D1FAE5' : '#FEE2E2',
           color: message.type === 'success' ? '#065F46' : '#991B1B',
@@ -110,6 +200,44 @@ const SchoolDistrictAutoFetchButton: React.FC = () => {
           {message.text}
         </div>
       )}
+
+      {showCandidates && (
+        <div style={{
+          marginTop: '16px',
+          padding: '16px',
+          backgroundColor: '#fff',
+          border: '1px solid #E5E7EB',
+          borderRadius: '12px',
+        }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '16px',
+          }}>
+            <p style={{ fontSize: '13px', color: '#6B7280' }}>
+              <span style={{ color: '#DC2626', fontWeight: 600 }}>● 赤字</span> = 学区データあり
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowCandidates(false)}
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: '20px',
+                cursor: 'pointer',
+                color: '#9CA3AF',
+              }}
+            >
+              ×
+            </button>
+          </div>
+
+          {renderCandidateList('【小学校】', elementaryCandidates, 'elementary')}
+          {renderCandidateList('【中学校】', juniorHighCandidates, 'junior_high')}
+        </div>
+      )}
+
       <style>{`
         @keyframes spin {
           to { transform: rotate(360deg); }
