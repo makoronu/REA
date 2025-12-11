@@ -40,6 +40,11 @@ export interface Property {
   // JSON型フィールド
   equipments?: string[];
   images?: string[];
+  transportation?: { station_name: string; line_name: string; walk_minutes: number }[];
+
+  // 緯度経度
+  latitude?: number;
+  longitude?: number;
 
   // ホームズ連携
   homes_id?: string;

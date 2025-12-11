@@ -4,6 +4,8 @@ import { Property, PropertyFormData } from '../types/property';
 import { propertyService } from '../services/propertyService';
 import { useAutoSave } from '../hooks/useAutoSave';
 import ImageUploader from '../components/ImageUploader';
+import NearestStationsEditor from '../components/NearestStationsEditor';
+import { PropertyStation } from '../services/geoService';
 
 const PropertyEditPageAutoSave: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -17,7 +19,8 @@ const PropertyEditPageAutoSave: React.FC = () => {
     price_unit: '万円',
     is_active: true,
     source: 'manual',
-    images: []
+    images: [],
+    transportation: []
   });
   const [propertyId, setPropertyId] = useState<number | null>(id ? parseInt(id) : null);
 
@@ -64,7 +67,8 @@ const PropertyEditPageAutoSave: React.FC = () => {
       const { id, created_at, updated_at, ...formData } = property;
       setFormData({
         ...formData,
-        images: property.images || []
+        images: property.images || [],
+        transportation: property.transportation || []
       });
       setPropertyId(propertyId);
     } catch (error) {
@@ -123,6 +127,14 @@ const PropertyEditPageAutoSave: React.FC = () => {
     setFormData(prev => ({
       ...prev,
       images
+    }));
+  };
+
+  // 最寄駅の変更を反映
+  const handleTransportationChange = (stations: PropertyStation[]) => {
+    setFormData(prev => ({
+      ...prev,
+      transportation: stations
     }));
   };
 
@@ -496,7 +508,50 @@ const PropertyEditPageAutoSave: React.FC = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                緯度
+              </label>
+              <input
+                type="number"
+                name="latitude"
+                value={formData.latitude || ''}
+                onChange={handleInputChange}
+                step="0.000001"
+                placeholder="例: 35.6580"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                経度
+              </label>
+              <input
+                type="number"
+                name="longitude"
+                value={formData.longitude || ''}
+                onChange={handleInputChange}
+                step="0.000001"
+                placeholder="例: 139.7016"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
           </div>
+        </div>
+
+        {/* 最寄駅情報 */}
+        <div className="border-b pb-6">
+          <h2 className="text-lg font-semibold mb-4">最寄駅情報</h2>
+          <NearestStationsEditor
+            stations={formData.transportation || []}
+            onChange={handleTransportationChange}
+            latitude={formData.latitude}
+            longitude={formData.longitude}
+            address={[formData.prefecture, formData.city, formData.address].filter(Boolean).join('')}
+            maxStations={10}
+          />
         </div>
 
         {/* 物件説明 */}
