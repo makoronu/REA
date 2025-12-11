@@ -17,6 +17,16 @@ interface SchoolCandidate {
   is_in_district: boolean;
 }
 
+// バス停候補の型
+interface BusStopCandidate {
+  name: string;
+  bus_type: string | null;
+  operators: string[];
+  routes: string[];
+  distance_meters: number;
+  walk_minutes: number;
+}
+
 // 学区自動取得・選択コンポーネント
 const SchoolDistrictAutoFetchButton: React.FC = () => {
   const { getValues, setValue } = useFormContext();
@@ -235,6 +245,295 @@ const SchoolDistrictAutoFetchButton: React.FC = () => {
 
           {renderCandidateList('【小学校】', elementaryCandidates, 'elementary')}
           {renderCandidateList('【中学校】', juniorHighCandidates, 'junior_high')}
+        </div>
+      )}
+
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+// バス停自動取得・選択コンポーネント
+const BusStopAutoFetchButton: React.FC = () => {
+  const { getValues, setValue } = useFormContext();
+  const [isLoading, setIsLoading] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [candidates, setCandidates] = useState<BusStopCandidate[]>([]);
+  const [showCandidates, setShowCandidates] = useState(false);
+
+  const handleFetch = async () => {
+    const lat = getValues('latitude');
+    const lng = getValues('longitude');
+
+    if (!lat || !lng) {
+      setMessage({ type: 'error', text: '緯度・経度を先に入力してください' });
+      setTimeout(() => setMessage(null), 3000);
+      return;
+    }
+
+    setIsLoading(true);
+    setMessage(null);
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/v1/geo/nearest-bus-stops?lat=${lat}&lng=${lng}&limit=10`
+      );
+
+      if (!response.ok) {
+        throw new Error('バス停情報の取得に失敗しました');
+      }
+
+      const data = await response.json();
+      setCandidates(data.bus_stops || []);
+      setShowCandidates(true);
+
+      setMessage({ type: 'success', text: 'バス停候補を取得しました。選択してください。' });
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'バス停情報の取得に失敗しました' });
+      setTimeout(() => setMessage(null), 3000);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const selectBusStop = (busStop: BusStopCandidate) => {
+    // bus_stopsはJSONB配列なので、現在の値を取得して追加
+    const currentBusStops = getValues('bus_stops') || [];
+
+    // 同じ名前のバス停がすでにあるかチェック
+    const exists = currentBusStops.some((bs: any) => bs.name === busStop.name);
+    if (exists) {
+      setMessage({ type: 'error', text: 'このバス停は既に追加されています' });
+      setTimeout(() => setMessage(null), 3000);
+      return;
+    }
+
+    const newBusStop = {
+      name: busStop.name,
+      walk_minutes: busStop.walk_minutes,
+      routes: busStop.routes,
+    };
+
+    setValue('bus_stops', [...currentBusStops, newBusStop], { shouldDirty: true });
+    setMessage({ type: 'success', text: `${busStop.name} を追加しました` });
+    setTimeout(() => setMessage(null), 2000);
+  };
+
+  const removeBusStop = (index: number) => {
+    const currentBusStops = getValues('bus_stops') || [];
+    const updated = [...currentBusStops];
+    updated.splice(index, 1);
+    setValue('bus_stops', updated, { shouldDirty: true });
+  };
+
+  const currentBusStops = getValues('bus_stops') || [];
+
+  return (
+    <div style={{ marginBottom: '16px' }}>
+      <button
+        type="button"
+        onClick={handleFetch}
+        disabled={isLoading}
+        style={{
+          backgroundColor: isLoading ? '#9CA3AF' : '#0891B2',
+          color: '#fff',
+          border: 'none',
+          padding: '10px 20px',
+          borderRadius: '8px',
+          cursor: isLoading ? 'not-allowed' : 'pointer',
+          fontWeight: 500,
+          fontSize: '14px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+        }}
+      >
+        {isLoading ? (
+          <>
+            <span style={{
+              display: 'inline-block',
+              width: '16px',
+              height: '16px',
+              border: '2px solid #fff',
+              borderTopColor: 'transparent',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+            }} />
+            取得中...
+          </>
+        ) : (
+          <>🚌 座標からバス停候補を取得</>
+        )}
+      </button>
+
+      {message && (
+        <div style={{
+          marginTop: '12px',
+          padding: '10px 14px',
+          borderRadius: '8px',
+          fontSize: '13px',
+          backgroundColor: message.type === 'success' ? '#D1FAE5' : '#FEE2E2',
+          color: message.type === 'success' ? '#065F46' : '#991B1B',
+        }}>
+          {message.text}
+        </div>
+      )}
+
+      {/* 現在登録されているバス停 */}
+      {currentBusStops.length > 0 && (
+        <div style={{
+          marginTop: '12px',
+          padding: '12px',
+          backgroundColor: '#F0F9FF',
+          borderRadius: '8px',
+          border: '1px solid #BAE6FD',
+        }}>
+          <div style={{ fontSize: '13px', fontWeight: 600, color: '#0369A1', marginBottom: '8px' }}>
+            登録済みバス停
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {currentBusStops.map((bs: any, index: number) => (
+              <div
+                key={index}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '6px 12px',
+                  backgroundColor: '#fff',
+                  borderRadius: '6px',
+                  border: '1px solid #E0F2FE',
+                  fontSize: '13px',
+                }}
+              >
+                <span>{bs.name}</span>
+                <span style={{ color: '#6B7280' }}>徒歩{bs.walk_minutes}分</span>
+                <button
+                  type="button"
+                  onClick={() => removeBusStop(index)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#EF4444',
+                    cursor: 'pointer',
+                    padding: '0 4px',
+                    fontSize: '16px',
+                    lineHeight: 1,
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {showCandidates && (
+        <div style={{
+          marginTop: '16px',
+          padding: '16px',
+          backgroundColor: '#fff',
+          border: '1px solid #E5E7EB',
+          borderRadius: '12px',
+        }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '16px',
+          }}>
+            <p style={{ fontSize: '13px', color: '#6B7280' }}>
+              クリックして追加
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowCandidates(false)}
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: '20px',
+                cursor: 'pointer',
+                color: '#9CA3AF',
+              }}
+            >
+              ×
+            </button>
+          </div>
+
+          {candidates.length === 0 ? (
+            <p style={{ fontSize: '13px', color: '#6B7280' }}>候補が見つかりませんでした</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {candidates.map((busStop, index) => {
+                const isAdded = currentBusStops.some((bs: any) => bs.name === busStop.name);
+                return (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => selectBusStop(busStop)}
+                    disabled={isAdded}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '10px 12px',
+                      backgroundColor: isAdded ? '#E5E7EB' : '#F9FAFB',
+                      border: isAdded ? '1px solid #D1D5DB' : '1px solid #E5E7EB',
+                      borderRadius: '8px',
+                      cursor: isAdded ? 'not-allowed' : 'pointer',
+                      textAlign: 'left',
+                      transition: 'all 0.15s ease',
+                      opacity: isAdded ? 0.6 : 1,
+                    }}
+                  >
+                    <div>
+                      <div style={{
+                        fontSize: '14px',
+                        fontWeight: 500,
+                        color: '#1F2937',
+                      }}>
+                        {busStop.name}
+                        {isAdded && (
+                          <span style={{
+                            marginLeft: '8px',
+                            fontSize: '11px',
+                            backgroundColor: '#9CA3AF',
+                            color: '#fff',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                          }}>
+                            追加済
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
+                        {busStop.bus_type || ''} {busStop.operators.length > 0 && `(${busStop.operators.join(', ')})`}
+                      </div>
+                      {busStop.routes.length > 0 && (
+                        <div style={{ fontSize: '11px', color: '#9CA3AF', marginTop: '2px' }}>
+                          {busStop.routes.slice(0, 3).join(', ')}
+                          {busStop.routes.length > 3 && ` 他${busStop.routes.length - 3}路線`}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{
+                      fontSize: '13px',
+                      color: '#374151',
+                      whiteSpace: 'nowrap',
+                      marginLeft: '12px',
+                    }}>
+                      徒歩{busStop.walk_minutes}分（{busStop.distance_meters.toLocaleString()}m）
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -571,6 +870,8 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                       <div key={`${tabGroup.tableName}-${groupName}`}>
                         {/* 学区グループの場合、自動取得ボタンを表示 */}
                         {groupName === '学区' && <SchoolDistrictAutoFetchButton />}
+                        {/* 交通グループの場合、バス停自動取得ボタンを表示 */}
+                        {groupName === '交通' && <BusStopAutoFetchButton />}
                         <FieldGroup
                           groupName={groupName}
                           columns={groupColumns}

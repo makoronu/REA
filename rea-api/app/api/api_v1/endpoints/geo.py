@@ -63,6 +63,21 @@ class SchoolDistrictsResponse(BaseModel):
     longitude: float
 
 
+class BusStopCandidate(BaseModel):
+    name: str
+    bus_type: Optional[str]  # "民間路線バス", "公営路線バス", etc
+    operators: list[str]  # 事業者名リスト
+    routes: list[str]  # バス路線名リスト
+    distance_meters: int
+    walk_minutes: int
+
+
+class NearestBusStopsResponse(BaseModel):
+    bus_stops: list[BusStopCandidate]
+    latitude: float
+    longitude: float
+
+
 # =============================================================================
 # 最寄駅検索
 # =============================================================================
@@ -415,6 +430,67 @@ async def set_property_nearest_stations(
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        conn.close()
+
+
+# =============================================================================
+# 最寄りバス停検索
+# =============================================================================
+
+@router.get("/nearest-bus-stops", response_model=NearestBusStopsResponse)
+async def get_nearest_bus_stops(
+    lat: float = Query(..., description="緯度", ge=-90, le=90),
+    lng: float = Query(..., description="経度", ge=-180, le=180),
+    limit: int = Query(10, description="最大取得件数", ge=1, le=20)
+):
+    """
+    指定座標から最寄りのバス停を検索
+
+    - 距離順に最大10件を返す
+    - 事業者名・路線名を含む
+    """
+    db = READatabase()
+    conn = db.get_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+            SELECT
+                name,
+                bus_type_name,
+                operators,
+                bus_routes,
+                ST_Distance(
+                    location::geography,
+                    ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography
+                ) as distance_m
+            FROM m_bus_stops
+            ORDER BY distance_m
+            LIMIT %s
+        """, (lng, lat, limit))
+
+        bus_stops = []
+        for row in cur.fetchall():
+            name, bus_type, operators, routes, distance_m = row
+            distance_m = int(distance_m)
+            walk_min = max(1, round(distance_m / 80))
+            bus_stops.append(BusStopCandidate(
+                name=name,
+                bus_type=bus_type,
+                operators=operators or [],
+                routes=routes or [],
+                distance_meters=distance_m,
+                walk_minutes=walk_min
+            ))
+
+        return NearestBusStopsResponse(
+            bus_stops=bus_stops,
+            latitude=lat,
+            longitude=lng
+        )
+
     finally:
         cur.close()
         conn.close()
