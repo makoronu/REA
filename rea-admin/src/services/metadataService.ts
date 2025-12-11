@@ -42,6 +42,7 @@ export interface ColumnWithLabel extends ColumnInfo {
   help_text?: string;
   default_value?: any;
   options?: string;
+  visible_for?: string[] | null; // 物件種別による表示制御
 }
 
 export interface TableDetails {

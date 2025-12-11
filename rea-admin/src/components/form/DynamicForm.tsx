@@ -936,6 +936,19 @@ interface DynamicFormProps {
   autoSaveDelay?: number; // デバウンス時間（ms）
 }
 
+// 物件種別によるフィールド表示判定
+const isFieldVisibleForPropertyType = (
+  visibleFor: string[] | null | undefined,
+  propertyType: string | null | undefined
+): boolean => {
+  // visible_forがnull/undefinedなら全種別表示
+  if (!visibleFor || visibleFor.length === 0) return true;
+  // 種別未選択なら全表示
+  if (!propertyType) return true;
+  // 種別が含まれているか
+  return visibleFor.includes(propertyType);
+};
+
 export const DynamicForm: React.FC<DynamicFormProps> = ({
   tableName,
   tableNames,
@@ -1057,6 +1070,9 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
     // 所在地・周辺情報グループ名
     const locationGroups = ['所在地', '学区', '電車・鉄道', 'バス', '周辺施設'];
 
+    // 現在選択されている物件種別
+    const currentPropertyType = formData.property_type;
+
     // propertiesから所在地・周辺情報を分離してタブを構築
     const tabGroups: Array<{
       tableName: string;
@@ -1068,7 +1084,8 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
     // 1. 所在地・周辺情報タブを最初に追加
     const propertiesColumns = allColumns?.['properties'] || [];
     const locationColumns = propertiesColumns.filter(col =>
-      locationGroups.includes(col.group_name || '')
+      locationGroups.includes(col.group_name || '') &&
+      isFieldVisibleForPropertyType(col.visible_for, currentPropertyType)
     );
     if (locationColumns.length > 0) {
       const locationGrouped = locationColumns.reduce((acc, column) => {
@@ -1092,10 +1109,15 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
     orderedTables.forEach(table => {
       const tableColumns = allColumns?.[table.table_name] || [];
 
-      // propertiesの場合は所在地・周辺情報グループを除外
-      const filteredColumns = table.table_name === 'properties'
-        ? tableColumns.filter(col => !locationGroups.includes(col.group_name || ''))
-        : tableColumns;
+      // propertiesの場合は所在地・周辺情報グループを除外 + 物件種別フィルタリング
+      const filteredColumns = tableColumns.filter(col => {
+        // 所在地・周辺情報グループはpropertiesでは除外
+        if (table.table_name === 'properties' && locationGroups.includes(col.group_name || '')) {
+          return false;
+        }
+        // 物件種別によるフィルタリング
+        return isFieldVisibleForPropertyType(col.visible_for, currentPropertyType);
+      });
 
       const grouped = filteredColumns.reduce((acc, column) => {
         const groupName = column.group_name || '基本情報';

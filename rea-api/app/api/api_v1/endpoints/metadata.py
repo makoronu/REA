@@ -226,6 +226,7 @@ def get_table_columns_with_labels(
                 cl.group_name,
                 cl.max_length,
                 cl.enum_values,
+                cl.visible_for,
                 -- 主キー判定
                 CASE
                     WHEN pk.column_name IS NOT NULL THEN true
@@ -284,6 +285,7 @@ def get_table_columns_with_labels(
                 "default_value": None,  # 存在しない
                 "options": row.enum_values,  # enum_valuesをoptionsとして使用
                 "is_virtual": False,  # 実カラム
+                "visible_for": row.visible_for,  # 物件種別による表示制御
             }
             columns.append(column_info)
 
@@ -300,7 +302,8 @@ def get_table_columns_with_labels(
                 cl.group_name,
                 cl.max_length,
                 cl.enum_values,
-                cl.data_type
+                cl.data_type,
+                cl.visible_for
             FROM column_labels cl
             WHERE cl.table_name = :table_name
             AND cl.column_name NOT IN (
@@ -338,6 +341,7 @@ def get_table_columns_with_labels(
                 "default_value": None,
                 "options": row.enum_values,
                 "is_virtual": True,  # 仮想カラム
+                "visible_for": row.visible_for,  # 物件種別による表示制御
             }
             columns.append(column_info)
 
