@@ -1075,87 +1075,9 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
 
     // 現在選択されている物件種別
     const currentPropertyType = formData.property_type;
-
-    // propertiesから所在地・周辺情報を分離してタブを構築
-    const tabGroups: Array<{
-      tableName: string;
-      tableLabel: string;
-      tableIcon: string;
-      groups: Record<string, ColumnWithLabel[]>;
-    }> = [];
-
-    // 1. 所在地・周辺情報タブを最初に追加
     const propertiesColumns = allColumns?.['properties'] || [];
-    const locationColumns = propertiesColumns.filter(col =>
-      locationGroups.includes(col.group_name || '') &&
-      isFieldVisibleForPropertyType(col.visible_for, currentPropertyType, col.column_name)
-    );
-    if (locationColumns.length > 0) {
-      const locationGrouped = locationColumns.reduce((acc, column) => {
-        const groupName = column.group_name || '所在地';
-        if (!acc[groupName]) {
-          acc[groupName] = [];
-        }
-        acc[groupName].push(column);
-        return acc;
-      }, {} as Record<string, ColumnWithLabel[]>);
 
-      tabGroups.push({
-        tableName: 'properties_location',
-        tableLabel: '所在地・周辺情報',
-        tableIcon: '📍',
-        groups: locationGrouped
-      });
-    }
-
-    // 2. 残りのタブを追加（propertiesは所在地・周辺情報を除外）
-    orderedTables.forEach(table => {
-      const tableColumns = allColumns?.[table.table_name] || [];
-
-      // propertiesの場合は所在地・周辺情報グループを除外 + 物件種別フィルタリング
-      const filteredColumns = tableColumns.filter(col => {
-        // 所在地・周辺情報グループはpropertiesでは除外
-        if (table.table_name === 'properties' && locationGroups.includes(col.group_name || '')) {
-          return false;
-        }
-        // 物件種別によるフィルタリング
-        return isFieldVisibleForPropertyType(col.visible_for, currentPropertyType, col.column_name);
-      });
-
-      const grouped = filteredColumns.reduce((acc, column) => {
-        const groupName = column.group_name || '基本情報';
-        if (!acc[groupName]) {
-          acc[groupName] = [];
-        }
-        acc[groupName].push(column);
-        return acc;
-      }, {} as Record<string, ColumnWithLabel[]>);
-
-      // 空のグループがある場合はスキップしない（フィールドがある場合のみ追加）
-      if (Object.keys(grouped).length > 0) {
-        const tableLabels: Record<string, { label: string; icon: string }> = {
-          'properties': { label: '基本・取引情報', icon: '🏠' },
-          'land_info': { label: '土地情報', icon: '🗺️' },
-          'building_info': { label: '建物情報', icon: '🏗️' },
-          'amenities': { label: '設備・周辺環境', icon: '🔧' },
-          'property_images': { label: '画像情報', icon: '📸' },
-        };
-
-        const tableInfo = tableLabels[table.table_name] || {
-          label: table.table_comment || table.table_name,
-          icon: '📄'
-        };
-
-        tabGroups.push({
-          tableName: table.table_name,
-          tableLabel: tableInfo.label,
-          tableIcon: tableInfo.icon,
-          groups: grouped
-        });
-      }
-    });
-
-    // 物件種別未選択時の表示
+    // 物件種別未選択時の表示（タブ構築前に判定）
     if (!currentPropertyType) {
       // property_typeとis_new_constructionのみ抽出
       const propertyTypeFields = propertiesColumns.filter(col =>
@@ -1195,6 +1117,84 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
         </div>
       );
     }
+
+    // propertiesから所在地・周辺情報を分離してタブを構築
+    const tabGroups: Array<{
+      tableName: string;
+      tableLabel: string;
+      tableIcon: string;
+      groups: Record<string, ColumnWithLabel[]>;
+    }> = [];
+
+    // 1. 所在地・周辺情報タブを最初に追加
+    const locationColumns = propertiesColumns.filter(col =>
+      locationGroups.includes(col.group_name || '') &&
+      isFieldVisibleForPropertyType(col.visible_for, currentPropertyType, col.column_name)
+    );
+    if (locationColumns.length > 0) {
+      const locationGrouped = locationColumns.reduce((acc, column) => {
+        const groupName = column.group_name || '所在地';
+        if (!acc[groupName]) {
+          acc[groupName] = [];
+        }
+        acc[groupName].push(column);
+        return acc;
+      }, {} as Record<string, ColumnWithLabel[]>);
+
+      tabGroups.push({
+        tableName: 'properties_location',
+        tableLabel: '所在地・周辺情報',
+        tableIcon: '📍',
+        groups: locationGrouped
+      });
+    }
+
+    // 2. 残りのタブを追加（propertiesは所在地・周辺情報を除外）
+    orderedTables.forEach(table => {
+      const tableColumns = allColumns?.[table.table_name] || [];
+
+      // 物件種別フィルタリング（全テーブルに適用）
+      const filteredColumns = tableColumns.filter(col => {
+        // propertiesの場合は所在地・周辺情報グループを除外
+        if (table.table_name === 'properties' && locationGroups.includes(col.group_name || '')) {
+          return false;
+        }
+        // 物件種別によるフィルタリング
+        return isFieldVisibleForPropertyType(col.visible_for, currentPropertyType, col.column_name);
+      });
+
+      const grouped = filteredColumns.reduce((acc, column) => {
+        const groupName = column.group_name || '基本情報';
+        if (!acc[groupName]) {
+          acc[groupName] = [];
+        }
+        acc[groupName].push(column);
+        return acc;
+      }, {} as Record<string, ColumnWithLabel[]>);
+
+      // フィールドがある場合のみタブ追加
+      if (Object.keys(grouped).length > 0) {
+        const tableLabels: Record<string, { label: string; icon: string }> = {
+          'properties': { label: '基本・取引情報', icon: '🏠' },
+          'land_info': { label: '土地情報', icon: '🗺️' },
+          'building_info': { label: '建物情報', icon: '🏗️' },
+          'amenities': { label: '設備・周辺環境', icon: '🔧' },
+          'property_images': { label: '画像情報', icon: '📸' },
+        };
+
+        const tableInfo = tableLabels[table.table_name] || {
+          label: table.table_comment || table.table_name,
+          icon: '📄'
+        };
+
+        tabGroups.push({
+          tableName: table.table_name,
+          tableLabel: tableInfo.label,
+          tableIcon: tableInfo.icon,
+          groups: grouped
+        });
+      }
+    });
 
     return (
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 16px' }}>
