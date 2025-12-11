@@ -1,9 +1,123 @@
 import React, { useState } from 'react';
-import { FormProvider } from 'react-hook-form';
+import { FormProvider, useFormContext } from 'react-hook-form';
 import { FieldGroup } from './FieldFactory';
 import { useMetadataForm } from '../../hooks/useMetadataForm';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { ColumnWithLabel } from '../../services/metadataService';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8005';
+
+// 学区自動取得ボタンコンポーネント
+const SchoolDistrictAutoFetchButton: React.FC = () => {
+  const { getValues, setValue } = useFormContext();
+  const [isLoading, setIsLoading] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const handleFetch = async () => {
+    const lat = getValues('latitude');
+    const lng = getValues('longitude');
+
+    if (!lat || !lng) {
+      setMessage({ type: 'error', text: '緯度・経度を先に入力してください' });
+      setTimeout(() => setMessage(null), 3000);
+      return;
+    }
+
+    setIsLoading(true);
+    setMessage(null);
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/v1/geo/school-districts?lat=${lat}&lng=${lng}`
+      );
+
+      if (!response.ok) {
+        throw new Error('学区の取得に失敗しました');
+      }
+
+      const data = await response.json();
+
+      // フォームに値をセット
+      if (data.elementary) {
+        setValue('elementary_school', data.elementary.school_name, { shouldDirty: true });
+        if (data.elementary.walk_minutes) {
+          setValue('elementary_school_minutes', data.elementary.walk_minutes, { shouldDirty: true });
+        }
+      }
+      if (data.junior_high) {
+        setValue('junior_high_school', data.junior_high.school_name, { shouldDirty: true });
+        if (data.junior_high.walk_minutes) {
+          setValue('junior_high_school_minutes', data.junior_high.walk_minutes, { shouldDirty: true });
+        }
+      }
+
+      setMessage({ type: 'success', text: '学区を取得しました' });
+      setTimeout(() => setMessage(null), 3000);
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || '学区の取得に失敗しました' });
+      setTimeout(() => setMessage(null), 3000);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ marginBottom: '16px' }}>
+      <button
+        type="button"
+        onClick={handleFetch}
+        disabled={isLoading}
+        style={{
+          backgroundColor: isLoading ? '#9CA3AF' : '#059669',
+          color: '#fff',
+          border: 'none',
+          padding: '8px 16px',
+          borderRadius: '6px',
+          cursor: isLoading ? 'not-allowed' : 'pointer',
+          fontWeight: 500,
+          fontSize: '14px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+        }}
+      >
+        {isLoading ? (
+          <>
+            <span style={{
+              display: 'inline-block',
+              width: '16px',
+              height: '16px',
+              border: '2px solid #fff',
+              borderTopColor: 'transparent',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+            }} />
+            取得中...
+          </>
+        ) : (
+          <>🏫 座標から学区を自動取得</>
+        )}
+      </button>
+      {message && (
+        <div style={{
+          marginTop: '8px',
+          padding: '8px 12px',
+          borderRadius: '6px',
+          fontSize: '13px',
+          backgroundColor: message.type === 'success' ? '#D1FAE5' : '#FEE2E2',
+          color: message.type === 'success' ? '#065F46' : '#991B1B',
+        }}>
+          {message.text}
+        </div>
+      )}
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  );
+};
 
 interface DynamicFormProps {
   tableName?: string;
@@ -327,6 +441,8 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                     {Object.entries(tabGroup.groups).map(([groupName, groupColumns]) => (
                       <div key={`${tabGroup.tableName}-${groupName}`}>
+                        {/* 学区グループの場合、自動取得ボタンを表示 */}
+                        {groupName === '学区' && <SchoolDistrictAutoFetchButton />}
                         <FieldGroup
                           groupName={groupName}
                           columns={groupColumns}
