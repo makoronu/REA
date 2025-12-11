@@ -371,7 +371,9 @@ const FieldVisibilityPage: React.FC = () => {
           backgroundColor: '#fff',
           borderRadius: '12px',
           boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-          overflow: 'hidden',
+          maxHeight: 'calc(100vh - 300px)',
+          overflowY: 'auto',
+          position: 'relative',
         }}>
           {/* テーブル */}
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -386,7 +388,7 @@ const FieldVisibilityPage: React.FC = () => {
                   color: '#374151',
                   borderBottom: '1px solid #E5E7EB',
                   position: 'sticky',
-                  top: '57px',
+                  top: 0,
                   backgroundColor: '#F3F4F6',
                   zIndex: 10,
                   minWidth: '120px',
@@ -404,7 +406,7 @@ const FieldVisibilityPage: React.FC = () => {
                       color: hasFieldChange(field) ? '#F59E0B' : '#374151',
                       borderBottom: '1px solid #E5E7EB',
                       position: 'sticky',
-                      top: '57px',
+                      top: 0,
                       backgroundColor: hasFieldChange(field) ? '#FEF3C7' : '#F3F4F6',
                       zIndex: 10,
                       minWidth: '60px',
