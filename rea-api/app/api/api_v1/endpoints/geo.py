@@ -47,6 +47,22 @@ class GeocodeResponse(BaseModel):
     source: str  # "gsi" or "nominatim"
 
 
+class SchoolDistrictResponse(BaseModel):
+    school_type: str  # "小学校" or "中学校"
+    school_name: str
+    address: Optional[str]
+    admin_type: Optional[str]  # "公立", "私立" etc
+    distance_meters: Optional[int]  # 学校までの距離（学校座標がある場合）
+    walk_minutes: Optional[int]  # 徒歩分数
+
+
+class SchoolDistrictsResponse(BaseModel):
+    elementary: Optional[SchoolDistrictResponse]
+    junior_high: Optional[SchoolDistrictResponse]
+    latitude: float
+    longitude: float
+
+
 # =============================================================================
 # 最寄駅検索
 # =============================================================================
@@ -204,6 +220,146 @@ async def geocode_address(
 
 
 # =============================================================================
+# 学区判定（座標から小中学校区を特定）
+# =============================================================================
+
+@router.get("/school-districts", response_model=SchoolDistrictsResponse)
+async def get_school_districts(
+    lat: float = Query(..., description="緯度", ge=-90, le=90),
+    lng: float = Query(..., description="経度", ge=-180, le=180)
+):
+    """
+    指定座標から小学校区・中学校区を判定
+
+    - 座標がポリゴン内に含まれる学区を返す
+    - 学校の位置データがある場合は距離も計算
+    """
+    db = READatabase()
+    conn = db.get_connection()
+    cur = conn.cursor()
+
+    try:
+        result = {
+            'elementary': None,
+            'junior_high': None,
+            'latitude': lat,
+            'longitude': lng
+        }
+
+        # 小学校区を検索
+        cur.execute("""
+            SELECT
+                sd.school_type,
+                sd.school_name,
+                sd.address,
+                sd.admin_type
+            FROM m_school_districts sd
+            WHERE sd.school_type = '小学校'
+            AND ST_Contains(
+                sd.area,
+                ST_SetSRID(ST_MakePoint(%s, %s), 4326)
+            )
+            LIMIT 1
+        """, (lng, lat))
+
+        row = cur.fetchone()
+        if row:
+            school_type, school_name, address, admin_type = row
+            distance_m = None
+            walk_min = None
+
+            # 最寄りの小学校を検索して距離を計算
+            cur.execute("""
+                SELECT
+                    ST_Distance(
+                        location::geography,
+                        ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography
+                    ) as distance_m
+                FROM m_schools
+                WHERE school_type = '16001'
+                AND ST_DWithin(
+                    location::geography,
+                    ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
+                    5000
+                )
+                ORDER BY distance_m
+                LIMIT 1
+            """, (lng, lat, lng, lat))
+            dist_row = cur.fetchone()
+            if dist_row:
+                distance_m = int(dist_row[0])
+                walk_min = max(1, round(distance_m / 80))
+
+            result['elementary'] = SchoolDistrictResponse(
+                school_type="小学校",
+                school_name=school_name,
+                address=address,
+                admin_type=admin_type,
+                distance_meters=distance_m,
+                walk_minutes=walk_min
+            )
+
+        # 中学校区を検索
+        cur.execute("""
+            SELECT
+                sd.school_type,
+                sd.school_name,
+                sd.address,
+                sd.admin_type
+            FROM m_school_districts sd
+            WHERE sd.school_type = '中学校'
+            AND ST_Contains(
+                sd.area,
+                ST_SetSRID(ST_MakePoint(%s, %s), 4326)
+            )
+            LIMIT 1
+        """, (lng, lat))
+
+        row = cur.fetchone()
+        if row:
+            school_type, school_name, address, admin_type = row
+            distance_m = None
+            walk_min = None
+
+            # 最寄りの中学校を検索して距離を計算
+            cur.execute("""
+                SELECT
+                    ST_Distance(
+                        location::geography,
+                        ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography
+                    ) as distance_m
+                FROM m_schools
+                WHERE school_type = '16002'
+                AND ST_DWithin(
+                    location::geography,
+                    ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
+                    5000
+                )
+                ORDER BY distance_m
+                LIMIT 1
+            """, (lng, lat, lng, lat))
+            dist_row = cur.fetchone()
+            if dist_row:
+                distance_m = int(dist_row[0])
+                walk_min = max(1, round(distance_m / 80))
+
+            result['junior_high'] = SchoolDistrictResponse(
+                school_type="中学校",
+                school_name=school_name,
+                address=address,
+                admin_type=admin_type,
+                distance_meters=distance_m,
+                walk_minutes=walk_min
+            )
+
+        return SchoolDistrictsResponse(**result)
+
+    finally:
+        cur.close()
+        conn.close()
+
+
+# =============================================================================
 # 物件の最寄駅を自動設定
 # =============================================================================
 
@@ -278,6 +434,145 @@ async def set_property_nearest_stations(
             'stations_set': len(transportation),
             'transportation': transportation
         }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        conn.close()
+
+
+# =============================================================================
+# 物件の学区を自動設定
+# =============================================================================
+
+@router.post("/properties/{property_id}/set-school-districts")
+async def set_property_school_districts(property_id: int):
+    """
+    物件の緯度経度から学区を自動判定し、保存
+    """
+    db = READatabase()
+    conn = db.get_connection()
+    cur = conn.cursor()
+
+    try:
+        # 物件の緯度経度を取得
+        cur.execute("""
+            SELECT latitude, longitude FROM properties WHERE id = %s
+        """, (property_id,))
+        row = cur.fetchone()
+
+        if not row:
+            raise HTTPException(status_code=404, detail="物件が見つかりません")
+
+        lat, lng = row
+        if not lat or not lng:
+            raise HTTPException(status_code=400, detail="物件に緯度経度が設定されていません")
+
+        result = {
+            'property_id': property_id,
+            'elementary_school': None,
+            'elementary_school_minutes': None,
+            'junior_high_school': None,
+            'junior_high_school_minutes': None
+        }
+
+        # 小学校区を検索
+        cur.execute("""
+            SELECT sd.school_name
+            FROM m_school_districts sd
+            WHERE sd.school_type = '小学校'
+            AND ST_Contains(
+                sd.area,
+                ST_SetSRID(ST_MakePoint(%s, %s), 4326)
+            )
+            LIMIT 1
+        """, (float(lng), float(lat)))
+
+        row = cur.fetchone()
+        if row:
+            result['elementary_school'] = row[0]
+            # 最寄りの小学校を検索して距離を計算
+            cur.execute("""
+                SELECT
+                    ST_Distance(
+                        location::geography,
+                        ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography
+                    ) as distance_m
+                FROM m_schools
+                WHERE school_type = '16001'
+                AND ST_DWithin(
+                    location::geography,
+                    ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
+                    5000
+                )
+                ORDER BY distance_m
+                LIMIT 1
+            """, (float(lng), float(lat), float(lng), float(lat)))
+            dist_row = cur.fetchone()
+            if dist_row:
+                # 徒歩分数 = 距離(m) / 80m/分
+                result['elementary_school_minutes'] = max(1, round(int(dist_row[0]) / 80))
+
+        # 中学校区を検索
+        cur.execute("""
+            SELECT sd.school_name
+            FROM m_school_districts sd
+            WHERE sd.school_type = '中学校'
+            AND ST_Contains(
+                sd.area,
+                ST_SetSRID(ST_MakePoint(%s, %s), 4326)
+            )
+            LIMIT 1
+        """, (float(lng), float(lat)))
+
+        row = cur.fetchone()
+        if row:
+            result['junior_high_school'] = row[0]
+            # 最寄りの中学校を検索して距離を計算
+            cur.execute("""
+                SELECT
+                    ST_Distance(
+                        location::geography,
+                        ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography
+                    ) as distance_m
+                FROM m_schools
+                WHERE school_type = '16002'
+                AND ST_DWithin(
+                    location::geography,
+                    ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
+                    5000
+                )
+                ORDER BY distance_m
+                LIMIT 1
+            """, (float(lng), float(lat), float(lng), float(lat)))
+            dist_row = cur.fetchone()
+            if dist_row:
+                # 徒歩分数 = 距離(m) / 80m/分
+                result['junior_high_school_minutes'] = max(1, round(int(dist_row[0]) / 80))
+
+        # 物件に保存
+        cur.execute("""
+            UPDATE properties SET
+                elementary_school = %s,
+                elementary_school_minutes = %s,
+                junior_high_school = %s,
+                junior_high_school_minutes = %s
+            WHERE id = %s
+        """, (
+            result['elementary_school'],
+            result['elementary_school_minutes'],
+            result['junior_high_school'],
+            result['junior_high_school_minutes'],
+            property_id
+        ))
+
+        conn.commit()
+
+        return result
 
     except HTTPException:
         raise
