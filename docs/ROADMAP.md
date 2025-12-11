@@ -156,6 +156,22 @@
 - 医療施設 / 介護施設
 - 農地 / 山林
 
+### 元請会社マスターテーブル化（将来実装）
+**目的**: 元請会社情報を正規化し、再利用可能にする
+
+**背景**:
+- 他社物件を扱う際、元請会社情報が必要
+- 同じ会社を何度も入力するのは非効率
+- 会社情報の一元管理で更新漏れ防止
+
+**実装予定**:
+- [ ] `m_contractor_companies` マスターテーブル作成
+  - company_name, contact_person, phone, email, address, license_number
+- [ ] propertiesテーブルに `contractor_company_id` カラム追加
+- [ ] 会社選択UI（オートコンプリート）
+- [ ] 新規会社のその場登録機能
+- [ ] 既存データの移行
+
 ### API開発
 - [x] Properties CRUD基本実装
 - [ ] 検索・フィルタリング強化
