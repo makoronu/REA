@@ -134,9 +134,50 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
       tables.find(table => table.table_name === tableName)
     ).filter(table => table !== undefined);
 
-    const tabGroups = orderedTables.map(table => {
+    // 所在地・周辺情報グループ名
+    const locationGroups = ['所在地', '学区', '交通', '周辺施設'];
+
+    // propertiesから所在地・周辺情報を分離してタブを構築
+    const tabGroups: Array<{
+      tableName: string;
+      tableLabel: string;
+      tableIcon: string;
+      groups: Record<string, ColumnWithLabel[]>;
+    }> = [];
+
+    // 1. 所在地・周辺情報タブを最初に追加
+    const propertiesColumns = allColumns?.['properties'] || [];
+    const locationColumns = propertiesColumns.filter(col =>
+      locationGroups.includes(col.group_name || '')
+    );
+    if (locationColumns.length > 0) {
+      const locationGrouped = locationColumns.reduce((acc, column) => {
+        const groupName = column.group_name || '所在地';
+        if (!acc[groupName]) {
+          acc[groupName] = [];
+        }
+        acc[groupName].push(column);
+        return acc;
+      }, {} as Record<string, ColumnWithLabel[]>);
+
+      tabGroups.push({
+        tableName: 'properties_location',
+        tableLabel: '所在地・周辺情報',
+        tableIcon: '📍',
+        groups: locationGrouped
+      });
+    }
+
+    // 2. 残りのタブを追加（propertiesは所在地・周辺情報を除外）
+    orderedTables.forEach(table => {
       const tableColumns = allColumns?.[table.table_name] || [];
-      const grouped = tableColumns.reduce((acc, column) => {
+
+      // propertiesの場合は所在地・周辺情報グループを除外
+      const filteredColumns = table.table_name === 'properties'
+        ? tableColumns.filter(col => !locationGroups.includes(col.group_name || ''))
+        : tableColumns;
+
+      const grouped = filteredColumns.reduce((acc, column) => {
         const groupName = column.group_name || '基本情報';
         if (!acc[groupName]) {
           acc[groupName] = [];
@@ -145,25 +186,28 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
         return acc;
       }, {} as Record<string, ColumnWithLabel[]>);
 
-      const tableLabels: Record<string, { label: string; icon: string }> = {
-        'properties': { label: '基本・取引情報', icon: '🏠' },
-        'land_info': { label: '土地情報', icon: '🗺️' },
-        'building_info': { label: '建物情報', icon: '🏗️' },
-        'amenities': { label: '設備・周辺環境', icon: '🔧' },
-        'property_images': { label: '画像情報', icon: '📸' },
-      };
+      // 空のグループがある場合はスキップしない（フィールドがある場合のみ追加）
+      if (Object.keys(grouped).length > 0) {
+        const tableLabels: Record<string, { label: string; icon: string }> = {
+          'properties': { label: '基本・取引情報', icon: '🏠' },
+          'land_info': { label: '土地情報', icon: '🗺️' },
+          'building_info': { label: '建物情報', icon: '🏗️' },
+          'amenities': { label: '設備・周辺環境', icon: '🔧' },
+          'property_images': { label: '画像情報', icon: '📸' },
+        };
 
-      const tableInfo = tableLabels[table.table_name] || {
-        label: table.table_comment || table.table_name,
-        icon: '📄'
-      };
+        const tableInfo = tableLabels[table.table_name] || {
+          label: table.table_comment || table.table_name,
+          icon: '📄'
+        };
 
-      return {
-        tableName: table.table_name,
-        tableLabel: tableInfo.label,
-        tableIcon: tableInfo.icon,
-        groups: grouped
-      };
+        tabGroups.push({
+          tableName: table.table_name,
+          tableLabel: tableInfo.label,
+          tableIcon: tableInfo.icon,
+          groups: grouped
+        });
+      }
     });
 
     return (

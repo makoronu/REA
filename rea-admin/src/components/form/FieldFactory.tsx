@@ -12,6 +12,8 @@ import { ImageUploader } from './ImageUploader';
 import { geoService } from '../../services/geoService';
 import { LocationField } from './LocationField';
 import { TransportationField } from './TransportationField';
+import { BusStopsField } from './BusStopsField';
+import { NearbyFacilitiesField } from './NearbyFacilitiesField';
 
 interface FieldFactoryProps {
   column: ColumnWithLabel;
@@ -440,6 +442,14 @@ export const FieldFactory: React.FC<FieldFactoryProps> = ({ column, disabled = f
       case 'transportation':
         return <TransportationField disabled={disabled || isReadOnly} />;
 
+      // バス停フィールド
+      case 'bus_stops':
+        return <BusStopsField disabled={disabled || isReadOnly} />;
+
+      // 近隣施設フィールド
+      case 'nearby_facilities':
+        return <NearbyFacilitiesField disabled={disabled || isReadOnly} />;
+
       // JSON専用フィールド
       case 'json_road_info':
         return (
@@ -614,7 +624,7 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
   // グループアイコン
   const getGroupIcon = (groupName: string) => {
     const iconMap: Record<string, string> = {
-      '所在地': '📍', '交通': '🚃',
+      '所在地': '📍', '交通': '🚃', '学区': '🏫', '周辺施設': '🏪',
       '基本情報': '🏠', '基本・取引情報': '🏠', '価格情報': '💰',
       '契約条件': '📋', '元請会社': '🏢', '土地情報': '🗺️',
       '建物情報': '🏗️', '設備・周辺環境': '🔧', '画像情報': '📸',
