@@ -22,6 +22,7 @@ OVERPASS_URL = "https://overpass-api.de/api/interpreter"
 
 # 施設カテゴリ定義
 FACILITY_TYPES = {
+    # 商業施設
     'supermarket': {
         'name': 'スーパー',
         'query': '[shop=supermarket]',
@@ -41,7 +42,60 @@ FACILITY_TYPES = {
         'name': 'ドラッグストア',
         'query': '[shop=chemist]',
         'category_code': 'drugstore'
-    }
+    },
+    # 教育施設
+    'university': {
+        'name': '大学',
+        'query': '[amenity=university]',
+        'category_code': 'university'
+    },
+    'college': {
+        'name': '専門学校・短大',
+        'query': '[amenity=college]',
+        'category_code': 'college'
+    },
+    'high_school': {
+        'name': '高校',
+        'query': '["isced:level"="3"]',
+        'category_code': 'high_school'
+    },
+    'kindergarten': {
+        'name': '幼稚園',
+        'query': '[amenity=kindergarten]',
+        'category_code': 'kindergarten'
+    },
+    # 金融・生活インフラ
+    'bank': {
+        'name': '銀行',
+        'query': '[amenity=bank]',
+        'category_code': 'bank'
+    },
+    'atm': {
+        'name': 'ATM',
+        'query': '[amenity=atm]',
+        'category_code': 'atm'
+    },
+    'gas_station': {
+        'name': 'ガソリンスタンド',
+        'query': '[amenity=fuel]',
+        'category_code': 'gas_station'
+    },
+    # 公共施設
+    'city_hall': {
+        'name': '役所',
+        'query': '[amenity=townhall]',
+        'category_code': 'city_hall'
+    },
+    'police': {
+        'name': '警察・交番',
+        'query': '[amenity=police]',
+        'category_code': 'police'
+    },
+    'fire_station': {
+        'name': '消防署',
+        'query': '[amenity=fire_station]',
+        'category_code': 'fire_station'
+    },
 }
 
 
@@ -232,8 +286,9 @@ def import_facility_type(facility_type: str):
 def main():
     import argparse
     parser = argparse.ArgumentParser(description='OSM施設データインポート')
+    all_types = list(FACILITY_TYPES.keys()) + ['all']
     parser.add_argument('--type',
-                       choices=['supermarket', 'convenience', 'doityourself', 'drugstore', 'all'],
+                       choices=all_types,
                        default='all',
                        help='インポートする施設タイプ')
     args = parser.parse_args()

@@ -879,14 +879,30 @@ const FacilityAutoFetchButton: React.FC = () => {
 
   // カテゴリ表示順と日本語ラベル、アイコン
   const categoryConfig: Record<string, { label: string; icon: string; color: string }> = {
+    // 商業施設
     supermarket: { label: 'スーパー', icon: '🛒', color: '#10B981' },
     convenience: { label: 'コンビニ', icon: '🏪', color: '#8B5CF6' },
     drugstore: { label: 'ドラッグストア', icon: '💊', color: '#EC4899' },
     home_center: { label: 'ホームセンター', icon: '🔧', color: '#F59E0B' },
+    // 教育施設
+    university: { label: '大学', icon: '🎓', color: '#6366F1' },
+    college: { label: '専門学校・短大', icon: '📚', color: '#8B5CF6' },
+    high_school: { label: '高校', icon: '🏫', color: '#A855F7' },
+    kindergarten: { label: '幼稚園', icon: '👶', color: '#F472B6' },
+    // 金融・生活インフラ
+    bank: { label: '銀行', icon: '🏦', color: '#0EA5E9' },
+    atm: { label: 'ATM', icon: '💳', color: '#06B6D4' },
+    gas_station: { label: 'ガソリンスタンド', icon: '⛽', color: '#EF4444' },
+    // 医療施設
     hospital: { label: '病院', icon: '🏥', color: '#EF4444' },
     clinic: { label: '診療所', icon: '🩺', color: '#F97316' },
+    // 公共施設
+    city_hall: { label: '役所', icon: '🏛️', color: '#64748B' },
+    police: { label: '警察・交番', icon: '👮', color: '#3B82F6' },
+    fire_station: { label: '消防署', icon: '🚒', color: '#DC2626' },
     park: { label: '公園', icon: '🌳', color: '#22C55E' },
     post_office: { label: '郵便局', icon: '📮', color: '#3B82F6' },
+    library: { label: '図書館', icon: '📚', color: '#8B5CF6' },
   };
 
   const handleFetch = async () => {
