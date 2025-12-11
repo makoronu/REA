@@ -285,19 +285,24 @@ const FieldVisibilityPage: React.FC = () => {
           backgroundColor: '#fff',
           borderRadius: '12px',
           boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-          overflow: 'hidden',
         }}>
-          {/* テーブルヘッダー */}
+          {/* テーブルヘッダー（sticky） */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: '200px 1fr',
             backgroundColor: '#F3F4F6',
             borderBottom: '1px solid #E5E7EB',
             position: 'sticky',
-            top: 0,
-            zIndex: 10,
+            top: '57px', // ヘッダーの高さ分下げる
+            zIndex: 20,
+            borderRadius: '12px 12px 0 0',
           }}>
-            <div style={{ padding: '12px 16px', fontWeight: 600, color: '#374151' }}>
+            <div style={{
+              padding: '12px 16px',
+              fontWeight: 600,
+              color: '#374151',
+              backgroundColor: '#F3F4F6',
+            }}>
               フィールド
             </div>
             <div style={{ display: 'flex', overflowX: 'auto' }}>
@@ -314,7 +319,7 @@ const FieldVisibilityPage: React.FC = () => {
                   }}>
                     {groupName}
                   </div>
-                  <div style={{ display: 'flex' }}>
+                  <div style={{ display: 'flex', backgroundColor: '#F3F4F6' }}>
                     {types.map(pt => (
                       <div
                         key={pt.id}
@@ -326,6 +331,7 @@ const FieldVisibilityPage: React.FC = () => {
                           minWidth: '70px',
                           borderRight: '1px solid #E5E7EB',
                           whiteSpace: 'nowrap',
+                          backgroundColor: '#F3F4F6',
                         }}
                         title={pt.label}
                       >
