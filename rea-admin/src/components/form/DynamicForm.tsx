@@ -37,6 +37,31 @@ interface StationCandidate {
   walk_minutes: number;
 }
 
+// 施設候補の型
+interface FacilityCandidate {
+  id: number;
+  name: string;
+  category_code: string;
+  category_name: string;
+  address: string | null;
+  distance_meters: number;
+  walk_minutes: number;
+}
+
+// カテゴリごとの施設データ
+interface FacilitiesByCategory {
+  [category: string]: {
+    category_name: string;
+    facilities: Array<{
+      id: number;
+      name: string;
+      address: string | null;
+      distance_meters: number;
+      walk_minutes: number;
+    }>;
+  };
+}
+
 // 学区自動取得・選択コンポーネント
 const SchoolDistrictAutoFetchButton: React.FC = () => {
   const { getValues, setValue } = useFormContext();
@@ -844,6 +869,324 @@ const BusStopAutoFetchButton: React.FC = () => {
   );
 };
 
+// 周辺施設自動取得コンポーネント
+const FacilityAutoFetchButton: React.FC = () => {
+  const { getValues, setValue } = useFormContext();
+  const [isLoading, setIsLoading] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [facilitiesByCategory, setFacilitiesByCategory] = useState<FacilitiesByCategory | null>(null);
+  const [showResults, setShowResults] = useState(false);
+
+  // カテゴリ表示順と日本語ラベル、アイコン
+  const categoryConfig: Record<string, { label: string; icon: string; color: string }> = {
+    hospital: { label: '病院', icon: '🏥', color: '#EF4444' },
+    clinic: { label: '診療所', icon: '🩺', color: '#F97316' },
+    park: { label: '公園', icon: '🌳', color: '#22C55E' },
+    post_office: { label: '郵便局', icon: '📮', color: '#3B82F6' },
+  };
+
+  const handleFetch = async () => {
+    const lat = getValues('latitude');
+    const lng = getValues('longitude');
+
+    if (!lat || !lng) {
+      setMessage({ type: 'error', text: '緯度・経度を先に入力してください' });
+      setTimeout(() => setMessage(null), 3000);
+      return;
+    }
+
+    setIsLoading(true);
+    setMessage(null);
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/v1/geo/nearest-facilities-by-category?lat=${lat}&lng=${lng}&limit_per_category=5`
+      );
+
+      if (!response.ok) {
+        throw new Error('施設情報の取得に失敗しました');
+      }
+
+      const data = await response.json();
+      setFacilitiesByCategory(data.categories || {});
+      setShowResults(true);
+
+      setMessage({ type: 'success', text: '周辺施設を取得しました' });
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || '施設情報の取得に失敗しました' });
+      setTimeout(() => setMessage(null), 3000);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const selectFacility = (categoryCode: string, facility: { id: number; name: string; address: string | null; distance_meters: number; walk_minutes: number }) => {
+    // nearby_facilitiesはJSONB配列なので、現在の値を取得して追加
+    const currentFacilities = getValues('nearby_facilities') || [];
+
+    // 同じ施設がすでにあるかチェック（idで判定）
+    const exists = currentFacilities.some((f: any) => f.id === facility.id);
+    if (exists) {
+      setMessage({ type: 'error', text: 'この施設は既に追加されています' });
+      setTimeout(() => setMessage(null), 3000);
+      return;
+    }
+
+    const config = categoryConfig[categoryCode];
+    const newFacility = {
+      id: facility.id,
+      name: facility.name,
+      category: categoryCode,
+      category_name: config?.label || categoryCode,
+      address: facility.address,
+      walk_minutes: facility.walk_minutes,
+    };
+
+    setValue('nearby_facilities', [...currentFacilities, newFacility], { shouldDirty: true });
+    setMessage({ type: 'success', text: `${facility.name} を追加しました` });
+    setTimeout(() => setMessage(null), 2000);
+  };
+
+  const removeFacility = (index: number) => {
+    const currentFacilities = getValues('nearby_facilities') || [];
+    const updated = [...currentFacilities];
+    updated.splice(index, 1);
+    setValue('nearby_facilities', updated, { shouldDirty: true });
+  };
+
+  const currentFacilities = getValues('nearby_facilities') || [];
+
+  return (
+    <div style={{ marginBottom: '16px' }}>
+      <button
+        type="button"
+        onClick={handleFetch}
+        disabled={isLoading}
+        style={{
+          backgroundColor: isLoading ? '#9CA3AF' : '#10B981',
+          color: '#fff',
+          border: 'none',
+          padding: '10px 20px',
+          borderRadius: '8px',
+          cursor: isLoading ? 'not-allowed' : 'pointer',
+          fontWeight: 500,
+          fontSize: '14px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+        }}
+      >
+        {isLoading ? (
+          <>
+            <span style={{
+              display: 'inline-block',
+              width: '16px',
+              height: '16px',
+              border: '2px solid #fff',
+              borderTopColor: 'transparent',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+            }} />
+            取得中...
+          </>
+        ) : (
+          <>🏪 座標から周辺施設を取得</>
+        )}
+      </button>
+
+      {message && (
+        <div style={{
+          marginTop: '12px',
+          padding: '10px 14px',
+          borderRadius: '8px',
+          fontSize: '13px',
+          backgroundColor: message.type === 'success' ? '#D1FAE5' : '#FEE2E2',
+          color: message.type === 'success' ? '#065F46' : '#991B1B',
+        }}>
+          {message.text}
+        </div>
+      )}
+
+      {/* 現在登録されている施設 */}
+      {currentFacilities.length > 0 && (
+        <div style={{
+          marginTop: '12px',
+          padding: '12px',
+          backgroundColor: '#ECFDF5',
+          borderRadius: '8px',
+          border: '1px solid #A7F3D0',
+        }}>
+          <div style={{ fontSize: '13px', fontWeight: 600, color: '#047857', marginBottom: '8px' }}>
+            登録済み施設
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {currentFacilities.map((f: any, index: number) => {
+              const config = categoryConfig[f.category] || { icon: '📍', color: '#6B7280' };
+              return (
+                <div
+                  key={index}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '6px 12px',
+                    backgroundColor: '#fff',
+                    borderRadius: '6px',
+                    border: '1px solid #D1FAE5',
+                    fontSize: '13px',
+                  }}
+                >
+                  <span>{config.icon}</span>
+                  <span>{f.name}</span>
+                  <span style={{ color: '#6B7280' }}>徒歩{f.walk_minutes}分</span>
+                  <button
+                    type="button"
+                    onClick={() => removeFacility(index)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#EF4444',
+                      cursor: 'pointer',
+                      padding: '0 4px',
+                      fontSize: '16px',
+                      lineHeight: 1,
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {showResults && facilitiesByCategory && (
+        <div style={{
+          marginTop: '16px',
+          padding: '16px',
+          backgroundColor: '#fff',
+          border: '1px solid #E5E7EB',
+          borderRadius: '12px',
+        }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '16px',
+          }}>
+            <p style={{ fontSize: '13px', color: '#6B7280' }}>
+              クリックして追加（カテゴリ別）
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowResults(false)}
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: '20px',
+                cursor: 'pointer',
+                color: '#9CA3AF',
+              }}
+            >
+              ×
+            </button>
+          </div>
+
+          {/* カテゴリ別に表示 */}
+          {Object.entries(categoryConfig).map(([catCode, config]) => {
+            const catData = facilitiesByCategory[catCode];
+            if (!catData || catData.facilities.length === 0) return null;
+
+            return (
+              <div key={catCode} style={{ marginBottom: '16px' }}>
+                <h4 style={{
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  color: config.color,
+                  marginBottom: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}>
+                  {config.icon} {config.label}
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {catData.facilities.map((facility) => {
+                    const isAdded = currentFacilities.some((f: any) => f.id === facility.id);
+                    return (
+                      <button
+                        key={facility.id}
+                        type="button"
+                        onClick={() => selectFacility(catCode, facility)}
+                        disabled={isAdded}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '10px 12px',
+                          backgroundColor: isAdded ? '#E5E7EB' : '#F9FAFB',
+                          border: isAdded ? '1px solid #D1D5DB' : '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                          cursor: isAdded ? 'not-allowed' : 'pointer',
+                          textAlign: 'left',
+                          transition: 'all 0.15s ease',
+                          opacity: isAdded ? 0.6 : 1,
+                        }}
+                      >
+                        <div>
+                          <div style={{
+                            fontSize: '14px',
+                            fontWeight: 500,
+                            color: '#1F2937',
+                          }}>
+                            {facility.name}
+                            {isAdded && (
+                              <span style={{
+                                marginLeft: '8px',
+                                fontSize: '11px',
+                                backgroundColor: '#9CA3AF',
+                                color: '#fff',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                              }}>
+                                追加済
+                              </span>
+                            )}
+                          </div>
+                          {facility.address && (
+                            <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
+                              {facility.address}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{
+                          fontSize: '13px',
+                          color: '#374151',
+                          whiteSpace: 'nowrap',
+                          marginLeft: '12px',
+                        }}>
+                          徒歩{facility.walk_minutes}分（{facility.distance_meters.toLocaleString()}m）
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  );
+};
+
 interface DynamicFormProps {
   tableName?: string;
   tableNames?: string[];
@@ -1183,6 +1526,14 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                               バス
                             </h3>
                             <BusStopAutoFetchButton />
+                          </div>
+                        ) : groupName === '周辺施設' ? (
+                          /* 周辺施設グループの場合、施設自動取得ボタンのみ表示 */
+                          <div>
+                            <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#374151', marginBottom: '12px' }}>
+                              周辺施設
+                            </h3>
+                            <FacilityAutoFetchButton />
                           </div>
                         ) : (
                           <FieldGroup

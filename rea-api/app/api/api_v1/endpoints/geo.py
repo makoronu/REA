@@ -78,6 +78,31 @@ class NearestBusStopsResponse(BaseModel):
     longitude: float
 
 
+class FacilityCandidate(BaseModel):
+    id: int
+    name: str
+    category_code: str  # "hospital", "clinic", "park", "post_office"
+    category_name: str  # 日本語カテゴリ名
+    address: Optional[str]
+    distance_meters: int
+    walk_minutes: int
+
+
+class NearestFacilitiesResponse(BaseModel):
+    facilities: list[FacilityCandidate]
+    latitude: float
+    longitude: float
+
+
+# カテゴリコード→日本語名マッピング
+FACILITY_CATEGORY_NAMES = {
+    'hospital': '病院',
+    'clinic': '診療所',
+    'park': '公園',
+    'post_office': '郵便局',
+}
+
+
 # =============================================================================
 # 最寄駅検索
 # =============================================================================
@@ -630,6 +655,145 @@ async def set_property_school_districts(property_id: int):
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        conn.close()
+
+
+# =============================================================================
+# 最寄り施設検索
+# =============================================================================
+
+@router.get("/nearest-facilities", response_model=NearestFacilitiesResponse)
+async def get_nearest_facilities(
+    lat: float = Query(..., description="緯度", ge=-90, le=90),
+    lng: float = Query(..., description="経度", ge=-180, le=180),
+    category: Optional[str] = Query(None, description="カテゴリ（hospital, clinic, park, post_office）"),
+    limit: int = Query(10, description="最大取得件数", ge=1, le=50)
+):
+    """
+    指定座標から最寄りの施設を検索
+
+    - category指定なし: 全カテゴリから検索
+    - category指定あり: 指定カテゴリのみ検索
+    - 距離順に返す
+    """
+    db = READatabase()
+    conn = db.get_connection()
+    cur = conn.cursor()
+
+    try:
+        # カテゴリフィルタ
+        category_filter = ""
+        params = [lng, lat]
+        if category:
+            category_filter = "AND category_code = %s"
+            params.append(category)
+        params.append(limit)
+
+        cur.execute("""
+            SELECT
+                id,
+                name,
+                category_code,
+                address,
+                ST_Distance(
+                    location::geography,
+                    ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography
+                ) as distance_m
+            FROM m_facilities
+            WHERE location IS NOT NULL
+            {}
+            ORDER BY distance_m
+            LIMIT %s
+        """.format(category_filter), params)
+
+        facilities = []
+        for row in cur.fetchall():
+            fac_id, name, cat_code, address, distance_m = row
+            distance_m = int(distance_m)
+            walk_min = max(1, round(distance_m / 80))
+            facilities.append(FacilityCandidate(
+                id=fac_id,
+                name=name,
+                category_code=cat_code,
+                category_name=FACILITY_CATEGORY_NAMES.get(cat_code, cat_code),
+                address=address,
+                distance_meters=distance_m,
+                walk_minutes=walk_min
+            ))
+
+        return NearestFacilitiesResponse(
+            facilities=facilities,
+            latitude=lat,
+            longitude=lng
+        )
+
+    finally:
+        cur.close()
+        conn.close()
+
+
+@router.get("/nearest-facilities-by-category")
+async def get_nearest_facilities_by_category(
+    lat: float = Query(..., description="緯度", ge=-90, le=90),
+    lng: float = Query(..., description="経度", ge=-180, le=180),
+    limit_per_category: int = Query(3, description="カテゴリごとの取得件数", ge=1, le=10)
+):
+    """
+    指定座標から各カテゴリごとに最寄りの施設を検索
+
+    - 病院、診療所、公園、郵便局ごとに指定件数ずつ返す
+    - 物件編集画面での「周辺施設」表示用
+    """
+    db = READatabase()
+    conn = db.get_connection()
+    cur = conn.cursor()
+
+    try:
+        result = {}
+
+        for cat_code, cat_name in FACILITY_CATEGORY_NAMES.items():
+            cur.execute("""
+                SELECT
+                    id,
+                    name,
+                    address,
+                    ST_Distance(
+                        location::geography,
+                        ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography
+                    ) as distance_m
+                FROM m_facilities
+                WHERE location IS NOT NULL
+                AND category_code = %s
+                ORDER BY distance_m
+                LIMIT %s
+            """, (lng, lat, cat_code, limit_per_category))
+
+            facilities = []
+            for row in cur.fetchall():
+                fac_id, name, address, distance_m = row
+                distance_m = int(distance_m)
+                walk_min = max(1, round(distance_m / 80))
+                facilities.append({
+                    'id': fac_id,
+                    'name': name,
+                    'address': address,
+                    'distance_meters': distance_m,
+                    'walk_minutes': walk_min
+                })
+
+            result[cat_code] = {
+                'category_name': cat_name,
+                'facilities': facilities
+            }
+
+        return {
+            'latitude': lat,
+            'longitude': lng,
+            'categories': result
+        }
+
     finally:
         cur.close()
         conn.close()
