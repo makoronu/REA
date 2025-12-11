@@ -23,7 +23,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
   defaultValues,
   isLoading: externalLoading = false,
   showDebug = false,
-  autoSave = true,
+  autoSave = false,
   autoSaveDelay = 2000,
 }) => {
   const [activeTab, setActiveTab] = useState(0);

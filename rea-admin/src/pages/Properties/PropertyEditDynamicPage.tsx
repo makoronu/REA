@@ -161,8 +161,28 @@ export const PropertyEditDynamicPage: React.FC = () => {
           onSubmit={handleSubmit}
           defaultValues={property || undefined}
           showDebug={false}
+          autoSave={!isNew}
         />
       </div>
+
+      {/* 新規登録時のみ保存ボタンを表示 */}
+      {isNew && (
+        <div className="bg-white shadow rounded-lg p-6 mt-6">
+          <button
+            onClick={() => {
+              // フォームデータを取得してonSubmitを呼ぶ
+              const form = document.querySelector('form');
+              if (form) {
+                form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+              }
+            }}
+            disabled={saveStatus === 'saving'}
+            className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          >
+            {saveStatus === 'saving' ? '登録中...' : '物件を登録'}
+          </button>
+        </div>
+      )}
 
       {/* 最寄駅情報 */}
       <div className="bg-white shadow rounded-lg p-6 mt-6">
