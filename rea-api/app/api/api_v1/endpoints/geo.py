@@ -246,7 +246,7 @@ async def get_school_districts(
             'longitude': lng
         }
 
-        # 小学校区を検索
+        # 小学校区を検索（ポリゴンから）
         cur.execute("""
             SELECT
                 sd.school_type,
@@ -298,8 +298,42 @@ async def get_school_districts(
                 distance_meters=distance_m,
                 walk_minutes=walk_min
             )
+        else:
+            # 学区ポリゴンがない場合は最寄りの小学校を検索
+            cur.execute("""
+                SELECT
+                    name,
+                    address,
+                    admin_type_name,
+                    ST_Distance(
+                        location::geography,
+                        ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography
+                    ) as distance_m
+                FROM m_schools
+                WHERE school_type = '16001'
+                AND ST_DWithin(
+                    location::geography,
+                    ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
+                    5000
+                )
+                ORDER BY distance_m
+                LIMIT 1
+            """, (lng, lat, lng, lat))
+            fallback_row = cur.fetchone()
+            if fallback_row:
+                name, address, admin_type, distance_m = fallback_row
+                distance_m = int(distance_m)
+                walk_min = max(1, round(distance_m / 80))
+                result['elementary'] = SchoolDistrictResponse(
+                    school_type="小学校",
+                    school_name=name,
+                    address=address,
+                    admin_type=admin_type,
+                    distance_meters=distance_m,
+                    walk_minutes=walk_min
+                )
 
-        # 中学校区を検索
+        # 中学校区を検索（ポリゴンから）
         cur.execute("""
             SELECT
                 sd.school_type,
@@ -351,6 +385,40 @@ async def get_school_districts(
                 distance_meters=distance_m,
                 walk_minutes=walk_min
             )
+        else:
+            # 学区ポリゴンがない場合は最寄りの中学校を検索
+            cur.execute("""
+                SELECT
+                    name,
+                    address,
+                    admin_type_name,
+                    ST_Distance(
+                        location::geography,
+                        ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography
+                    ) as distance_m
+                FROM m_schools
+                WHERE school_type = '16002'
+                AND ST_DWithin(
+                    location::geography,
+                    ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
+                    5000
+                )
+                ORDER BY distance_m
+                LIMIT 1
+            """, (lng, lat, lng, lat))
+            fallback_row = cur.fetchone()
+            if fallback_row:
+                name, address, admin_type, distance_m = fallback_row
+                distance_m = int(distance_m)
+                walk_min = max(1, round(distance_m / 80))
+                result['junior_high'] = SchoolDistrictResponse(
+                    school_type="中学校",
+                    school_name=name,
+                    address=address,
+                    admin_type=admin_type,
+                    distance_meters=distance_m,
+                    walk_minutes=walk_min
+                )
 
         return SchoolDistrictsResponse(**result)
 
