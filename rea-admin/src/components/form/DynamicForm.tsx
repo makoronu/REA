@@ -1196,88 +1196,129 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
       }
     });
 
+    // ステータス表示用
+    const getStatusDisplay = () => {
+      const status = formData.status;
+      const statusMap: Record<string, { label: string; color: string; bg: string }> = {
+        'draft': { label: '下書き', color: '#6B7280', bg: '#F3F4F6' },
+        'active': { label: '公開中', color: '#059669', bg: '#D1FAE5' },
+        'pending': { label: '審査中', color: '#D97706', bg: '#FEF3C7' },
+        'sold': { label: '成約済', color: '#DC2626', bg: '#FEE2E2' },
+        'inactive': { label: '非公開', color: '#6B7280', bg: '#E5E7EB' },
+      };
+      return statusMap[status] || { label: status || '下書き', color: '#6B7280', bg: '#F3F4F6' };
+    };
+
+    const statusDisplay = getStatusDisplay();
+
     return (
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 16px' }}>
         <FormProvider {...form}>
           <div style={{ width: '100%' }}>
 
-            {/* 進行状況バー */}
+            {/* 固定ヘッダー：タブ + ステータス */}
             <div style={{
-              marginBottom: '24px',
-              padding: '16px',
-              backgroundColor: 'rgba(59, 130, 246, 0.06)',
-              borderRadius: '12px',
+              position: 'sticky',
+              top: '57px', // Layoutのヘッダー高さ
+              zIndex: 50,
+              backgroundColor: 'var(--color-bg, #FAFAFA)',
+              paddingTop: '16px',
+              paddingBottom: '8px',
+              marginLeft: '-16px',
+              marginRight: '-16px',
+              paddingLeft: '16px',
+              paddingRight: '16px',
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <span style={{ fontSize: '13px', fontWeight: 500, color: '#1D4ED8' }}>
-                  {activeTab + 1} / {tabGroups.length}
-                </span>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  {tabGroups.map((_, index) => (
-                    <div
-                      key={index}
-                      style={{
-                        width: '8px',
-                        height: '8px',
-                        borderRadius: '50%',
-                        backgroundColor: index <= activeTab ? '#3B82F6' : 'rgba(59, 130, 246, 0.2)',
-                        transition: 'background-color 200ms',
-                      }}
-                    />
-                  ))}
+              {/* ステータスバー */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '12px',
+              }}>
+                {/* 左：進行状況 */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 500, color: '#6B7280' }}>
+                    {activeTab + 1} / {tabGroups.length}
+                  </span>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    {tabGroups.map((_, index) => (
+                      <div
+                        key={index}
+                        style={{
+                          width: '8px',
+                          height: '8px',
+                          borderRadius: '50%',
+                          backgroundColor: index <= activeTab ? '#3B82F6' : '#E5E7EB',
+                          transition: 'background-color 200ms',
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* 右：ステータス */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  backgroundColor: statusDisplay.bg,
+                  color: statusDisplay.color,
+                  fontSize: '13px',
+                  fontWeight: 600,
+                }}>
+                  <span style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: statusDisplay.color,
+                  }} />
+                  {statusDisplay.label}
                 </div>
               </div>
-              <div style={{ backgroundColor: 'rgba(59, 130, 246, 0.15)', borderRadius: '4px', height: '4px' }}>
-                <div
-                  style={{
-                    backgroundColor: '#3B82F6',
-                    height: '4px',
-                    borderRadius: '4px',
-                    transition: 'width 300ms ease-out',
-                    width: `${((activeTab + 1) / tabGroups.length) * 100}%`
-                  }}
-                />
-              </div>
-            </div>
 
-            {/* タブヘッダー */}
-            <div style={{ marginBottom: '24px', overflowX: 'auto' }}>
-              <div style={{ display: 'flex', gap: '8px', minWidth: 'max-content', paddingBottom: '8px' }}>
-                {tabGroups.map((tabGroup, index) => (
-                  <button
-                    key={tabGroup.tableName}
-                    type="button"
-                    onClick={() => setActiveTab(index)}
-                    style={{
-                      backgroundColor: activeTab === index ? '#3B82F6' : 'transparent',
-                      color: activeTab === index ? '#ffffff' : '#6B7280',
-                      border: 'none',
-                      padding: '12px 20px',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      transition: 'all 150ms',
-                      whiteSpace: 'nowrap',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (activeTab !== index) {
-                        e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.04)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (activeTab !== index) {
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                      }
-                    }}
-                  >
-                    <span>{tabGroup.tableIcon}</span>
-                    {tabGroup.tableLabel}
-                  </button>
-                ))}
+              {/* タブヘッダー */}
+              <div style={{ overflowX: 'auto' }}>
+                <div style={{ display: 'flex', gap: '6px', minWidth: 'max-content', paddingBottom: '4px' }}>
+                  {tabGroups.map((tabGroup, index) => (
+                    <button
+                      key={tabGroup.tableName}
+                      type="button"
+                      onClick={() => setActiveTab(index)}
+                      style={{
+                        backgroundColor: activeTab === index ? '#3B82F6' : '#fff',
+                        color: activeTab === index ? '#ffffff' : '#6B7280',
+                        border: activeTab === index ? 'none' : '1px solid #E5E7EB',
+                        padding: '10px 16px',
+                        borderRadius: '8px',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 150ms',
+                        whiteSpace: 'nowrap',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        boxShadow: activeTab === index ? '0 2px 4px rgba(59, 130, 246, 0.3)' : 'none',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (activeTab !== index) {
+                          e.currentTarget.style.backgroundColor = '#F3F4F6';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (activeTab !== index) {
+                          e.currentTarget.style.backgroundColor = '#fff';
+                        }
+                      }}
+                    >
+                      <span>{tabGroup.tableIcon}</span>
+                      {tabGroup.tableLabel}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -1286,6 +1327,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
               backgroundColor: '#ffffff',
               borderRadius: '12px',
               padding: '24px',
+              marginTop: '16px',
               minHeight: '400px',
               boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
             }}>
