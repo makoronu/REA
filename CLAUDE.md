@@ -110,6 +110,35 @@ cd rea-admin && npm run dev
 
 **ポート**: 5433（5432ではない）
 
+### 周辺施設データ（2025-12-11構築）
+
+| テーブル | 役割 |
+|---------|------|
+| m_facilities | 周辺施設（約65万件） |
+| m_facility_categories | 施設カテゴリ（20種表示） |
+| m_stations | 駅（約10,000件） |
+| m_data_sources | **データソース管理** |
+
+**データソース一覧**
+| カテゴリ | データソース | 更新スクリプト |
+|---------|-------------|---------------|
+| 学校（小中高大短大高専幼稚園認定こども園専門学校） | 国土数値情報 P29 | `scripts/data_import/import_schools.py` |
+| 職業訓練校 | 手動収集（北海道8校のみ） | `scripts/data_import/import_vocational_training.py` |
+| 駅 | HeartRails Express API | `scripts/data_import/import_stations.py` |
+| 商業施設（スーパー、コンビニ等） | OpenStreetMap | `scripts/data_import/import_osm_facilities.py` |
+| 医療機関（病院、診療所） | 国土数値情報 P04 | `scripts/data_import/import_medical.py` |
+| 公共施設（役所、郵便局等） | OpenStreetMap | `scripts/data_import/import_osm_facilities.py` |
+
+**データ更新方法**
+```bash
+cd ~/my_programing/REA
+PYTHONPATH=~/my_programing/REA python3 scripts/data_import/import_schools.py
+```
+
+**未対応データ**
+- 保育所: 公式CSVなし（ここdeサーチにAPIなし）
+- 職業訓練校（北海道以外）: 手動収集が必要（全国166校中8校のみ）
+
 ### テーブル構造確認コマンド
 
 ```bash

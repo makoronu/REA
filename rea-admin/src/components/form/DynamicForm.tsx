@@ -52,6 +52,7 @@ interface FacilityCandidate {
 interface FacilitiesByCategory {
   [category: string]: {
     category_name: string;
+    icon: string;
     facilities: Array<{
       id: number;
       name: string;
@@ -877,33 +878,8 @@ const FacilityAutoFetchButton: React.FC = () => {
   const [facilitiesByCategory, setFacilitiesByCategory] = useState<FacilitiesByCategory | null>(null);
   const [showResults, setShowResults] = useState(false);
 
-  // カテゴリ表示順と日本語ラベル、アイコン
-  const categoryConfig: Record<string, { label: string; icon: string; color: string }> = {
-    // 商業施設
-    supermarket: { label: 'スーパー', icon: '🛒', color: '#10B981' },
-    convenience: { label: 'コンビニ', icon: '🏪', color: '#8B5CF6' },
-    drugstore: { label: 'ドラッグストア', icon: '💊', color: '#EC4899' },
-    home_center: { label: 'ホームセンター', icon: '🔧', color: '#F59E0B' },
-    // 教育施設
-    university: { label: '大学', icon: '🎓', color: '#6366F1' },
-    college: { label: '専門学校・短大', icon: '📚', color: '#8B5CF6' },
-    high_school: { label: '高校', icon: '🏫', color: '#A855F7' },
-    kindergarten: { label: '幼稚園', icon: '👶', color: '#F472B6' },
-    // 金融・生活インフラ
-    bank: { label: '銀行', icon: '🏦', color: '#0EA5E9' },
-    atm: { label: 'ATM', icon: '💳', color: '#06B6D4' },
-    gas_station: { label: 'ガソリンスタンド', icon: '⛽', color: '#EF4444' },
-    // 医療施設
-    hospital: { label: '病院', icon: '🏥', color: '#EF4444' },
-    clinic: { label: '診療所', icon: '🩺', color: '#F97316' },
-    // 公共施設
-    city_hall: { label: '役所', icon: '🏛️', color: '#64748B' },
-    police: { label: '警察・交番', icon: '👮', color: '#3B82F6' },
-    fire_station: { label: '消防署', icon: '🚒', color: '#DC2626' },
-    park: { label: '公園', icon: '🌳', color: '#22C55E' },
-    post_office: { label: '郵便局', icon: '📮', color: '#3B82F6' },
-    library: { label: '図書館', icon: '📚', color: '#8B5CF6' },
-  };
+  // カテゴリ情報はAPIから取得（DBが唯一の真実）
+  // facilitiesByCategoryにcategory_name, iconが含まれる
 
   const handleFetch = async () => {
     const lat = getValues('latitude');
@@ -940,7 +916,7 @@ const FacilityAutoFetchButton: React.FC = () => {
     }
   };
 
-  const selectFacility = (categoryCode: string, facility: { id: number; name: string; address: string | null; distance_meters: number; walk_minutes: number }) => {
+  const selectFacility = (categoryCode: string, categoryName: string, facility: { id: number; name: string; address: string | null; distance_meters: number; walk_minutes: number }) => {
     // nearby_facilitiesはJSONB配列なので、現在の値を取得して追加
     const currentFacilities = getValues('nearby_facilities') || [];
 
@@ -952,12 +928,11 @@ const FacilityAutoFetchButton: React.FC = () => {
       return;
     }
 
-    const config = categoryConfig[categoryCode];
     const newFacility = {
       id: facility.id,
       name: facility.name,
       category: categoryCode,
-      category_name: config?.label || categoryCode,
+      category_name: categoryName,
       address: facility.address,
       walk_minutes: facility.walk_minutes,
     };
@@ -1041,7 +1016,7 @@ const FacilityAutoFetchButton: React.FC = () => {
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
             {currentFacilities.map((f: any, index: number) => {
-              const config = categoryConfig[f.category] || { icon: '📍', color: '#6B7280' };
+              // カテゴリ名はDBから取得したものを使う（f.category_name）
               return (
                 <div
                   key={index}
@@ -1056,7 +1031,7 @@ const FacilityAutoFetchButton: React.FC = () => {
                     fontSize: '13px',
                   }}
                 >
-                  <span>{config.icon}</span>
+                  <span style={{ color: '#6B7280', fontSize: '12px' }}>{f.category_name}</span>
                   <span>{f.name}</span>
                   <span style={{ color: '#6B7280' }}>徒歩{f.walk_minutes}分</span>
                   <button
@@ -1113,9 +1088,8 @@ const FacilityAutoFetchButton: React.FC = () => {
             </button>
           </div>
 
-          {/* カテゴリ別に表示 */}
-          {Object.entries(categoryConfig).map(([catCode, config]) => {
-            const catData = facilitiesByCategory[catCode];
+          {/* カテゴリ別に表示（APIから返ってきた順序で） */}
+          {Object.entries(facilitiesByCategory).map(([catCode, catData]) => {
             if (!catData || catData.facilities.length === 0) return null;
 
             return (
@@ -1123,13 +1097,13 @@ const FacilityAutoFetchButton: React.FC = () => {
                 <h4 style={{
                   fontSize: '14px',
                   fontWeight: 600,
-                  color: config.color,
+                  color: '#374151',
                   marginBottom: '8px',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
                 }}>
-                  {config.icon} {config.label}
+                  {catData.icon} {catData.category_name}
                 </h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   {catData.facilities.map((facility) => {
@@ -1138,7 +1112,7 @@ const FacilityAutoFetchButton: React.FC = () => {
                       <button
                         key={facility.id}
                         type="button"
-                        onClick={() => selectFacility(catCode, facility)}
+                        onClick={() => selectFacility(catCode, catData.category_name, facility)}
                         disabled={isAdded}
                         style={{
                           display: 'flex',

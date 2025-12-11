@@ -94,33 +94,23 @@ class NearestFacilitiesResponse(BaseModel):
     longitude: float
 
 
-# カテゴリコード→日本語名マッピング
-FACILITY_CATEGORY_NAMES = {
-    # 商業施設
-    'supermarket': 'スーパー',
-    'convenience': 'コンビニ',
-    'drugstore': 'ドラッグストア',
-    'home_center': 'ホームセンター',
-    # 教育施設
-    'university': '大学',
-    'college': '専門学校・短大',
-    'high_school': '高校',
-    'kindergarten': '幼稚園',
-    # 金融・生活インフラ
-    'bank': '銀行',
-    'atm': 'ATM',
-    'gas_station': 'ガソリンスタンド',
-    # 医療施設
-    'hospital': '病院',
-    'clinic': '診療所',
-    # 公共施設
-    'city_hall': '役所',
-    'police': '警察・交番',
-    'fire_station': '消防署',
-    'park': '公園',
-    'post_office': '郵便局',
-    'library': '図書館',
-}
+# カテゴリ情報はDBから動的取得（m_facility_categories テーブル）
+def get_facility_categories():
+    """DBからカテゴリ一覧を取得（display_order >= 0 のみ）"""
+    db = READatabase()
+    conn = db.get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT category_code, category_name, icon
+            FROM m_facility_categories
+            WHERE display_order >= 0
+            ORDER BY display_order, id
+        """)
+        return {row[0]: {'name': row[1], 'icon': row[2]} for row in cur.fetchall()}
+    finally:
+        cur.close()
+        conn.close()
 
 
 # =============================================================================
@@ -733,11 +723,12 @@ async def get_nearest_facilities(
             fac_id, name, cat_code, address, distance_m = row
             distance_m = int(distance_m)
             walk_min = max(1, round(distance_m / 80))
+            categories = get_facility_categories()
             facilities.append(FacilityCandidate(
                 id=fac_id,
                 name=name,
                 category_code=cat_code,
-                category_name=FACILITY_CATEGORY_NAMES.get(cat_code, cat_code),
+                category_name=categories.get(cat_code, {}).get('name', cat_code),
                 address=address,
                 distance_meters=distance_m,
                 walk_minutes=walk_min
@@ -771,9 +762,11 @@ async def get_nearest_facilities_by_category(
     cur = conn.cursor()
 
     try:
+        # DBからカテゴリ一覧を取得
+        categories = get_facility_categories()
         result = {}
 
-        for cat_code, cat_name in FACILITY_CATEGORY_NAMES.items():
+        for cat_code, cat_info in categories.items():
             cur.execute("""
                 SELECT
                     id,
@@ -803,10 +796,13 @@ async def get_nearest_facilities_by_category(
                     'walk_minutes': walk_min
                 })
 
-            result[cat_code] = {
-                'category_name': cat_name,
-                'facilities': facilities
-            }
+            # 施設がある場合のみ結果に含める
+            if facilities:
+                result[cat_code] = {
+                    'category_name': cat_info['name'],
+                    'icon': cat_info['icon'],
+                    'facilities': facilities
+                }
 
         return {
             'latitude': lat,
