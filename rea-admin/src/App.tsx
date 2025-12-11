@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './components/common/Layout';
 import PropertiesPage from './pages/Properties/PropertiesPage';
 import PropertyEditDynamicPage from './pages/Properties/PropertyEditDynamicPage';
+import FieldVisibilityPage from './pages/admin/FieldVisibilityPage';
 // import ToukiImportPage from './pages/Import/ToukiImportPage';
 import './styles/globals.css';
 
@@ -14,6 +15,7 @@ function App() {
           <Route path="/properties" element={<PropertiesPage />} />
           <Route path="/properties/:id/edit" element={<PropertyEditDynamicPage />} />
           <Route path="/properties/new" element={<PropertyEditDynamicPage />} />
+          <Route path="/admin/field-visibility" element={<FieldVisibilityPage />} />
           {/* <Route path="/import/touki" element={<ToukiImportPage />} /> */}
         </Routes>
       </Layout>
