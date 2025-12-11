@@ -1168,15 +1168,29 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                       <div key={`${tabGroup.tableName}-${groupName}`}>
                         {/* 学区グループの場合、自動取得ボタンを表示 */}
                         {groupName === '学区' && <SchoolDistrictAutoFetchButton />}
-                        {/* 電車・鉄道グループの場合、駅自動取得ボタンを表示 */}
-                        {groupName === '電車・鉄道' && <StationAutoFetchButton />}
-                        {/* バスグループの場合、バス停自動取得ボタンを表示 */}
-                        {groupName === 'バス' && <BusStopAutoFetchButton />}
-                        <FieldGroup
-                          groupName={groupName}
-                          columns={groupColumns}
-                          disabled={false}
-                        />
+                        {/* 電車・鉄道グループの場合、駅自動取得ボタンのみ表示（FieldGroup不要） */}
+                        {groupName === '電車・鉄道' ? (
+                          <div>
+                            <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#374151', marginBottom: '12px' }}>
+                              電車・鉄道
+                            </h3>
+                            <StationAutoFetchButton />
+                          </div>
+                        ) : groupName === 'バス' ? (
+                          /* バスグループの場合、バス停自動取得ボタンのみ表示（FieldGroup不要） */
+                          <div>
+                            <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#374151', marginBottom: '12px' }}>
+                              バス
+                            </h3>
+                            <BusStopAutoFetchButton />
+                          </div>
+                        ) : (
+                          <FieldGroup
+                            groupName={groupName}
+                            columns={groupColumns}
+                            disabled={false}
+                          />
+                        )}
                       </div>
                     ))}
                   </div>
