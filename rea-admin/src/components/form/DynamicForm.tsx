@@ -4,6 +4,7 @@ import { FieldGroup } from './FieldFactory';
 import { useMetadataForm } from '../../hooks/useMetadataForm';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { ColumnWithLabel } from '../../services/metadataService';
+import { SelectableListModal, SelectableItem, Category } from '../common/SelectableListModal';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8005';
 
@@ -37,31 +38,7 @@ interface StationCandidate {
   walk_minutes: number;
 }
 
-// 施設候補の型
-interface FacilityCandidate {
-  id: number;
-  name: string;
-  category_code: string;
-  category_name: string;
-  address: string | null;
-  distance_meters: number;
-  walk_minutes: number;
-}
-
-// カテゴリごとの施設データ
-interface FacilitiesByCategory {
-  [category: string]: {
-    category_name: string;
-    icon: string;
-    facilities: Array<{
-      id: number;
-      name: string;
-      address: string | null;
-      distance_meters: number;
-      walk_minutes: number;
-    }>;
-  };
-}
+// FacilityCandidate, FacilitiesByCategory は SelectableListModal を使うようになり不要
 
 // 学区自動取得・選択コンポーネント
 const SchoolDistrictAutoFetchButton: React.FC = () => {
@@ -293,13 +270,13 @@ const SchoolDistrictAutoFetchButton: React.FC = () => {
   );
 };
 
-// 駅自動取得・選択コンポーネント
+// 駅自動取得・選択コンポーネント（モーダル版）
 const StationAutoFetchButton: React.FC = () => {
   const { getValues, setValue } = useFormContext();
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [candidates, setCandidates] = useState<StationCandidate[]>([]);
-  const [showCandidates, setShowCandidates] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   const handleFetch = async () => {
     const lat = getValues('latitude');
@@ -316,7 +293,7 @@ const StationAutoFetchButton: React.FC = () => {
 
     try {
       const response = await fetch(
-        `${API_URL}/api/v1/geo/nearest-stations?lat=${lat}&lng=${lng}&radius=5000&limit=10`
+        `${API_URL}/api/v1/geo/nearest-stations?lat=${lat}&lng=${lng}&radius=5000&limit=15`
       );
 
       if (!response.ok) {
@@ -324,10 +301,32 @@ const StationAutoFetchButton: React.FC = () => {
       }
 
       const data = await response.json();
-      setCandidates(data.stations || []);
-      setShowCandidates(true);
+      const stations = data.stations || [];
 
-      setMessage({ type: 'success', text: '駅候補を取得しました。選択してください。' });
+      // 路線別にグループ化
+      const byLine: { [key: string]: StationCandidate[] } = {};
+      stations.forEach((s: StationCandidate) => {
+        const line = s.line_name || '不明';
+        if (!byLine[line]) byLine[line] = [];
+        byLine[line].push(s);
+      });
+
+      // Category形式に変換
+      const categoriesData: Category[] = Object.entries(byLine).map(([line, stns]) => ({
+        code: line,
+        name: line,
+        icon: '🚃',
+        items: stns.map((s) => ({
+          id: `${s.station_name}_${s.line_name}`,
+          name: `${s.station_name}駅`,
+          subText: `徒歩${s.walk_minutes}分 (${s.distance_meters.toLocaleString()}m)${s.company_name ? ` - ${s.company_name}` : ''}`,
+          category: line,
+          _raw: { station_name: s.station_name, line_name: s.line_name, walk_minutes: s.walk_minutes },
+        })),
+      }));
+
+      setCategories(categoriesData);
+      setIsModalOpen(true);
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || '駅情報の取得に失敗しました' });
       setTimeout(() => setMessage(null), 3000);
@@ -336,58 +335,105 @@ const StationAutoFetchButton: React.FC = () => {
     }
   };
 
-  const selectStation = (station: StationCandidate) => {
-    // transportationはJSONB配列なので、現在の値を取得して追加
+  const handleAdd = (item: SelectableItem) => {
     const currentStations = getValues('transportation') || [];
-
-    // 同じ駅名・路線名がすでにあるかチェック
-    const exists = currentStations.some((s: any) =>
-      s.station_name === station.station_name && s.line_name === station.line_name
-    );
-    if (exists) {
-      setMessage({ type: 'error', text: 'この駅は既に追加されています' });
-      setTimeout(() => setMessage(null), 3000);
-      return;
-    }
+    const rawData = (item as any)._raw;
 
     const newStation = {
-      station_name: station.station_name,
-      line_name: station.line_name || '',
-      walk_minutes: station.walk_minutes,
+      station_name: rawData?.station_name || item.name.replace('駅', ''),
+      line_name: rawData?.line_name || '',
+      walk_minutes: rawData?.walk_minutes,
     };
 
     setValue('transportation', [...currentStations, newStation], { shouldDirty: true });
-    setMessage({ type: 'success', text: `${station.station_name}駅を追加しました` });
-    setTimeout(() => setMessage(null), 2000);
   };
 
-  const removeStation = (index: number) => {
+  const handleRemove = (item: SelectableItem) => {
     const currentStations = getValues('transportation') || [];
-    const updated = [...currentStations];
-    updated.splice(index, 1);
+    const updated = currentStations.filter((s: any) =>
+      `${s.station_name}_${s.line_name}` !== item.id
+    );
     setValue('transportation', updated, { shouldDirty: true });
   };
 
   const currentStations = getValues('transportation') || [];
 
+  // 選択済みアイテムをSelectableItem形式に変換
+  const selectedItems: SelectableItem[] = currentStations.map((s: any) => ({
+    id: `${s.station_name}_${s.line_name}`,
+    name: `${s.station_name}駅`,
+    subText: `${s.line_name ? s.line_name + ' ・ ' : ''}徒歩${s.walk_minutes}分`,
+  }));
+
   return (
     <div style={{ marginBottom: '16px' }}>
+      {/* 選択済み駅リスト（常に表示） */}
+      {currentStations.length > 0 && (
+        <div style={{ marginBottom: '12px' }}>
+          <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '8px' }}>
+            登録済み駅 ({currentStations.length}件)
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {currentStations.map((s: any, index: number) => (
+              <div
+                key={index}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '10px 12px',
+                  backgroundColor: '#F9FAFB',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: '8px',
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '14px', color: '#1F2937' }}>
+                    {s.station_name}駅
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
+                    {s.line_name && `${s.line_name} ・ `}徒歩{s.walk_minutes}分
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleRemove({ id: `${s.station_name}_${s.line_name}`, name: s.station_name })}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#EF4444',
+                    cursor: 'pointer',
+                    padding: '4px 8px',
+                    fontSize: '13px',
+                  }}
+                >
+                  削除
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 駅追加ボタン */}
       <button
         type="button"
         onClick={handleFetch}
         disabled={isLoading}
         style={{
-          backgroundColor: isLoading ? '#9CA3AF' : '#7C3AED',
-          color: '#fff',
-          border: 'none',
-          padding: '10px 20px',
+          width: '100%',
+          padding: '12px 16px',
+          backgroundColor: isLoading ? '#9CA3AF' : '#fff',
+          border: '1px dashed #D1D5DB',
           borderRadius: '8px',
           cursor: isLoading ? 'not-allowed' : 'pointer',
-          fontWeight: 500,
           fontSize: '14px',
+          color: '#6B7280',
           display: 'flex',
           alignItems: 'center',
+          justifyContent: 'center',
           gap: '8px',
+          transition: 'all 0.15s',
         }}
       >
         {isLoading ? (
@@ -396,15 +442,15 @@ const StationAutoFetchButton: React.FC = () => {
               display: 'inline-block',
               width: '16px',
               height: '16px',
-              border: '2px solid #fff',
+              border: '2px solid #9CA3AF',
               borderTopColor: 'transparent',
               borderRadius: '50%',
               animation: 'spin 1s linear infinite',
             }} />
-            取得中...
+            検索中...
           </>
         ) : (
-          <>🚃 座標から駅候補を取得</>
+          <>🚃 最寄駅を追加</>
         )}
       </button>
 
@@ -421,156 +467,18 @@ const StationAutoFetchButton: React.FC = () => {
         </div>
       )}
 
-      {/* 現在登録されている駅 */}
-      {currentStations.length > 0 && (
-        <div style={{
-          marginTop: '12px',
-          padding: '12px',
-          backgroundColor: '#F5F3FF',
-          borderRadius: '8px',
-          border: '1px solid #DDD6FE',
-        }}>
-          <div style={{ fontSize: '13px', fontWeight: 600, color: '#6D28D9', marginBottom: '8px' }}>
-            登録済み駅
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {currentStations.map((s: any, index: number) => (
-              <div
-                key={index}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '6px 12px',
-                  backgroundColor: '#fff',
-                  borderRadius: '6px',
-                  border: '1px solid #EDE9FE',
-                  fontSize: '13px',
-                }}
-              >
-                <span>{s.station_name}駅</span>
-                {s.line_name && <span style={{ color: '#6B7280' }}>({s.line_name})</span>}
-                <span style={{ color: '#6B7280' }}>徒歩{s.walk_minutes}分</span>
-                <button
-                  type="button"
-                  onClick={() => removeStation(index)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#EF4444',
-                    cursor: 'pointer',
-                    padding: '0 4px',
-                    fontSize: '16px',
-                    lineHeight: 1,
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {showCandidates && (
-        <div style={{
-          marginTop: '16px',
-          padding: '16px',
-          backgroundColor: '#fff',
-          border: '1px solid #E5E7EB',
-          borderRadius: '12px',
-        }}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '16px',
-          }}>
-            <p style={{ fontSize: '13px', color: '#6B7280' }}>
-              クリックして追加
-            </p>
-            <button
-              type="button"
-              onClick={() => setShowCandidates(false)}
-              style={{
-                background: 'none',
-                border: 'none',
-                fontSize: '20px',
-                cursor: 'pointer',
-                color: '#9CA3AF',
-              }}
-            >
-              ×
-            </button>
-          </div>
-
-          {candidates.length === 0 ? (
-            <p style={{ fontSize: '13px', color: '#6B7280' }}>候補が見つかりませんでした</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              {candidates.map((station, index) => {
-                const isAdded = currentStations.some((s: any) =>
-                  s.station_name === station.station_name && s.line_name === station.line_name
-                );
-                return (
-                  <button
-                    key={index}
-                    type="button"
-                    onClick={() => selectStation(station)}
-                    disabled={isAdded}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '10px 12px',
-                      backgroundColor: isAdded ? '#E5E7EB' : '#F9FAFB',
-                      border: isAdded ? '1px solid #D1D5DB' : '1px solid #E5E7EB',
-                      borderRadius: '8px',
-                      cursor: isAdded ? 'not-allowed' : 'pointer',
-                      textAlign: 'left',
-                      transition: 'all 0.15s ease',
-                      opacity: isAdded ? 0.6 : 1,
-                    }}
-                  >
-                    <div>
-                      <div style={{
-                        fontSize: '14px',
-                        fontWeight: 500,
-                        color: '#1F2937',
-                      }}>
-                        {station.station_name}駅
-                        {isAdded && (
-                          <span style={{
-                            marginLeft: '8px',
-                            fontSize: '11px',
-                            backgroundColor: '#9CA3AF',
-                            color: '#fff',
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                          }}>
-                            追加済
-                          </span>
-                        )}
-                      </div>
-                      <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
-                        {station.line_name || ''} {station.company_name && `(${station.company_name})`}
-                      </div>
-                    </div>
-                    <div style={{
-                      fontSize: '13px',
-                      color: '#374151',
-                      whiteSpace: 'nowrap',
-                      marginLeft: '12px',
-                    }}>
-                      徒歩{station.walk_minutes}分（{station.distance_meters.toLocaleString()}m）
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
+      {/* 駅選択モーダル */}
+      <SelectableListModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="最寄駅を選択"
+        categories={categories}
+        selectedItems={selectedItems}
+        onAdd={handleAdd}
+        onRemove={handleRemove}
+        searchable={true}
+        maxItems={10}
+      />
 
       <style>{`
         @keyframes spin {
@@ -581,13 +489,13 @@ const StationAutoFetchButton: React.FC = () => {
   );
 };
 
-// バス停自動取得・選択コンポーネント
+// バス停自動取得・選択コンポーネント（モーダル版）
 const BusStopAutoFetchButton: React.FC = () => {
   const { getValues, setValue } = useFormContext();
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [candidates, setCandidates] = useState<BusStopCandidate[]>([]);
-  const [showCandidates, setShowCandidates] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   const handleFetch = async () => {
     const lat = getValues('latitude');
@@ -604,7 +512,7 @@ const BusStopAutoFetchButton: React.FC = () => {
 
     try {
       const response = await fetch(
-        `${API_URL}/api/v1/geo/nearest-bus-stops?lat=${lat}&lng=${lng}&limit=10`
+        `${API_URL}/api/v1/geo/nearest-bus-stops?lat=${lat}&lng=${lng}&limit=15`
       );
 
       if (!response.ok) {
@@ -612,10 +520,32 @@ const BusStopAutoFetchButton: React.FC = () => {
       }
 
       const data = await response.json();
-      setCandidates(data.bus_stops || []);
-      setShowCandidates(true);
+      const busStops = data.bus_stops || [];
 
-      setMessage({ type: 'success', text: 'バス停候補を取得しました。選択してください。' });
+      // バス種別でグループ化
+      const byType: { [key: string]: BusStopCandidate[] } = {};
+      busStops.forEach((bs: BusStopCandidate) => {
+        const type = bs.bus_type || '路線バス';
+        if (!byType[type]) byType[type] = [];
+        byType[type].push(bs);
+      });
+
+      // Category形式に変換
+      const categoriesData: Category[] = Object.entries(byType).map(([type, stops]) => ({
+        code: type,
+        name: type,
+        icon: '🚌',
+        items: stops.map((bs) => ({
+          id: bs.name,
+          name: bs.name,
+          subText: `徒歩${bs.walk_minutes}分 (${bs.distance_meters.toLocaleString()}m)${bs.routes.length > 0 ? ` - ${bs.routes.slice(0, 2).join(', ')}${bs.routes.length > 2 ? '...' : ''}` : ''}`,
+          category: type,
+          _raw: { name: bs.name, walk_minutes: bs.walk_minutes, routes: bs.routes },
+        })),
+      }));
+
+      setCategories(categoriesData);
+      setIsModalOpen(true);
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || 'バス停情報の取得に失敗しました' });
       setTimeout(() => setMessage(null), 3000);
@@ -624,56 +554,103 @@ const BusStopAutoFetchButton: React.FC = () => {
     }
   };
 
-  const selectBusStop = (busStop: BusStopCandidate) => {
-    // bus_stopsはJSONB配列なので、現在の値を取得して追加
+  const handleAdd = (item: SelectableItem) => {
     const currentBusStops = getValues('bus_stops') || [];
-
-    // 同じ名前のバス停がすでにあるかチェック
-    const exists = currentBusStops.some((bs: any) => bs.name === busStop.name);
-    if (exists) {
-      setMessage({ type: 'error', text: 'このバス停は既に追加されています' });
-      setTimeout(() => setMessage(null), 3000);
-      return;
-    }
+    const rawData = (item as any)._raw;
 
     const newBusStop = {
-      name: busStop.name,
-      walk_minutes: busStop.walk_minutes,
-      routes: busStop.routes,
+      name: rawData?.name || item.name,
+      walk_minutes: rawData?.walk_minutes,
+      routes: rawData?.routes || [],
     };
 
     setValue('bus_stops', [...currentBusStops, newBusStop], { shouldDirty: true });
-    setMessage({ type: 'success', text: `${busStop.name} を追加しました` });
-    setTimeout(() => setMessage(null), 2000);
   };
 
-  const removeBusStop = (index: number) => {
+  const handleRemove = (item: SelectableItem) => {
     const currentBusStops = getValues('bus_stops') || [];
-    const updated = [...currentBusStops];
-    updated.splice(index, 1);
+    const updated = currentBusStops.filter((bs: any) => bs.name !== item.id);
     setValue('bus_stops', updated, { shouldDirty: true });
   };
 
   const currentBusStops = getValues('bus_stops') || [];
 
+  // 選択済みアイテムをSelectableItem形式に変換
+  const selectedItems: SelectableItem[] = currentBusStops.map((bs: any) => ({
+    id: bs.name,
+    name: bs.name,
+    subText: `徒歩${bs.walk_minutes}分`,
+  }));
+
   return (
     <div style={{ marginBottom: '16px' }}>
+      {/* 選択済みバス停リスト（常に表示） */}
+      {currentBusStops.length > 0 && (
+        <div style={{ marginBottom: '12px' }}>
+          <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '8px' }}>
+            登録済みバス停 ({currentBusStops.length}件)
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {currentBusStops.map((bs: any, index: number) => (
+              <div
+                key={index}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '10px 12px',
+                  backgroundColor: '#F9FAFB',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: '8px',
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '14px', color: '#1F2937' }}>
+                    {bs.name}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
+                    徒歩{bs.walk_minutes}分
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleRemove({ id: bs.name, name: bs.name })}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#EF4444',
+                    cursor: 'pointer',
+                    padding: '4px 8px',
+                    fontSize: '13px',
+                  }}
+                >
+                  削除
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* バス停追加ボタン */}
       <button
         type="button"
         onClick={handleFetch}
         disabled={isLoading}
         style={{
-          backgroundColor: isLoading ? '#9CA3AF' : '#0891B2',
-          color: '#fff',
-          border: 'none',
-          padding: '10px 20px',
+          width: '100%',
+          padding: '12px 16px',
+          backgroundColor: isLoading ? '#9CA3AF' : '#fff',
+          border: '1px dashed #D1D5DB',
           borderRadius: '8px',
           cursor: isLoading ? 'not-allowed' : 'pointer',
-          fontWeight: 500,
           fontSize: '14px',
+          color: '#6B7280',
           display: 'flex',
           alignItems: 'center',
+          justifyContent: 'center',
           gap: '8px',
+          transition: 'all 0.15s',
         }}
       >
         {isLoading ? (
@@ -682,15 +659,15 @@ const BusStopAutoFetchButton: React.FC = () => {
               display: 'inline-block',
               width: '16px',
               height: '16px',
-              border: '2px solid #fff',
+              border: '2px solid #9CA3AF',
               borderTopColor: 'transparent',
               borderRadius: '50%',
               animation: 'spin 1s linear infinite',
             }} />
-            取得中...
+            検索中...
           </>
         ) : (
-          <>🚌 座標からバス停候補を取得</>
+          <>🚌 バス停を追加</>
         )}
       </button>
 
@@ -707,159 +684,18 @@ const BusStopAutoFetchButton: React.FC = () => {
         </div>
       )}
 
-      {/* 現在登録されているバス停 */}
-      {currentBusStops.length > 0 && (
-        <div style={{
-          marginTop: '12px',
-          padding: '12px',
-          backgroundColor: '#F0F9FF',
-          borderRadius: '8px',
-          border: '1px solid #BAE6FD',
-        }}>
-          <div style={{ fontSize: '13px', fontWeight: 600, color: '#0369A1', marginBottom: '8px' }}>
-            登録済みバス停
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {currentBusStops.map((bs: any, index: number) => (
-              <div
-                key={index}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '6px 12px',
-                  backgroundColor: '#fff',
-                  borderRadius: '6px',
-                  border: '1px solid #E0F2FE',
-                  fontSize: '13px',
-                }}
-              >
-                <span>{bs.name}</span>
-                <span style={{ color: '#6B7280' }}>徒歩{bs.walk_minutes}分</span>
-                <button
-                  type="button"
-                  onClick={() => removeBusStop(index)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#EF4444',
-                    cursor: 'pointer',
-                    padding: '0 4px',
-                    fontSize: '16px',
-                    lineHeight: 1,
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {showCandidates && (
-        <div style={{
-          marginTop: '16px',
-          padding: '16px',
-          backgroundColor: '#fff',
-          border: '1px solid #E5E7EB',
-          borderRadius: '12px',
-        }}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '16px',
-          }}>
-            <p style={{ fontSize: '13px', color: '#6B7280' }}>
-              クリックして追加
-            </p>
-            <button
-              type="button"
-              onClick={() => setShowCandidates(false)}
-              style={{
-                background: 'none',
-                border: 'none',
-                fontSize: '20px',
-                cursor: 'pointer',
-                color: '#9CA3AF',
-              }}
-            >
-              ×
-            </button>
-          </div>
-
-          {candidates.length === 0 ? (
-            <p style={{ fontSize: '13px', color: '#6B7280' }}>候補が見つかりませんでした</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              {candidates.map((busStop, index) => {
-                const isAdded = currentBusStops.some((bs: any) => bs.name === busStop.name);
-                return (
-                  <button
-                    key={index}
-                    type="button"
-                    onClick={() => selectBusStop(busStop)}
-                    disabled={isAdded}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '10px 12px',
-                      backgroundColor: isAdded ? '#E5E7EB' : '#F9FAFB',
-                      border: isAdded ? '1px solid #D1D5DB' : '1px solid #E5E7EB',
-                      borderRadius: '8px',
-                      cursor: isAdded ? 'not-allowed' : 'pointer',
-                      textAlign: 'left',
-                      transition: 'all 0.15s ease',
-                      opacity: isAdded ? 0.6 : 1,
-                    }}
-                  >
-                    <div>
-                      <div style={{
-                        fontSize: '14px',
-                        fontWeight: 500,
-                        color: '#1F2937',
-                      }}>
-                        {busStop.name}
-                        {isAdded && (
-                          <span style={{
-                            marginLeft: '8px',
-                            fontSize: '11px',
-                            backgroundColor: '#9CA3AF',
-                            color: '#fff',
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                          }}>
-                            追加済
-                          </span>
-                        )}
-                      </div>
-                      <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
-                        {busStop.bus_type || ''} {busStop.operators.length > 0 && `(${busStop.operators.join(', ')})`}
-                      </div>
-                      {busStop.routes.length > 0 && (
-                        <div style={{ fontSize: '11px', color: '#9CA3AF', marginTop: '2px' }}>
-                          {busStop.routes.slice(0, 3).join(', ')}
-                          {busStop.routes.length > 3 && ` 他${busStop.routes.length - 3}路線`}
-                        </div>
-                      )}
-                    </div>
-                    <div style={{
-                      fontSize: '13px',
-                      color: '#374151',
-                      whiteSpace: 'nowrap',
-                      marginLeft: '12px',
-                    }}>
-                      徒歩{busStop.walk_minutes}分（{busStop.distance_meters.toLocaleString()}m）
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
+      {/* バス停選択モーダル */}
+      <SelectableListModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="バス停を選択"
+        categories={categories}
+        selectedItems={selectedItems}
+        onAdd={handleAdd}
+        onRemove={handleRemove}
+        searchable={true}
+        maxItems={5}
+      />
 
       <style>{`
         @keyframes spin {
@@ -870,16 +706,13 @@ const BusStopAutoFetchButton: React.FC = () => {
   );
 };
 
-// 周辺施設自動取得コンポーネント
+// 周辺施設自動取得コンポーネント（モーダル版）
 const FacilityAutoFetchButton: React.FC = () => {
   const { getValues, setValue } = useFormContext();
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [facilitiesByCategory, setFacilitiesByCategory] = useState<FacilitiesByCategory | null>(null);
-  const [showResults, setShowResults] = useState(false);
-
-  // カテゴリ情報はAPIから取得（DBが唯一の真実）
-  // facilitiesByCategoryにcategory_name, iconが含まれる
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   const handleFetch = async () => {
     const lat = getValues('latitude');
@@ -904,10 +737,30 @@ const FacilityAutoFetchButton: React.FC = () => {
       }
 
       const data = await response.json();
-      setFacilitiesByCategory(data.categories || {});
-      setShowResults(true);
 
-      setMessage({ type: 'success', text: '周辺施設を取得しました' });
+      // APIレスポンスをモーダル用のCategory形式に変換
+      const categoriesData: Category[] = Object.entries(data.categories || {}).map(
+        ([catCode, catData]: [string, any]) => ({
+          code: catCode,
+          name: catData.category_name,
+          icon: catData.icon,
+          items: catData.facilities.map((f: any) => ({
+            id: f.id,
+            name: f.name,
+            subText: `徒歩${f.walk_minutes}分 (${f.distance_meters.toLocaleString()}m)`,
+            category: catCode,
+            // 追加データ保持用
+            _raw: {
+              address: f.address,
+              walk_minutes: f.walk_minutes,
+              category_name: catData.category_name,
+            },
+          })),
+        })
+      ).filter((cat) => cat.items.length > 0);
+
+      setCategories(categoriesData);
+      setIsModalOpen(true);
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || '施設情報の取得に失敗しました' });
       setTimeout(() => setMessage(null), 3000);
@@ -916,59 +769,107 @@ const FacilityAutoFetchButton: React.FC = () => {
     }
   };
 
-  const selectFacility = (categoryCode: string, categoryName: string, facility: { id: number; name: string; address: string | null; distance_meters: number; walk_minutes: number }) => {
-    // nearby_facilitiesはJSONB配列なので、現在の値を取得して追加
+  const handleAdd = (item: SelectableItem) => {
     const currentFacilities = getValues('nearby_facilities') || [];
-
-    // 同じ施設がすでにあるかチェック（idで判定）
-    const exists = currentFacilities.some((f: any) => f.id === facility.id);
-    if (exists) {
-      setMessage({ type: 'error', text: 'この施設は既に追加されています' });
-      setTimeout(() => setMessage(null), 3000);
-      return;
-    }
+    const rawData = (item as any)._raw;
 
     const newFacility = {
-      id: facility.id,
-      name: facility.name,
-      category: categoryCode,
-      category_name: categoryName,
-      address: facility.address,
-      walk_minutes: facility.walk_minutes,
+      id: item.id,
+      name: item.name,
+      category: item.category,
+      category_name: rawData?.category_name || item.category,
+      address: rawData?.address,
+      walk_minutes: rawData?.walk_minutes,
     };
 
     setValue('nearby_facilities', [...currentFacilities, newFacility], { shouldDirty: true });
-    setMessage({ type: 'success', text: `${facility.name} を追加しました` });
-    setTimeout(() => setMessage(null), 2000);
   };
 
-  const removeFacility = (index: number) => {
+  const handleRemove = (item: SelectableItem) => {
     const currentFacilities = getValues('nearby_facilities') || [];
-    const updated = [...currentFacilities];
-    updated.splice(index, 1);
+    const updated = currentFacilities.filter((f: any) => f.id !== item.id);
     setValue('nearby_facilities', updated, { shouldDirty: true });
   };
 
   const currentFacilities = getValues('nearby_facilities') || [];
 
+  // 選択済みアイテムをSelectableItem形式に変換
+  const selectedItems: SelectableItem[] = currentFacilities.map((f: any) => ({
+    id: f.id,
+    name: f.name,
+    subText: `徒歩${f.walk_minutes}分`,
+    category: f.category,
+  }));
+
   return (
     <div style={{ marginBottom: '16px' }}>
+      {/* 選択済み施設リスト（常に表示） */}
+      {currentFacilities.length > 0 && (
+        <div style={{ marginBottom: '12px' }}>
+          <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '8px' }}>
+            登録済み施設 ({currentFacilities.length}件)
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {currentFacilities.map((f: any) => (
+              <div
+                key={f.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '10px 12px',
+                  backgroundColor: '#F9FAFB',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: '8px',
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '14px', color: '#1F2937' }}>
+                    {f.name}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
+                    {f.category_name} ・ 徒歩{f.walk_minutes}分
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleRemove({ id: f.id, name: f.name })}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#EF4444',
+                    cursor: 'pointer',
+                    padding: '4px 8px',
+                    fontSize: '13px',
+                  }}
+                >
+                  削除
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 施設追加ボタン */}
       <button
         type="button"
         onClick={handleFetch}
         disabled={isLoading}
         style={{
-          backgroundColor: isLoading ? '#9CA3AF' : '#10B981',
-          color: '#fff',
-          border: 'none',
-          padding: '10px 20px',
+          width: '100%',
+          padding: '12px 16px',
+          backgroundColor: isLoading ? '#9CA3AF' : '#fff',
+          border: '1px dashed #D1D5DB',
           borderRadius: '8px',
           cursor: isLoading ? 'not-allowed' : 'pointer',
-          fontWeight: 500,
           fontSize: '14px',
+          color: '#6B7280',
           display: 'flex',
           alignItems: 'center',
+          justifyContent: 'center',
           gap: '8px',
+          transition: 'all 0.15s',
         }}
       >
         {isLoading ? (
@@ -977,15 +878,15 @@ const FacilityAutoFetchButton: React.FC = () => {
               display: 'inline-block',
               width: '16px',
               height: '16px',
-              border: '2px solid #fff',
+              border: '2px solid #9CA3AF',
               borderTopColor: 'transparent',
               borderRadius: '50%',
               animation: 'spin 1s linear infinite',
             }} />
-            取得中...
+            検索中...
           </>
         ) : (
-          <>🏪 座標から周辺施設を取得</>
+          <>🏪 周辺施設を追加</>
         )}
       </button>
 
@@ -1002,175 +903,18 @@ const FacilityAutoFetchButton: React.FC = () => {
         </div>
       )}
 
-      {/* 現在登録されている施設 */}
-      {currentFacilities.length > 0 && (
-        <div style={{
-          marginTop: '12px',
-          padding: '12px',
-          backgroundColor: '#ECFDF5',
-          borderRadius: '8px',
-          border: '1px solid #A7F3D0',
-        }}>
-          <div style={{ fontSize: '13px', fontWeight: 600, color: '#047857', marginBottom: '8px' }}>
-            登録済み施設
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {currentFacilities.map((f: any, index: number) => {
-              // カテゴリ名はDBから取得したものを使う（f.category_name）
-              return (
-                <div
-                  key={index}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '6px 12px',
-                    backgroundColor: '#fff',
-                    borderRadius: '6px',
-                    border: '1px solid #D1FAE5',
-                    fontSize: '13px',
-                  }}
-                >
-                  <span style={{ color: '#6B7280', fontSize: '12px' }}>{f.category_name}</span>
-                  <span>{f.name}</span>
-                  <span style={{ color: '#6B7280' }}>徒歩{f.walk_minutes}分</span>
-                  <button
-                    type="button"
-                    onClick={() => removeFacility(index)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#EF4444',
-                      cursor: 'pointer',
-                      padding: '0 4px',
-                      fontSize: '16px',
-                      lineHeight: 1,
-                    }}
-                  >
-                    ×
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {showResults && facilitiesByCategory && (
-        <div style={{
-          marginTop: '16px',
-          padding: '16px',
-          backgroundColor: '#fff',
-          border: '1px solid #E5E7EB',
-          borderRadius: '12px',
-        }}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '16px',
-          }}>
-            <p style={{ fontSize: '13px', color: '#6B7280' }}>
-              クリックして追加（カテゴリ別）
-            </p>
-            <button
-              type="button"
-              onClick={() => setShowResults(false)}
-              style={{
-                background: 'none',
-                border: 'none',
-                fontSize: '20px',
-                cursor: 'pointer',
-                color: '#9CA3AF',
-              }}
-            >
-              ×
-            </button>
-          </div>
-
-          {/* カテゴリ別に表示（APIから返ってきた順序で） */}
-          {Object.entries(facilitiesByCategory).map(([catCode, catData]) => {
-            if (!catData || catData.facilities.length === 0) return null;
-
-            return (
-              <div key={catCode} style={{ marginBottom: '16px' }}>
-                <h4 style={{
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  color: '#374151',
-                  marginBottom: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}>
-                  {catData.icon} {catData.category_name}
-                </h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  {catData.facilities.map((facility) => {
-                    const isAdded = currentFacilities.some((f: any) => f.id === facility.id);
-                    return (
-                      <button
-                        key={facility.id}
-                        type="button"
-                        onClick={() => selectFacility(catCode, catData.category_name, facility)}
-                        disabled={isAdded}
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          padding: '10px 12px',
-                          backgroundColor: isAdded ? '#E5E7EB' : '#F9FAFB',
-                          border: isAdded ? '1px solid #D1D5DB' : '1px solid #E5E7EB',
-                          borderRadius: '8px',
-                          cursor: isAdded ? 'not-allowed' : 'pointer',
-                          textAlign: 'left',
-                          transition: 'all 0.15s ease',
-                          opacity: isAdded ? 0.6 : 1,
-                        }}
-                      >
-                        <div>
-                          <div style={{
-                            fontSize: '14px',
-                            fontWeight: 500,
-                            color: '#1F2937',
-                          }}>
-                            {facility.name}
-                            {isAdded && (
-                              <span style={{
-                                marginLeft: '8px',
-                                fontSize: '11px',
-                                backgroundColor: '#9CA3AF',
-                                color: '#fff',
-                                padding: '2px 6px',
-                                borderRadius: '4px',
-                              }}>
-                                追加済
-                              </span>
-                            )}
-                          </div>
-                          {facility.address && (
-                            <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
-                              {facility.address}
-                            </div>
-                          )}
-                        </div>
-                        <div style={{
-                          fontSize: '13px',
-                          color: '#374151',
-                          whiteSpace: 'nowrap',
-                          marginLeft: '12px',
-                        }}>
-                          徒歩{facility.walk_minutes}分（{facility.distance_meters.toLocaleString()}m）
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {/* 施設選択モーダル */}
+      <SelectableListModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="周辺施設を選択"
+        categories={categories}
+        selectedItems={selectedItems}
+        onAdd={handleAdd}
+        onRemove={handleRemove}
+        searchable={true}
+        maxItems={20}
+      />
 
       <style>{`
         @keyframes spin {

@@ -17,6 +17,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parents[5]))
 from shared.database import READatabase
+from shared.constants import calc_walk_minutes, SCHOOL_TYPE_CODES, DEFAULT_SEARCH_RADIUS
 
 router = APIRouter()
 
@@ -161,7 +162,7 @@ async def get_nearest_stations(
         stations = []
         for row in rows:
             distance_m = int(row[4])
-            walk_min = max(1, round(distance_m / 80))  # 80m/分、最低1分
+            walk_min = calc_walk_minutes(distance_m)
             stations.append(NearestStationResponse(
                 station_id=row[0],
                 station_name=row[1],
@@ -317,16 +318,16 @@ async def get_school_districts(
                     ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography
                 ) as distance_m
             FROM m_schools
-            WHERE school_type = '16001'
+            WHERE school_type = %s
             ORDER BY distance_m
             LIMIT %s
-        """, (lng, lat, limit))
+        """, (lng, lat, SCHOOL_TYPE_CODES['elementary'], limit))
 
         elementary_candidates = []
         for row in cur.fetchall():
             name, address, admin_type, distance_m = row
             distance_m = int(distance_m)
-            walk_min = max(1, round(distance_m / 80))
+            walk_min = calc_walk_minutes(distance_m)
             is_in_district = name in elementary_district_names
             elementary_candidates.append(SchoolCandidate(
                 school_name=name,
@@ -348,16 +349,16 @@ async def get_school_districts(
                     ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography
                 ) as distance_m
             FROM m_schools
-            WHERE school_type = '16002'
+            WHERE school_type = %s
             ORDER BY distance_m
             LIMIT %s
-        """, (lng, lat, limit))
+        """, (lng, lat, SCHOOL_TYPE_CODES['junior_high'], limit))
 
         junior_high_candidates = []
         for row in cur.fetchall():
             name, address, admin_type, distance_m = row
             distance_m = int(distance_m)
-            walk_min = max(1, round(distance_m / 80))
+            walk_min = calc_walk_minutes(distance_m)
             is_in_district = name in junior_high_district_names
             junior_high_candidates.append(SchoolCandidate(
                 school_name=name,
@@ -427,18 +428,18 @@ async def set_property_nearest_stations(
             WHERE ST_DWithin(
                 geom::geography,
                 ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
-                5000
+                %s
             )
             ORDER BY distance_m
             LIMIT %s
-        """, (float(lng), float(lat), float(lng), float(lat), limit))
+        """, (float(lng), float(lat), float(lng), float(lat), DEFAULT_SEARCH_RADIUS['station'], limit))
 
         stations = cur.fetchall()
 
         # transportation JSON形式に変換
         transportation = []
         for station_name, line_name, distance_m in stations:
-            walk_min = max(1, round(distance_m / 80))
+            walk_min = calc_walk_minutes(distance_m)
             transportation.append({
                 'station_name': station_name,
                 'line_name': line_name or '',
@@ -510,7 +511,7 @@ async def get_nearest_bus_stops(
         for row in cur.fetchall():
             name, bus_type, operators, routes, distance_m = row
             distance_m = int(distance_m)
-            walk_min = max(1, round(distance_m / 80))
+            walk_min = calc_walk_minutes(distance_m)
             bus_stops.append(BusStopCandidate(
                 name=name,
                 bus_type=bus_type,
@@ -589,19 +590,19 @@ async def set_property_school_districts(property_id: int):
                         ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography
                     ) as distance_m
                 FROM m_schools
-                WHERE school_type = '16001'
+                WHERE school_type = %s
                 AND ST_DWithin(
                     location::geography,
                     ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
-                    5000
+                    %s
                 )
                 ORDER BY distance_m
                 LIMIT 1
-            """, (float(lng), float(lat), float(lng), float(lat)))
+            """, (float(lng), float(lat), SCHOOL_TYPE_CODES['elementary'], float(lng), float(lat), DEFAULT_SEARCH_RADIUS['station']))
             dist_row = cur.fetchone()
             if dist_row:
                 # 徒歩分数 = 距離(m) / 80m/分
-                result['elementary_school_minutes'] = max(1, round(int(dist_row[0]) / 80))
+                result['elementary_school_minutes'] = calc_walk_minutes(int(dist_row[0]))
 
         # 中学校区を検索
         cur.execute("""
@@ -626,19 +627,19 @@ async def set_property_school_districts(property_id: int):
                         ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography
                     ) as distance_m
                 FROM m_schools
-                WHERE school_type = '16002'
+                WHERE school_type = %s
                 AND ST_DWithin(
                     location::geography,
                     ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
-                    5000
+                    %s
                 )
                 ORDER BY distance_m
                 LIMIT 1
-            """, (float(lng), float(lat), float(lng), float(lat)))
+            """, (float(lng), float(lat), SCHOOL_TYPE_CODES['junior_high'], float(lng), float(lat), DEFAULT_SEARCH_RADIUS['station']))
             dist_row = cur.fetchone()
             if dist_row:
                 # 徒歩分数 = 距離(m) / 80m/分
-                result['junior_high_school_minutes'] = max(1, round(int(dist_row[0]) / 80))
+                result['junior_high_school_minutes'] = calc_walk_minutes(int(dist_row[0]))
 
         # 物件に保存
         cur.execute("""
@@ -722,7 +723,7 @@ async def get_nearest_facilities(
         for row in cur.fetchall():
             fac_id, name, cat_code, address, distance_m = row
             distance_m = int(distance_m)
-            walk_min = max(1, round(distance_m / 80))
+            walk_min = calc_walk_minutes(distance_m)
             categories = get_facility_categories()
             facilities.append(FacilityCandidate(
                 id=fac_id,
@@ -787,7 +788,7 @@ async def get_nearest_facilities_by_category(
             for row in cur.fetchall():
                 fac_id, name, address, distance_m = row
                 distance_m = int(distance_m)
-                walk_min = max(1, round(distance_m / 80))
+                walk_min = calc_walk_minutes(distance_m)
                 facilities.append({
                     'id': fac_id,
                     'name': name,
