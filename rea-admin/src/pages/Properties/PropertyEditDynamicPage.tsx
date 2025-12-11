@@ -3,19 +3,16 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { PropertyFullForm } from '../../components/form/DynamicForm';
 import { propertyService } from '../../services/propertyService';
 import { Property } from '../../types/property';
-import NearestStationsEditor from '../../components/NearestStationsEditor';
-import { PropertyStation } from '../../services/geoService';
 
 export const PropertyEditDynamicPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isNew = !id || id === 'new';
-  
+
   const [property, setProperty] = useState<Property | null>(null);
   const [isLoading, setIsLoading] = useState(!isNew);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
-  const [transportation, setTransportation] = useState<PropertyStation[]>([]);
 
   // 既存データの取得
   useEffect(() => {
@@ -25,7 +22,6 @@ export const PropertyEditDynamicPage: React.FC = () => {
           setIsLoading(true);
           const data = await propertyService.getProperty(parseInt(id));
           setProperty(data);
-          setTransportation(data.transportation || []);
         } catch (err) {
           setError('物件情報の取得に失敗しました');
           console.error(err);
@@ -42,27 +38,21 @@ export const PropertyEditDynamicPage: React.FC = () => {
     setSaveStatus('saving');
     setError(null);
 
-    // transportationを追加
-    const dataWithTransportation = {
-      ...data,
-      transportation
-    };
-
     try {
       if (isNew) {
         // 新規作成
-        const created = await propertyService.createProperty(dataWithTransportation);
+        const created = await propertyService.createProperty(data);
         setSaveStatus('saved');
-        
+
         // 作成後は編集モードに遷移
         setTimeout(() => {
           navigate(`/properties/${created.id}/edit`);
         }, 500);
       } else {
         // 更新
-        await propertyService.updateProperty(parseInt(id!), dataWithTransportation);
+        await propertyService.updateProperty(parseInt(id!), data);
         setSaveStatus('saved');
-        
+
         // 成功メッセージを表示
         setTimeout(() => {
           setSaveStatus('idle');
@@ -135,7 +125,7 @@ export const PropertyEditDynamicPage: React.FC = () => {
               全項目を一括で編集できます
             </p>
           </div>
-          
+
           <div className="flex items-center space-x-4">
             {/* 戻るボタン */}
             <button
@@ -183,19 +173,6 @@ export const PropertyEditDynamicPage: React.FC = () => {
           </button>
         </div>
       )}
-
-      {/* 最寄駅情報 */}
-      <div className="bg-white shadow rounded-lg p-6 mt-6">
-        <h2 className="text-lg font-semibold mb-4">最寄駅情報</h2>
-        <NearestStationsEditor
-          stations={transportation}
-          onChange={setTransportation}
-          latitude={property?.latitude}
-          longitude={property?.longitude}
-          address={[property?.prefecture, property?.city, property?.address].filter(Boolean).join('')}
-          maxStations={10}
-        />
-      </div>
 
       {/* 保存状態の表示 */}
       {renderSaveStatus()}

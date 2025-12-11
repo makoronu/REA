@@ -10,6 +10,8 @@ import {
 } from './JsonEditors';
 import { ImageUploader } from './ImageUploader';
 import { geoService } from '../../services/geoService';
+import { LocationField } from './LocationField';
+import { TransportationField } from './TransportationField';
 
 interface FieldFactoryProps {
   column: ColumnWithLabel;
@@ -434,6 +436,10 @@ export const FieldFactory: React.FC<FieldFactoryProps> = ({ column, disabled = f
       case 'postal_code':
         return <PostalCodeField column={column} disabled={disabled || isReadOnly} />;
 
+      // 交通（最寄駅）フィールド
+      case 'transportation':
+        return <TransportationField disabled={disabled || isReadOnly} />;
+
       // JSON専用フィールド
       case 'json_road_info':
         return (
@@ -608,6 +614,7 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
   // グループアイコン
   const getGroupIcon = (groupName: string) => {
     const iconMap: Record<string, string> = {
+      '所在地': '📍', '交通': '🚃',
       '基本情報': '🏠', '基本・取引情報': '🏠', '価格情報': '💰',
       '契約条件': '📋', '元請会社': '🏢', '土地情報': '🗺️',
       '建物情報': '🏗️', '設備・周辺環境': '🔧', '画像情報': '📸',
@@ -615,6 +622,15 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
     };
     return iconMap[groupName] || '📄';
   };
+
+  // 所在地グループかどうか
+  const isLocationGroup = groupName === '所在地';
+
+  // 所在地グループの場合、緯度・経度フィールドを通常表示から除外
+  const locationFieldNames = ['latitude', 'longitude'];
+  const filteredRegularFields = isLocationGroup
+    ? regularFields.filter(col => !locationFieldNames.includes(col.column_name))
+    : regularFields;
 
   return (
     <div style={{
@@ -630,19 +646,24 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
       </div>
 
       {/* 通常フィールド - 2列 */}
-      {regularFields.length > 0 && (
+      {filteredRegularFields.length > 0 && (
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(2, 1fr)',
           gap: '24px',
-          marginBottom: jsonFields.length > 0 || checkboxFields.length > 0 || textareaFields.length > 0 ? '24px' : 0,
+          marginBottom: isLocationGroup || jsonFields.length > 0 || checkboxFields.length > 0 || textareaFields.length > 0 ? '24px' : 0,
         }}>
-          {regularFields.map(column => (
+          {filteredRegularFields.map(column => (
             <div key={column.column_name}>
               <FieldFactory column={column} disabled={disabled} />
             </div>
           ))}
         </div>
+      )}
+
+      {/* 所在地グループの場合、地図付き緯度経度フィールドを表示 */}
+      {isLocationGroup && (
+        <LocationField disabled={disabled} />
       )}
 
       {/* チェックボックス群 - 3列 */}
