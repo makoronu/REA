@@ -206,7 +206,7 @@ def get_table_columns_with_labels(
     仮想カラム（DBに存在しないがcolumn_labelsに定義されているカラム）も含む
     """
     try:
-        # 1. DBカラム + column_labels
+        # 1. DBカラム + column_labels（column_labelsに登録されているカラムのみ表示）
         query = text(
             """
             SELECT
@@ -233,7 +233,7 @@ def get_table_columns_with_labels(
                     ELSE false
                 END as is_primary_key
             FROM information_schema.columns c
-            LEFT JOIN column_labels cl
+            INNER JOIN column_labels cl
                 ON cl.table_name = c.table_name
                 AND cl.column_name = c.column_name
             LEFT JOIN (
