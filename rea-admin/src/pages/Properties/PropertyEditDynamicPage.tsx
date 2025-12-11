@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { PropertyFullForm } from '../../components/form/DynamicForm';
 import { propertyService } from '../../services/propertyService';
 import { Property } from '../../types/property';
+import NearestStationsEditor from '../../components/NearestStationsEditor';
+import { PropertyStation } from '../../services/geoService';
 
 export const PropertyEditDynamicPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -13,6 +15,7 @@ export const PropertyEditDynamicPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(!isNew);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [transportation, setTransportation] = useState<PropertyStation[]>([]);
 
   // 既存データの取得
   useEffect(() => {
@@ -22,6 +25,7 @@ export const PropertyEditDynamicPage: React.FC = () => {
           setIsLoading(true);
           const data = await propertyService.getProperty(parseInt(id));
           setProperty(data);
+          setTransportation(data.transportation || []);
         } catch (err) {
           setError('物件情報の取得に失敗しました');
           console.error(err);
@@ -38,10 +42,16 @@ export const PropertyEditDynamicPage: React.FC = () => {
     setSaveStatus('saving');
     setError(null);
 
+    // transportationを追加
+    const dataWithTransportation = {
+      ...data,
+      transportation
+    };
+
     try {
       if (isNew) {
         // 新規作成
-        const created = await propertyService.createProperty(data);
+        const created = await propertyService.createProperty(dataWithTransportation);
         setSaveStatus('saved');
         
         // 作成後は編集モードに遷移
@@ -50,7 +60,7 @@ export const PropertyEditDynamicPage: React.FC = () => {
         }, 500);
       } else {
         // 更新
-        await propertyService.updateProperty(parseInt(id!), data);
+        await propertyService.updateProperty(parseInt(id!), dataWithTransportation);
         setSaveStatus('saved');
         
         // 成功メッセージを表示
@@ -150,8 +160,20 @@ export const PropertyEditDynamicPage: React.FC = () => {
         <PropertyFullForm
           onSubmit={handleSubmit}
           defaultValues={property || undefined}
-          submitButtonText={isNew ? '登録' : '更新'}
           showDebug={false}
+        />
+      </div>
+
+      {/* 最寄駅情報 */}
+      <div className="bg-white shadow rounded-lg p-6 mt-6">
+        <h2 className="text-lg font-semibold mb-4">最寄駅情報</h2>
+        <NearestStationsEditor
+          stations={transportation}
+          onChange={setTransportation}
+          latitude={property?.latitude}
+          longitude={property?.longitude}
+          address={[property?.prefecture, property?.city, property?.address].filter(Boolean).join('')}
+          maxStations={10}
         />
       </div>
 
