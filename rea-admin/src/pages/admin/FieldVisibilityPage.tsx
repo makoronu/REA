@@ -1,6 +1,8 @@
 /**
  * フィールド表示設定管理画面
  * 管理者専用：物件種別ごとにどのフィールドを表示するかを設定
+ *
+ * レイアウト: 物件種別が行、フィールドが列（横スクロール不要）
  */
 import React, { useState, useEffect } from 'react';
 
@@ -33,45 +35,62 @@ const TABLE_LABELS: Record<string, string> = {
 const GROUP_ORDER = [
   '基本情報', '価格情報', '契約条件', '元請会社', '管理情報',
   '所在地', '学区', '電車・鉄道', 'バス', '周辺施設',
-  '建物基本', '面積', '居住情報', '管理情報', '駐車場',
+  '建物基本', '面積', '居住情報', '駐車場',
   '土地詳細', '接道',
   '設備', '交通', 'リフォーム', 'エコ性能',
   'システム',
 ];
 
+// 物件種別グループの表示順
+const TYPE_GROUP_ORDER = ['居住用', '事業用', '投資用', 'その他'];
+
 const FieldVisibilityPage: React.FC = () => {
   const [propertyTypes, setPropertyTypes] = useState<PropertyType[]>([]);
   const [fields, setFields] = useState<FieldVisibility[]>([]);
   const [selectedTable, setSelectedTable] = useState<string>('properties');
+  const [selectedFieldGroup, setSelectedFieldGroup] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [pendingChanges, setPendingChanges] = useState<Map<string, string[] | null>>(new Map());
 
-  // 物件種別をグループ化
+  // 物件種別をグループ化してソート
   const groupedPropertyTypes = propertyTypes.reduce((acc, pt) => {
     if (!acc[pt.group_name]) acc[pt.group_name] = [];
     acc[pt.group_name].push(pt);
     return acc;
   }, {} as Record<string, PropertyType[]>);
 
+  const sortedTypeGroups = TYPE_GROUP_ORDER.filter(g => groupedPropertyTypes[g]);
+
   // データ取得
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        // 物件種別取得
         const ptRes = await fetch(`${API_URL}/api/v1/admin/property-types`);
         if (ptRes.ok) {
           const ptData = await ptRes.json();
           setPropertyTypes(ptData);
         }
 
-        // フィールド表示設定取得
         const fvRes = await fetch(`${API_URL}/api/v1/admin/field-visibility?table_name=${selectedTable}`);
         if (fvRes.ok) {
           const fvData = await fvRes.json();
           setFields(fvData);
+          // 最初のグループを選択
+          if (fvData.length > 0) {
+            const groups = [...new Set(fvData.map((f: FieldVisibility) => f.group_name || 'その他'))];
+            const sorted = groups.sort((a, b) => {
+              const aIdx = GROUP_ORDER.indexOf(a);
+              const bIdx = GROUP_ORDER.indexOf(b);
+              if (aIdx === -1 && bIdx === -1) return a.localeCompare(b);
+              if (aIdx === -1) return 1;
+              if (bIdx === -1) return -1;
+              return aIdx - bIdx;
+            });
+            setSelectedFieldGroup(sorted[0]);
+          }
         }
       } catch (err) {
         console.error('データ取得エラー:', err);
@@ -102,6 +121,9 @@ const FieldVisibilityPage: React.FC = () => {
     return aIdx - bIdx;
   });
 
+  // 表示するフィールド
+  const displayFields = selectedFieldGroup ? (groupedFields[selectedFieldGroup] || []) : [];
+
   // フィールドのvisible_for変更
   const handleToggle = (field: FieldVisibility, typeId: string) => {
     const key = `${field.table_name}.${field.column_name}`;
@@ -111,16 +133,12 @@ const FieldVisibilityPage: React.FC = () => {
 
     let newValue: string[] | null;
     if (currentValue === null) {
-      // 全表示 → 指定種別を除外（全種別から引く）
       newValue = propertyTypes.map(pt => pt.id).filter(id => id !== typeId);
     } else if (currentValue.includes(typeId)) {
-      // 含まれている → 除外
       newValue = currentValue.filter(id => id !== typeId);
-      if (newValue.length === 0) newValue = null; // 空なら全表示
+      if (newValue.length === 0) newValue = null;
     } else {
-      // 含まれていない → 追加
       newValue = [...currentValue, typeId];
-      // 全種別含まれたら null（全表示）に
       if (newValue.length === propertyTypes.length) newValue = null;
     }
 
@@ -131,8 +149,41 @@ const FieldVisibilityPage: React.FC = () => {
     });
   };
 
-  // 全選択/全解除
-  const handleSelectAll = (field: FieldVisibility, select: boolean) => {
+  // 行（物件種別）の全選択/全解除
+  const handleRowSelectAll = (typeId: string, select: boolean) => {
+    setPendingChanges(prev => {
+      const next = new Map(prev);
+      displayFields.forEach(field => {
+        const key = `${field.table_name}.${field.column_name}`;
+        const currentValue = next.has(key) ? next.get(key) : field.visible_for;
+
+        let newValue: string[] | null;
+        if (select) {
+          // 追加
+          if (currentValue === null) {
+            newValue = null; // 既に全表示
+          } else if (currentValue.includes(typeId)) {
+            newValue = currentValue; // 既に含まれている
+          } else {
+            newValue = [...currentValue, typeId];
+            if (newValue.length === propertyTypes.length) newValue = null;
+          }
+        } else {
+          // 除外
+          if (currentValue === null) {
+            newValue = propertyTypes.map(pt => pt.id).filter(id => id !== typeId);
+          } else {
+            newValue = currentValue.filter(id => id !== typeId);
+          }
+        }
+        next.set(key, newValue);
+      });
+      return next;
+    });
+  };
+
+  // 列（フィールド）の全選択/全解除
+  const handleColSelectAll = (field: FieldVisibility, select: boolean) => {
     const key = `${field.table_name}.${field.column_name}`;
     setPendingChanges(prev => {
       const next = new Map(prev);
@@ -165,7 +216,6 @@ const FieldVisibilityPage: React.FC = () => {
       if (res.ok) {
         setMessage({ type: 'success', text: `${updates.length}件の設定を保存しました` });
         setPendingChanges(new Map());
-        // フィールド再取得
         const fvRes = await fetch(`${API_URL}/api/v1/admin/field-visibility?table_name=${selectedTable}`);
         if (fvRes.ok) {
           const fvData = await fvRes.json();
@@ -191,19 +241,25 @@ const FieldVisibilityPage: React.FC = () => {
   // チェック状態判定
   const isChecked = (field: FieldVisibility, typeId: string): boolean => {
     const value = getCurrentValue(field);
-    if (value === null) return true; // null = 全表示
+    if (value === null) return true;
     return value.includes(typeId);
   };
 
+  // 変更があるか
+  const hasFieldChange = (field: FieldVisibility): boolean => {
+    const key = `${field.table_name}.${field.column_name}`;
+    return pendingChanges.has(key);
+  };
+
   return (
-    <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '24px' }}>
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
       {/* ヘッダー */}
       <div style={{ marginBottom: '24px' }}>
         <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#1A1A1A', margin: 0 }}>
           フィールド表示設定
         </h1>
         <p style={{ fontSize: '14px', color: '#6B7280', marginTop: '8px' }}>
-          物件種別ごとに表示するフィールドを設定します。チェックが入っている種別でのみフィールドが表示されます。
+          物件種別ごとに表示するフィールドを設定します
         </p>
       </div>
 
@@ -226,25 +282,27 @@ const FieldVisibilityPage: React.FC = () => {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: '24px',
+        marginBottom: '16px',
         padding: '16px',
         backgroundColor: '#F9FAFB',
         borderRadius: '12px',
+        flexWrap: 'wrap',
+        gap: '12px',
       }}>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           {Object.entries(TABLE_LABELS).map(([key, label]) => (
             <button
               key={key}
               onClick={() => setSelectedTable(key)}
               style={{
-                padding: '10px 20px',
+                padding: '8px 16px',
                 borderRadius: '8px',
                 border: 'none',
                 backgroundColor: selectedTable === key ? '#3B82F6' : '#fff',
                 color: selectedTable === key ? '#fff' : '#374151',
                 fontWeight: 500,
                 cursor: 'pointer',
-                transition: 'all 0.15s',
+                fontSize: '13px',
               }}
             >
               {label}
@@ -254,25 +312,53 @@ const FieldVisibilityPage: React.FC = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {pendingChanges.size > 0 && (
             <span style={{ fontSize: '13px', color: '#F59E0B' }}>
-              {pendingChanges.size}件の未保存の変更
+              {pendingChanges.size}件の変更
             </span>
           )}
           <button
             onClick={handleSave}
             disabled={isSaving || pendingChanges.size === 0}
             style={{
-              padding: '10px 24px',
+              padding: '8px 20px',
               borderRadius: '8px',
               border: 'none',
               backgroundColor: pendingChanges.size === 0 ? '#E5E7EB' : '#3B82F6',
               color: pendingChanges.size === 0 ? '#9CA3AF' : '#fff',
               fontWeight: 600,
               cursor: pendingChanges.size === 0 ? 'not-allowed' : 'pointer',
+              fontSize: '13px',
             }}
           >
-            {isSaving ? '保存中...' : '変更を保存'}
+            {isSaving ? '保存中...' : '保存'}
           </button>
         </div>
+      </div>
+
+      {/* フィールドグループ選択 */}
+      <div style={{
+        display: 'flex',
+        gap: '6px',
+        marginBottom: '16px',
+        flexWrap: 'wrap',
+      }}>
+        {sortedGroups.map(group => (
+          <button
+            key={group}
+            onClick={() => setSelectedFieldGroup(group)}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '6px',
+              border: selectedFieldGroup === group ? '2px solid #3B82F6' : '1px solid #E5E7EB',
+              backgroundColor: selectedFieldGroup === group ? '#EFF6FF' : '#fff',
+              color: selectedFieldGroup === group ? '#1D4ED8' : '#6B7280',
+              fontWeight: selectedFieldGroup === group ? 600 : 400,
+              cursor: 'pointer',
+              fontSize: '12px',
+            }}
+          >
+            {group} ({groupedFields[group]?.length || 0})
+          </button>
+        ))}
       </div>
 
       {/* ローディング */}
@@ -285,176 +371,186 @@ const FieldVisibilityPage: React.FC = () => {
           backgroundColor: '#fff',
           borderRadius: '12px',
           boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+          overflow: 'hidden',
         }}>
-          {/* テーブルヘッダー（sticky） */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '200px 1fr',
-            backgroundColor: '#F3F4F6',
-            borderBottom: '1px solid #E5E7EB',
-            position: 'sticky',
-            top: '57px', // ヘッダーの高さ分下げる
-            zIndex: 20,
-            borderRadius: '12px 12px 0 0',
-          }}>
-            <div style={{
-              padding: '12px 16px',
-              fontWeight: 600,
-              color: '#374151',
-              backgroundColor: '#F3F4F6',
-            }}>
-              フィールド
-            </div>
-            <div style={{ display: 'flex', overflowX: 'auto' }}>
-              {Object.entries(groupedPropertyTypes).map(([groupName, types]) => (
-                <div key={groupName} style={{ display: 'flex', flexDirection: 'column' }}>
-                  <div style={{
-                    padding: '8px 12px',
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    color: '#6B7280',
-                    backgroundColor: '#E5E7EB',
-                    textAlign: 'center',
-                    borderRight: '1px solid #D1D5DB',
-                  }}>
-                    {groupName}
-                  </div>
-                  <div style={{ display: 'flex', backgroundColor: '#F3F4F6' }}>
-                    {types.map(pt => (
-                      <div
-                        key={pt.id}
-                        style={{
-                          padding: '8px 8px',
-                          fontSize: '11px',
-                          color: '#374151',
-                          textAlign: 'center',
-                          minWidth: '70px',
-                          borderRight: '1px solid #E5E7EB',
-                          whiteSpace: 'nowrap',
-                          backgroundColor: '#F3F4F6',
-                        }}
-                        title={pt.label}
-                      >
-                        {pt.label.length > 6 ? pt.label.slice(0, 6) + '...' : pt.label}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* フィールド行 */}
-          {sortedGroups.map(groupName => (
-            <div key={groupName}>
-              {/* グループヘッダー */}
-              <div style={{
-                padding: '10px 16px',
-                backgroundColor: '#F9FAFB',
-                borderBottom: '1px solid #E5E7EB',
-                fontWeight: 600,
-                fontSize: '13px',
-                color: '#374151',
-              }}>
-                {groupName}
-              </div>
-
-              {/* フィールド */}
-              {groupedFields[groupName].map(field => {
-                const key = `${field.table_name}.${field.column_name}`;
-                const hasChange = pendingChanges.has(key);
-
-                return (
-                  <div
-                    key={key}
+          {/* テーブル */}
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            {/* ヘッダー：フィールド名 */}
+            <thead>
+              <tr style={{ backgroundColor: '#F3F4F6' }}>
+                <th style={{
+                  padding: '12px 16px',
+                  textAlign: 'left',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  color: '#374151',
+                  borderBottom: '1px solid #E5E7EB',
+                  position: 'sticky',
+                  top: '57px',
+                  backgroundColor: '#F3F4F6',
+                  zIndex: 10,
+                  minWidth: '120px',
+                }}>
+                  物件種別
+                </th>
+                {displayFields.map(field => (
+                  <th
+                    key={field.column_name}
                     style={{
-                      display: 'grid',
-                      gridTemplateColumns: '200px 1fr',
-                      borderBottom: '1px solid #F3F4F6',
-                      backgroundColor: hasChange ? 'rgba(251, 191, 36, 0.1)' : 'transparent',
+                      padding: '8px 4px',
+                      textAlign: 'center',
+                      fontWeight: 500,
+                      fontSize: '11px',
+                      color: hasFieldChange(field) ? '#F59E0B' : '#374151',
+                      borderBottom: '1px solid #E5E7EB',
+                      position: 'sticky',
+                      top: '57px',
+                      backgroundColor: hasFieldChange(field) ? '#FEF3C7' : '#F3F4F6',
+                      zIndex: 10,
+                      minWidth: '60px',
+                      maxWidth: '80px',
                     }}
                   >
-                    {/* フィールド名 */}
-                    <div style={{
-                      padding: '10px 16px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                    }}>
-                      <span style={{ fontSize: '13px', color: '#1F2937' }}>
-                        {field.japanese_label || field.column_name}
-                      </span>
-                      <div style={{ display: 'flex', gap: '4px' }}>
-                        <button
-                          onClick={() => handleSelectAll(field, true)}
-                          style={{
-                            padding: '2px 6px',
-                            fontSize: '10px',
-                            border: '1px solid #D1D5DB',
-                            borderRadius: '4px',
-                            backgroundColor: '#fff',
-                            cursor: 'pointer',
-                            color: '#6B7280',
-                          }}
-                          title="全選択"
-                        >
-                          全
-                        </button>
-                        <button
-                          onClick={() => handleSelectAll(field, false)}
-                          style={{
-                            padding: '2px 6px',
-                            fontSize: '10px',
-                            border: '1px solid #D1D5DB',
-                            borderRadius: '4px',
-                            backgroundColor: '#fff',
-                            cursor: 'pointer',
-                            color: '#6B7280',
-                          }}
-                          title="全解除"
-                        >
-                          無
-                        </button>
-                      </div>
+                    <div style={{ marginBottom: '4px' }}>
+                      {field.japanese_label || field.column_name}
                     </div>
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '2px' }}>
+                      <button
+                        onClick={() => handleColSelectAll(field, true)}
+                        style={{
+                          padding: '1px 4px',
+                          fontSize: '9px',
+                          border: '1px solid #D1D5DB',
+                          borderRadius: '3px',
+                          backgroundColor: '#fff',
+                          cursor: 'pointer',
+                          color: '#6B7280',
+                        }}
+                        title="全種別ON"
+                      >
+                        全
+                      </button>
+                      <button
+                        onClick={() => handleColSelectAll(field, false)}
+                        style={{
+                          padding: '1px 4px',
+                          fontSize: '9px',
+                          border: '1px solid #D1D5DB',
+                          borderRadius: '3px',
+                          backgroundColor: '#fff',
+                          cursor: 'pointer',
+                          color: '#6B7280',
+                        }}
+                        title="全種別OFF"
+                      >
+                        無
+                      </button>
+                    </div>
+                  </th>
+                ))}
+              </tr>
+            </thead>
 
-                    {/* チェックボックス */}
-                    <div style={{ display: 'flex' }}>
-                      {Object.entries(groupedPropertyTypes).map(([groupName, types]) => (
-                        <div key={groupName} style={{ display: 'flex' }}>
-                          {types.map(pt => (
-                            <div
-                              key={pt.id}
+            {/* ボディ：物件種別ごとの行 */}
+            <tbody>
+              {sortedTypeGroups.map(groupName => (
+                <React.Fragment key={groupName}>
+                  {/* グループヘッダー */}
+                  <tr>
+                    <td
+                      colSpan={displayFields.length + 1}
+                      style={{
+                        padding: '8px 16px',
+                        backgroundColor: '#F9FAFB',
+                        fontWeight: 600,
+                        fontSize: '12px',
+                        color: '#6B7280',
+                        borderBottom: '1px solid #E5E7EB',
+                      }}
+                    >
+                      {groupName}
+                    </td>
+                  </tr>
+
+                  {/* 物件種別の行 */}
+                  {groupedPropertyTypes[groupName]?.map(pt => (
+                    <tr key={pt.id} style={{ borderBottom: '1px solid #F3F4F6' }}>
+                      <td style={{
+                        padding: '10px 16px',
+                        fontSize: '13px',
+                        color: '#1F2937',
+                        backgroundColor: '#fff',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span>{pt.label}</span>
+                          <div style={{ display: 'flex', gap: '2px' }}>
+                            <button
+                              onClick={() => handleRowSelectAll(pt.id, true)}
                               style={{
-                                minWidth: '70px',
-                                padding: '8px',
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                borderRight: '1px solid #F3F4F6',
+                                padding: '2px 6px',
+                                fontSize: '9px',
+                                border: '1px solid #D1D5DB',
+                                borderRadius: '3px',
+                                backgroundColor: '#fff',
+                                cursor: 'pointer',
+                                color: '#6B7280',
                               }}
+                              title="この行を全てON"
                             >
-                              <input
-                                type="checkbox"
-                                checked={isChecked(field, pt.id)}
-                                onChange={() => handleToggle(field, pt.id)}
-                                style={{
-                                  width: '18px',
-                                  height: '18px',
-                                  cursor: 'pointer',
-                                  accentColor: '#3B82F6',
-                                }}
-                              />
-                            </div>
-                          ))}
+                              全
+                            </button>
+                            <button
+                              onClick={() => handleRowSelectAll(pt.id, false)}
+                              style={{
+                                padding: '2px 6px',
+                                fontSize: '9px',
+                                border: '1px solid #D1D5DB',
+                                borderRadius: '3px',
+                                backgroundColor: '#fff',
+                                cursor: 'pointer',
+                                color: '#6B7280',
+                              }}
+                              title="この行を全てOFF"
+                            >
+                              無
+                            </button>
+                          </div>
                         </div>
+                      </td>
+                      {displayFields.map(field => (
+                        <td
+                          key={field.column_name}
+                          style={{
+                            padding: '8px 4px',
+                            textAlign: 'center',
+                            backgroundColor: hasFieldChange(field) ? 'rgba(251, 191, 36, 0.05)' : '#fff',
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked(field, pt.id)}
+                            onChange={() => handleToggle(field, pt.id)}
+                            style={{
+                              width: '18px',
+                              height: '18px',
+                              cursor: 'pointer',
+                              accentColor: '#3B82F6',
+                            }}
+                          />
+                        </td>
                       ))}
-                    </div>
-                  </div>
-                );
-              })}
+                    </tr>
+                  ))}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+
+          {displayFields.length === 0 && (
+            <div style={{ padding: '48px', textAlign: 'center', color: '#9CA3AF' }}>
+              フィールドグループを選択してください
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>
