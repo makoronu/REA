@@ -4,6 +4,8 @@ import { PropertyFullForm } from '../../components/form/DynamicForm';
 import { propertyService } from '../../services/propertyService';
 import { Property } from '../../types/property';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8005';
+
 export const PropertyEditDynamicPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -13,6 +15,7 @@ export const PropertyEditDynamicPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(!isNew);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [isSettingSchoolDistricts, setIsSettingSchoolDistricts] = useState(false);
 
   // 既存データの取得
   useEffect(() => {
@@ -32,6 +35,46 @@ export const PropertyEditDynamicPage: React.FC = () => {
       fetchProperty();
     }
   }, [id, isNew]);
+
+  // 学区自動設定
+  const handleSetSchoolDistricts = async () => {
+    if (!id || isNew) return;
+
+    setIsSettingSchoolDistricts(true);
+    try {
+      const response = await fetch(`${API_URL}/api/v1/geo/properties/${id}/set-school-districts`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || '学区の取得に失敗しました');
+      }
+
+      const result = await response.json();
+
+      // プロパティを更新
+      setProperty(prev => prev ? {
+        ...prev,
+        elementary_school: result.elementary_school,
+        elementary_school_minutes: result.elementary_school_minutes,
+        junior_high_school: result.junior_high_school,
+        junior_high_school_minutes: result.junior_high_school_minutes,
+      } : null);
+
+      // 成功メッセージ
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+
+      // ページをリロードしてフォームを更新
+      window.location.reload();
+    } catch (err: any) {
+      setError(err.message || '学区の取得に失敗しました');
+      setSaveStatus('error');
+    } finally {
+      setIsSettingSchoolDistricts(false);
+    }
+  };
 
   // フォーム送信ハンドラー
   const handleSubmit = async (data: any) => {
@@ -127,6 +170,28 @@ export const PropertyEditDynamicPage: React.FC = () => {
           </div>
 
           <div className="flex items-center space-x-4">
+            {/* 学区自動取得ボタン */}
+            {!isNew && property?.latitude && property?.longitude && (
+              <button
+                onClick={handleSetSchoolDistricts}
+                disabled={isSettingSchoolDistricts}
+                className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-green-600 rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:border-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isSettingSchoolDistricts ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    取得中...
+                  </>
+                ) : (
+                  <>
+                    🏫 学区を自動取得
+                  </>
+                )}
+              </button>
+            )}
             {/* 戻るボタン */}
             <button
               onClick={() => navigate('/properties')}
