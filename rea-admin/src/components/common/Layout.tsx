@@ -93,6 +93,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { path: '/properties', label: '物件一覧', icon: '🏠' },
     { path: '/properties/new', label: '新規登録', icon: '➕' },
     { path: '/import/touki', label: '登記取込', icon: '📄' },
+    { path: '/admin/field-visibility', label: '管理', icon: '⚙️' },
   ];
 
   return (
