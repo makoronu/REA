@@ -1070,8 +1070,8 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
       tables.find(table => table.table_name === tableName)
     ).filter(table => table !== undefined);
 
-    // 所在地・周辺情報グループ名
-    const locationGroups = ['所在地', '学区', '電車・鉄道', 'バス', '周辺施設'];
+    // 所在地・周辺情報タブに含めるグループ名
+    const locationGroups = ['物件種別', '所在地', '学区', '電車・鉄道', 'バス', '周辺施設'];
 
     // 現在選択されている物件種別
     const currentPropertyType = formData.property_type;
