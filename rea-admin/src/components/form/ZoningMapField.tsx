@@ -87,6 +87,9 @@ export const ZoningMapField: React.FC = () => {
   const lat = watch('latitude');
   const lng = watch('longitude');
 
+  // 緯度経度が両方あるかチェック
+  const hasCoordinates = lat && lng && !isNaN(Number(lat)) && !isNaN(Number(lng));
+
   // マップ初期化関数
   const initializeMap = useCallback(() => {
     // 既に初期化中または初期化済みならスキップ
@@ -277,8 +280,13 @@ export const ZoningMapField: React.FC = () => {
     }
   }, [lat, lng]);
 
-  // マップ初期化用useEffect
+  // マップ初期化用useEffect - 緯度経度が入力されてから初期化
   useEffect(() => {
+    // 緯度経度がなければ何もしない
+    if (!hasCoordinates) {
+      return;
+    }
+
     // 初期化をリトライするインターバル
     let retryCount = 0;
     const maxRetries = 10;
@@ -307,7 +315,7 @@ export const ZoningMapField: React.FC = () => {
       initializingRef.current = false;
       setMapReady(false);
     };
-  }, [initializeMap]);
+  }, [initializeMap, hasCoordinates]);
 
   // 緯度経度が変わったらマップを移動
   useEffect(() => {
@@ -330,6 +338,30 @@ export const ZoningMapField: React.FC = () => {
     }
   }, [lat, lng]);
 
+  // 緯度経度がない場合は案内メッセージを表示
+  if (!hasCoordinates) {
+    return (
+      <div style={{ marginTop: '16px' }}>
+        <div style={{
+          padding: '40px 20px',
+          backgroundColor: '#F9FAFB',
+          borderRadius: '8px',
+          border: '2px dashed #D1D5DB',
+          textAlign: 'center',
+        }}>
+          <div style={{ fontSize: '32px', marginBottom: '12px' }}>🗺️</div>
+          <div style={{ fontSize: '14px', color: '#6B7280', marginBottom: '8px' }}>
+            用途地域マップを表示するには
+          </div>
+          <div style={{ fontSize: '13px', color: '#9CA3AF' }}>
+            上部の「<strong style={{ color: '#DC2626' }}>位置情報から自動取得</strong>」ボタンを押すか、<br />
+            緯度・経度を入力してください
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ marginTop: '16px' }}>
       <div style={{ display: 'flex', gap: '16px' }}>
@@ -347,7 +379,7 @@ export const ZoningMapField: React.FC = () => {
               position: 'relative',
             }}
           />
-          {/* 地図初期化前のプレースホルダー */}
+          {/* 地図初期化中のプレースホルダー */}
           {!mapReady && !initError && (
             <div style={{
               position: 'absolute',
@@ -631,20 +663,6 @@ export const ZoningMapField: React.FC = () => {
         <span style={{ fontSize: '13px' }}>💡</span>
         <span>地図上で<strong>右クリック</strong>すると、その地点の用途地域・都市計画・建ぺい率/容積率が表示されます</span>
       </div>
-
-      {/* 注意書き */}
-      {!lat || !lng ? (
-        <div style={{
-          marginTop: '8px',
-          padding: '8px 12px',
-          backgroundColor: '#FEF3C7',
-          borderRadius: '6px',
-          fontSize: '11px',
-          color: '#92400E',
-        }}>
-          緯度・経度を入力すると、物件位置にマーカーが表示されます
-        </div>
-      ) : null}
     </div>
   );
 };
