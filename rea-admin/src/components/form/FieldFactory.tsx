@@ -801,19 +801,57 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
 
   // 用途地域・都市計画区域自動取得ハンドラー
   const handleFetchZoning = async () => {
-    const lat = getValues('latitude');
-    const lng = getValues('longitude');
+    let lat = getValues('latitude');
+    let lng = getValues('longitude');
 
     console.log('handleFetchZoning called, lat:', lat, 'lng:', lng);
 
+    // 緯度経度がなければ、住所からジオコードして取得
     if (!lat || !lng) {
-      setZoningMessage({ type: 'error', text: '緯度・経度を先に入力してください（所在地で住所検索を行ってください）' });
-      setTimeout(() => setZoningMessage(null), 5000);
-      return;
-    }
+      const prefecture = getValues('prefecture') || '';
+      const city = getValues('city') || '';
+      const address = getValues('address') || '';
+      const addressDetail = getValues('address_detail') || '';
+      const fullAddress = [prefecture, city, address, addressDetail].filter(Boolean).join('');
 
-    setIsLoadingZoning(true);
-    setZoningMessage(null);
+      if (!fullAddress) {
+        setZoningMessage({ type: 'error', text: '住所を先に入力してください' });
+        setTimeout(() => setZoningMessage(null), 5000);
+        return;
+      }
+
+      setIsLoadingZoning(true);
+      setZoningMessage({ type: 'success', text: '住所から座標を取得中...' });
+
+      try {
+        // ジオコードで緯度経度を取得
+        const geocodeRes = await fetch(`${API_URL}/api/v1/geo/geocode?address=${encodeURIComponent(fullAddress)}`);
+        const geocodeData = await geocodeRes.json();
+
+        if (geocodeData.latitude && geocodeData.longitude) {
+          lat = geocodeData.latitude;
+          lng = geocodeData.longitude;
+          // フォームに緯度経度をセット
+          setValue('latitude', lat, { shouldDirty: true });
+          setValue('longitude', lng, { shouldDirty: true });
+          console.log('Geocoded:', lat, lng);
+        } else {
+          setZoningMessage({ type: 'error', text: '住所から座標を取得できませんでした' });
+          setIsLoadingZoning(false);
+          setTimeout(() => setZoningMessage(null), 5000);
+          return;
+        }
+      } catch (err) {
+        console.error('Geocode error:', err);
+        setZoningMessage({ type: 'error', text: '住所から座標の取得に失敗しました' });
+        setIsLoadingZoning(false);
+        setTimeout(() => setZoningMessage(null), 5000);
+        return;
+      }
+    } else {
+      setIsLoadingZoning(true);
+      setZoningMessage(null);
+    }
 
     try {
       console.log('Fetching zoning data for:', lat, lng);

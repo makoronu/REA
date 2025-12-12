@@ -269,6 +269,7 @@ export const PropertyEditDynamicPage: React.FC = () => {
       {/* 動的フォーム（全テーブル表示） */}
       <div className="bg-white shadow rounded-lg p-6">
         <PropertyFullForm
+          key={isNew ? 'new' : `edit-${id}`}  // 新規/編集切り替え時にフォームをリセット
           onSubmit={handleSubmit}
           defaultValues={property || {
             // 新規登録時のデフォルト値
