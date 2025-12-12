@@ -867,6 +867,7 @@ async def get_zoning(
 
     try:
         # 座標を含む用途地域ポリゴンを検索
+        # 面積が小さい順（より詳細なポリゴンを優先）
         cur.execute("""
             SELECT
                 zone_code,
@@ -877,7 +878,7 @@ async def get_zoning(
                 ST_Area(geom::geography) as area_sq_m
             FROM m_zoning
             WHERE ST_Contains(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
-            ORDER BY area_sq_m DESC
+            ORDER BY area_sq_m ASC
         """, (lng, lat))
 
         rows = cur.fetchall()
@@ -891,7 +892,7 @@ async def get_zoning(
                 building_coverage_ratio=bcr,
                 floor_area_ratio=far,
                 city_name=city_name,
-                is_primary=(i == 0)  # 最初のものが面積最大
+                is_primary=(i == 0)  # 最初のものが面積最小（より詳細）
             ))
 
         return ZoningResponse(
@@ -1125,6 +1126,8 @@ async def get_urban_planning(
     cur = conn.cursor()
 
     try:
+        # 面積が小さい順（より詳細なポリゴンを優先）
+        # 市街化区域(1)を市街化調整区域(2)より優先するため、layer_noでもソート
         cur.execute("""
             SELECT
                 layer_no,
@@ -1132,7 +1135,7 @@ async def get_urban_planning(
                 ST_Area(geom::geography) as area_sq_m
             FROM m_urban_planning
             WHERE ST_Contains(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
-            ORDER BY area_sq_m DESC
+            ORDER BY layer_no ASC, area_sq_m ASC
         """, (lng, lat))
 
         rows = cur.fetchall()

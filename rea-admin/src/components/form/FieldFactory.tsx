@@ -890,9 +890,18 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
       if (urbanData.areas && urbanData.areas.length > 0) {
         const primaryUrban = urbanData.areas.find((a: any) => a.is_primary) || urbanData.areas[0];
 
-        console.log('Setting city_planning to:', primaryUrban.layer_no);
+        console.log('Urban planning API response:', urbanData);
+        console.log('Primary urban area:', primaryUrban);
+        console.log('Setting city_planning to:', String(primaryUrban.layer_no), '(area_type:', primaryUrban.area_type, ')');
+
         // city_planningカラムに設定（layer_no: 1=市街化区域, 2=市街化調整区域）
         setValue('city_planning', String(primaryUrban.layer_no), { shouldDirty: true });
+
+        // 設定後の値を確認
+        setTimeout(() => {
+          const currentValue = getValues('city_planning');
+          console.log('city_planning after setValue:', currentValue);
+        }, 100);
 
         messages.push(primaryUrban.area_type);
       }
