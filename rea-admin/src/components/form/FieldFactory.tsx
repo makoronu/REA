@@ -804,9 +804,11 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
     const lat = getValues('latitude');
     const lng = getValues('longitude');
 
+    console.log('handleFetchZoning called, lat:', lat, 'lng:', lng);
+
     if (!lat || !lng) {
-      setZoningMessage({ type: 'error', text: '緯度・経度を先に入力してください' });
-      setTimeout(() => setZoningMessage(null), 3000);
+      setZoningMessage({ type: 'error', text: '緯度・経度を先に入力してください（所在地で住所検索を行ってください）' });
+      setTimeout(() => setZoningMessage(null), 5000);
       return;
     }
 
@@ -814,6 +816,8 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
     setZoningMessage(null);
 
     try {
+      console.log('Fetching zoning data for:', lat, lng);
+
       // 用途地域と都市計画区域を同時に取得
       const [zoningRes, urbanRes] = await Promise.all([
         fetch(`${API_URL}/api/v1/geo/zoning?lat=${lat}&lng=${lng}`),
@@ -823,12 +827,16 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
       const zoningData = await zoningRes.json();
       const urbanData = await urbanRes.json();
 
+      console.log('Zoning data:', zoningData);
+      console.log('Urban data:', urbanData);
+
       const messages: string[] = [];
 
       // 用途地域を設定
       if (zoningData.zones && zoningData.zones.length > 0) {
         const primary = zoningData.zones.find((z: any) => z.is_primary) || zoningData.zones[0];
 
+        console.log('Setting use_district to:', primary.zone_code);
         setValue('use_district', String(primary.zone_code), { shouldDirty: true });
         if (primary.building_coverage_ratio) {
           setValue('building_coverage_ratio', primary.building_coverage_ratio, { shouldDirty: true });
@@ -844,6 +852,7 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
       if (urbanData.areas && urbanData.areas.length > 0) {
         const primaryUrban = urbanData.areas.find((a: any) => a.is_primary) || urbanData.areas[0];
 
+        console.log('Setting city_planning to:', primaryUrban.layer_no);
         // city_planningカラムに設定（layer_no: 1=市街化区域, 2=市街化調整区域）
         setValue('city_planning', String(primaryUrban.layer_no), { shouldDirty: true });
 
@@ -856,6 +865,7 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
         setZoningMessage({ type: 'error', text: '該当するデータが見つかりませんでした' });
       }
     } catch (err: any) {
+      console.error('Fetch error:', err);
       setZoningMessage({ type: 'error', text: err.message || 'データの取得に失敗しました' });
     } finally {
       setIsLoadingZoning(false);

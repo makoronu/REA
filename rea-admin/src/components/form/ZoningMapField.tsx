@@ -1,12 +1,9 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8005';
-
-// ユニークIDを生成（再マウント時の問題を防ぐ）
-let mapIdCounter = 0;
 
 // 用途地域の色マッピング
 const ZONE_COLORS: Record<number, string> = {
@@ -66,13 +63,9 @@ export const ZoningMapField: React.FC = () => {
   const geoJsonLayerRef = useRef<L.GeoJSON | null>(null);
   const urbanPlanningLayerRef = useRef<L.GeoJSON | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
-  const initializingRef = useRef(false);
 
-  // ユニークなマップIDを保持（再マウント対策）
-  const [mapId] = useState(() => `zoning-map-${++mapIdCounter}`);
   const [isLoading, setIsLoading] = useState(false);
   const [mapReady, setMapReady] = useState(false);
-  const [initError, setInitError] = useState<string | null>(null);
   const [selectedZone, setSelectedZone] = useState<any>(null);
   const [contextMenu, setContextMenu] = useState<{
     lat: number;
@@ -90,221 +83,213 @@ export const ZoningMapField: React.FC = () => {
   // 緯度経度が両方あるかチェック
   const hasCoordinates = lat && lng && !isNaN(Number(lat)) && !isNaN(Number(lng));
 
-  // マップ初期化関数
-  const initializeMap = useCallback(() => {
-    // 既に初期化中または初期化済みならスキップ
-    if (initializingRef.current || mapInstanceRef.current) return;
+  // データ読み込み関数
+  const loadMapData = async (map: L.Map) => {
+    const bounds = map.getBounds();
+    const zoom = map.getZoom();
+    const minLat = bounds.getSouth();
+    const minLng = bounds.getWest();
+    const maxLat = bounds.getNorth();
+    const maxLng = bounds.getEast();
+    const simplify = zoom < 14 ? 0.0005 : 0.0001;
+    const urbanSimplify = zoom < 14 ? 0.001 : 0.0002;
 
-    const container = mapContainerRef.current;
-    if (!container) return;
-
-    // コンテナのサイズをチェック（0だと初期化失敗する）
-    const rect = container.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) {
-      console.log('ZoningMap: Container has no size, retrying...');
-      return;
-    }
-
-    initializingRef.current = true;
-    setInitError(null);
-
+    // 用途地域を取得
     try {
-      // 初期位置（緯度経度がなければ札幌駅）
-      const initialLat = lat || 43.0686;
-      const initialLng = lng || 141.3508;
+      const response = await fetch(
+        `${API_URL}/api/v1/geo/zoning/geojson?min_lat=${minLat}&min_lng=${minLng}&max_lat=${maxLat}&max_lng=${maxLng}&simplify=${simplify}`
+      );
+      const geojson = await response.json();
 
-      const map = L.map(container, {
-        scrollWheelZoom: true,
-      }).setView([initialLat, initialLng], 17);
-      mapInstanceRef.current = map;
-
-    // 地理院タイル
-    L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png', {
-      attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>',
-      maxZoom: 18,
-    }).addTo(map);
-
-    // 移動・ズーム時にポリゴンを再取得
-    const loadData = async () => {
-      const bounds = map.getBounds();
-      const zoom = map.getZoom();
-      const minLat = bounds.getSouth();
-      const minLng = bounds.getWest();
-      const maxLat = bounds.getNorth();
-      const maxLng = bounds.getEast();
-      const simplify = zoom < 14 ? 0.0005 : 0.0001;
-      const urbanSimplify = zoom < 14 ? 0.001 : 0.0002;
-
-      // 用途地域を取得
-      try {
-        const response = await fetch(
-          `${API_URL}/api/v1/geo/zoning/geojson?min_lat=${minLat}&min_lng=${minLng}&max_lat=${maxLat}&max_lng=${maxLng}&simplify=${simplify}`
-        );
-        const geojson = await response.json();
-
-        if (geoJsonLayerRef.current && map) {
-          map.removeLayer(geoJsonLayerRef.current);
-        }
-
-        if (geojson.features?.length > 0) {
-          const layer = L.geoJSON(geojson, {
-            style: (feature) => {
-              const zoneCode = feature?.properties?.zone_code || 99;
-              return {
-                fillColor: ZONE_COLORS[zoneCode] || '#CCCCCC',
-                fillOpacity: 0.5,
-                color: '#333',
-                weight: 1,
-              };
-            },
-            onEachFeature: (feature, layer) => {
-              layer.on('click', () => {
-                setSelectedZone(feature.properties);
-              });
-              layer.on('mouseover', (e) => {
-                (e.target as L.Path).setStyle({ fillOpacity: 0.8, weight: 2 });
-              });
-              layer.on('mouseout', (e) => {
-                (e.target as L.Path).setStyle({ fillOpacity: 0.5, weight: 1 });
-              });
-            },
-          });
-          layer.addTo(map);
-          geoJsonLayerRef.current = layer;
-        }
-      } catch (err) {
-        console.error('用途地域データ取得エラー:', err);
+      if (geoJsonLayerRef.current) {
+        map.removeLayer(geoJsonLayerRef.current);
       }
 
-      // 都市計画区域を取得
-      try {
-        const response = await fetch(
-          `${API_URL}/api/v1/geo/urban-planning/geojson?min_lat=${minLat}&min_lng=${minLng}&max_lat=${maxLat}&max_lng=${maxLng}&simplify=${urbanSimplify}`
-        );
-        const geojson = await response.json();
-
-        if (urbanPlanningLayerRef.current && map) {
-          map.removeLayer(urbanPlanningLayerRef.current);
-        }
-
-        if (geojson.features?.length > 0) {
-          const layer = L.geoJSON(geojson, {
-            style: (feature) => {
-              const layerNo = feature?.properties?.layer_no || 4;
-              return {
-                fillColor: 'transparent',
-                fillOpacity: 0,
-                color: URBAN_PLANNING_COLORS[layerNo] || '#999999',
-                weight: 3,
-                dashArray: '8, 4',
-              };
-            },
-            onEachFeature: (feature, layer) => {
-              layer.on('click', () => {
-                setSelectedZone({ ...feature.properties, isUrbanPlanning: true });
-              });
-            },
-          });
-          layer.addTo(map);
-          urbanPlanningLayerRef.current = layer;
-        }
-      } catch (err) {
-        console.error('都市計画区域データ取得エラー:', err);
+      if (geojson.features?.length > 0) {
+        const layer = L.geoJSON(geojson, {
+          style: (feature) => {
+            const zoneCode = feature?.properties?.zone_code || 99;
+            return {
+              fillColor: ZONE_COLORS[zoneCode] || '#CCCCCC',
+              fillOpacity: 0.5,
+              color: '#333',
+              weight: 1,
+            };
+          },
+          onEachFeature: (feature, layer) => {
+            layer.on('click', () => {
+              setSelectedZone(feature.properties);
+            });
+            layer.on('mouseover', (e) => {
+              (e.target as L.Path).setStyle({ fillOpacity: 0.8, weight: 2 });
+            });
+            layer.on('mouseout', (e) => {
+              (e.target as L.Path).setStyle({ fillOpacity: 0.5, weight: 1 });
+            });
+          },
+        });
+        layer.addTo(map);
+        geoJsonLayerRef.current = layer;
       }
-
-      setIsLoading(false);
-    };
-
-    map.on('moveend', loadData);
-
-    // 右クリックで情報取得
-    map.on('contextmenu', async (e: L.LeafletMouseEvent) => {
-      const { lat: clickLat, lng: clickLng } = e.latlng;
-      const containerPoint = e.containerPoint;
-
-      // ダイアログを表示（ローディング状態）
-      setContextMenu({
-        lat: clickLat,
-        lng: clickLng,
-        x: containerPoint.x,
-        y: containerPoint.y,
-        zoning: null,
-        urban: null,
-        loading: true,
-      });
-
-      // APIから情報を取得
-      try {
-        const [zoningRes, urbanRes] = await Promise.all([
-          fetch(`${API_URL}/api/v1/geo/zoning?lat=${clickLat}&lng=${clickLng}`),
-          fetch(`${API_URL}/api/v1/geo/urban-planning?lat=${clickLat}&lng=${clickLng}`)
-        ]);
-
-        const zoningData = await zoningRes.json();
-        const urbanData = await urbanRes.json();
-
-        setContextMenu(prev => prev ? {
-          ...prev,
-          zoning: zoningData.zones?.[0] || null,
-          urban: urbanData.areas?.[0] || null,
-          loading: false,
-        } : null);
-      } catch (err) {
-        console.error('情報取得エラー:', err);
-        setContextMenu(prev => prev ? { ...prev, loading: false } : null);
-      }
-    });
-
-    // クリックでダイアログを閉じる
-    map.on('click', () => {
-      setContextMenu(null);
-    });
-
-    // 初回読み込み
-    setIsLoading(true);
-    loadData();
-    setMapReady(true);
-
-    // サイズを再計算（Leafletの既知の問題対策）
-    setTimeout(() => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.invalidateSize();
-      }
-    }, 200);
-
     } catch (err) {
-      console.error('ZoningMap: Initialization error', err);
-      setInitError('地図の初期化に失敗しました');
-    } finally {
-      initializingRef.current = false;
+      console.error('用途地域データ取得エラー:', err);
     }
-  }, [lat, lng]);
 
-  // マップ初期化用useEffect - 緯度経度が入力されてから初期化
+    // 都市計画区域を取得
+    try {
+      const response = await fetch(
+        `${API_URL}/api/v1/geo/urban-planning/geojson?min_lat=${minLat}&min_lng=${minLng}&max_lat=${maxLat}&max_lng=${maxLng}&simplify=${urbanSimplify}`
+      );
+      const geojson = await response.json();
+
+      if (urbanPlanningLayerRef.current) {
+        map.removeLayer(urbanPlanningLayerRef.current);
+      }
+
+      if (geojson.features?.length > 0) {
+        const layer = L.geoJSON(geojson, {
+          style: (feature) => {
+            const layerNo = feature?.properties?.layer_no || 4;
+            return {
+              fillColor: 'transparent',
+              fillOpacity: 0,
+              color: URBAN_PLANNING_COLORS[layerNo] || '#999999',
+              weight: 3,
+              dashArray: '8, 4',
+            };
+          },
+          onEachFeature: (feature, layer) => {
+            layer.on('click', () => {
+              setSelectedZone({ ...feature.properties, isUrbanPlanning: true });
+            });
+          },
+        });
+        layer.addTo(map);
+        urbanPlanningLayerRef.current = layer;
+      }
+    } catch (err) {
+      console.error('都市計画区域データ取得エラー:', err);
+    }
+
+    setIsLoading(false);
+  };
+
+  // マップ初期化 - hasCoordinatesがtrueになったときに実行
   useEffect(() => {
     // 緯度経度がなければ何もしない
     if (!hasCoordinates) {
       return;
     }
 
-    // 初期化をリトライするインターバル
-    let retryCount = 0;
-    const maxRetries = 10;
+    // 既に初期化済みならスキップ
+    if (mapInstanceRef.current) {
+      return;
+    }
 
-    const tryInit = () => {
-      if (mapInstanceRef.current) return; // 既に初期化済み
+    const container = mapContainerRef.current;
+    if (!container) {
+      console.log('ZoningMap: No container');
+      return;
+    }
 
-      initializeMap();
+    // 少し遅延させてDOMが確実に描画されてから初期化
+    const timer = setTimeout(() => {
+      if (mapInstanceRef.current) return; // 二重初期化防止
 
-      // まだ初期化できていなければリトライ
-      if (!mapInstanceRef.current && retryCount < maxRetries) {
-        retryCount++;
-        setTimeout(tryInit, 100);
+      const rect = container.getBoundingClientRect();
+      console.log('ZoningMap: Container size', rect.width, rect.height);
+
+      if (rect.width === 0 || rect.height === 0) {
+        console.log('ZoningMap: Container has no size');
+        return;
       }
-    };
 
-    // 初回は少し待ってから実行（DOM描画を待つ）
-    const timer = setTimeout(tryInit, 50);
+      try {
+        console.log('ZoningMap: Initializing map at', lat, lng);
+
+        const map = L.map(container, {
+          scrollWheelZoom: true,
+        }).setView([Number(lat), Number(lng)], 17);
+
+        mapInstanceRef.current = map;
+
+        // 地理院タイル
+        L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png', {
+          attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>',
+          maxZoom: 18,
+        }).addTo(map);
+
+        // マーカー追加
+        markerRef.current = L.marker([Number(lat), Number(lng)], {
+          icon: L.divIcon({
+            className: 'custom-marker',
+            html: '<div style="width:20px;height:20px;background:#DC2626;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>',
+            iconSize: [20, 20],
+            iconAnchor: [10, 10],
+          }),
+        }).addTo(map);
+
+        // 移動・ズーム時にポリゴンを再取得
+        map.on('moveend', () => {
+          setIsLoading(true);
+          loadMapData(map);
+        });
+
+        // 右クリックで情報取得
+        map.on('contextmenu', async (e: L.LeafletMouseEvent) => {
+          const { lat: clickLat, lng: clickLng } = e.latlng;
+          const containerPoint = e.containerPoint;
+
+          setContextMenu({
+            lat: clickLat,
+            lng: clickLng,
+            x: containerPoint.x,
+            y: containerPoint.y,
+            zoning: null,
+            urban: null,
+            loading: true,
+          });
+
+          try {
+            const [zoningRes, urbanRes] = await Promise.all([
+              fetch(`${API_URL}/api/v1/geo/zoning?lat=${clickLat}&lng=${clickLng}`),
+              fetch(`${API_URL}/api/v1/geo/urban-planning?lat=${clickLat}&lng=${clickLng}`)
+            ]);
+
+            const zoningData = await zoningRes.json();
+            const urbanData = await urbanRes.json();
+
+            setContextMenu(prev => prev ? {
+              ...prev,
+              zoning: zoningData.zones?.[0] || null,
+              urban: urbanData.areas?.[0] || null,
+              loading: false,
+            } : null);
+          } catch (err) {
+            console.error('情報取得エラー:', err);
+            setContextMenu(prev => prev ? { ...prev, loading: false } : null);
+          }
+        });
+
+        // クリックでダイアログを閉じる
+        map.on('click', () => {
+          setContextMenu(null);
+        });
+
+        // 初回データ読み込み
+        setIsLoading(true);
+        loadMapData(map);
+        setMapReady(true);
+
+        // サイズ再計算
+        setTimeout(() => {
+          map.invalidateSize();
+        }, 100);
+
+      } catch (err) {
+        console.error('ZoningMap: Initialization error', err);
+      }
+    }, 200);
 
     return () => {
       clearTimeout(timer);
@@ -312,31 +297,9 @@ export const ZoningMapField: React.FC = () => {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
-      initializingRef.current = false;
       setMapReady(false);
     };
-  }, [initializeMap, hasCoordinates]);
-
-  // 緯度経度が変わったらマップを移動
-  useEffect(() => {
-    if (!mapInstanceRef.current || !lat || !lng) return;
-
-    mapInstanceRef.current.setView([lat, lng], 17);
-
-    // マーカーを更新
-    if (markerRef.current) {
-      markerRef.current.setLatLng([lat, lng]);
-    } else {
-      markerRef.current = L.marker([lat, lng], {
-        icon: L.divIcon({
-          className: 'custom-marker',
-          html: '<div style="width:20px;height:20px;background:#DC2626;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>',
-          iconSize: [20, 20],
-          iconAnchor: [10, 10],
-        }),
-      }).addTo(mapInstanceRef.current);
-    }
-  }, [lat, lng]);
+  }, [hasCoordinates, lat, lng]);
 
   // 緯度経度がない場合は案内メッセージを表示
   if (!hasCoordinates) {
@@ -369,18 +332,16 @@ export const ZoningMapField: React.FC = () => {
         <div style={{ flex: 1, position: 'relative' }}>
           <div
             ref={mapContainerRef}
-            id={mapId}
             style={{
               width: '100%',
               height: '300px',
               borderRadius: '8px',
               border: '1px solid #E5E7EB',
               backgroundColor: '#F3F4F6',
-              position: 'relative',
             }}
           />
           {/* 地図初期化中のプレースホルダー */}
-          {!mapReady && !initError && (
+          {!mapReady && (
             <div style={{
               position: 'absolute',
               top: 0,
@@ -398,26 +359,7 @@ export const ZoningMapField: React.FC = () => {
               地図を読み込み中...
             </div>
           )}
-          {/* エラー表示 */}
-          {initError && (
-            <div style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: '#FEE2E2',
-              borderRadius: '8px',
-              color: '#991B1B',
-              fontSize: '12px',
-            }}>
-              {initError}
-            </div>
-          )}
-          {isLoading && (
+          {isLoading && mapReady && (
             <div style={{
               position: 'absolute',
               top: '8px',
@@ -427,7 +369,7 @@ export const ZoningMapField: React.FC = () => {
               borderRadius: '4px',
               fontSize: '11px',
             }}>
-              読み込み中...
+              データ読み込み中...
             </div>
           )}
 
@@ -448,7 +390,6 @@ export const ZoningMapField: React.FC = () => {
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              {/* ヘッダー */}
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -477,7 +418,6 @@ export const ZoningMapField: React.FC = () => {
                 <div style={{ color: '#6B7280', padding: '8px 0' }}>読み込み中...</div>
               ) : (
                 <>
-                  {/* 用途地域 */}
                   <div style={{ marginBottom: '10px' }}>
                     <div style={{ color: '#9CA3AF', fontSize: '10px', marginBottom: '2px' }}>用途地域</div>
                     <div style={{ fontWeight: 600, color: contextMenu.zoning ? '#1F2937' : '#9CA3AF' }}>
@@ -485,7 +425,6 @@ export const ZoningMapField: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* 都市計画 */}
                   <div style={{ marginBottom: '10px' }}>
                     <div style={{ color: '#9CA3AF', fontSize: '10px', marginBottom: '2px' }}>都市計画</div>
                     <div style={{ fontWeight: 600, color: contextMenu.urban ? '#1F2937' : '#9CA3AF' }}>
@@ -493,7 +432,6 @@ export const ZoningMapField: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* 建ぺい率・容積率 */}
                   {contextMenu.zoning && (
                     <div style={{
                       display: 'flex',
@@ -516,7 +454,6 @@ export const ZoningMapField: React.FC = () => {
                     </div>
                   )}
 
-                  {/* 座標 */}
                   <div style={{
                     marginTop: '8px',
                     paddingTop: '8px',
@@ -546,12 +483,10 @@ export const ZoningMapField: React.FC = () => {
               boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
             }}>
               {selectedZone.isUrbanPlanning ? (
-                // 都市計画区域
                 <div style={{ fontWeight: 600, color: URBAN_PLANNING_COLORS[selectedZone.layer_no] || '#333' }}>
                   {selectedZone.area_type}
                 </div>
               ) : (
-                // 用途地域
                 <>
                   <div style={{ fontWeight: 600, marginBottom: '4px' }}>
                     {selectedZone.zone_name}
