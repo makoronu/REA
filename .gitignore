@@ -153,4 +153,4 @@ backup_*/
 # Temporary files
 *.tmp
 temp/
-tmp/
+tmp/backups/

@@ -177,8 +177,22 @@
 
 **優先度**: 低（既存システム移行時に検討）
 
+### 自社情報管理画面（将来実装）
+**目的**: 自社の会社情報を管理する管理画面
+
+**実装予定**:
+- [ ] `companies` テーブル（マルチテナントの親テーブル）
+  - company_name, address, phone, fax, email
+  - license_number（宅建免許番号）
+  - representative_name（代表者名）
+  - logo_url, website_url
+- [ ] 自社情報編集画面（/admin/company）
+- [ ] 帳票・広告出力時に自社情報を自動挿入
+
+**優先度**: 高（帳票出力に必要）
+
 ### 元請会社マスターテーブル化（将来実装）
-**目的**: 元請会社情報を正規化し、再利用可能にする
+**目的**: 元請会社情報を正規化し、オートコンプリートで選択可能にする
 
 **背景**:
 - 他社物件を扱う際、元請会社情報が必要
@@ -189,8 +203,9 @@
 - [ ] `m_contractor_companies` マスターテーブル作成
   - company_name, contact_person, phone, email, address, license_number
 - [ ] propertiesテーブルに `contractor_company_id` カラム追加
-- [ ] 会社選択UI（オートコンプリート）
+- [ ] 会社選択UI（オートコンプリート + 自社DB蓄積）
 - [ ] 新規会社のその場登録機能
+- [ ] 入力するほどDBにデータが溜まる仕組み
 - [ ] 既存データの移行
 
 ### API開発
