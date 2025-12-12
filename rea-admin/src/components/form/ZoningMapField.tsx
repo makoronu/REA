@@ -65,6 +65,7 @@ export const ZoningMapField: React.FC = () => {
   const markerRef = useRef<L.Marker | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
   const [selectedZone, setSelectedZone] = useState<any>(null);
   const [contextMenu, setContextMenu] = useState<{
     lat: number;
@@ -81,15 +82,24 @@ export const ZoningMapField: React.FC = () => {
 
   // マップ初期化
   useEffect(() => {
-    if (!mapRef.current || mapInstanceRef.current) return;
+    // 既に初期化済みならスキップ
+    if (mapInstanceRef.current) return;
 
+    // DOM要素がなければスキップ
+    if (!mapRef.current) return;
+
+    // 初期位置（緯度経度がなければ札幌駅）
     const initialLat = lat || 43.0686;
     const initialLng = lng || 141.3508;
 
-    const map = L.map(mapRef.current, {
-      scrollWheelZoom: true,
-    }).setView([initialLat, initialLng], 17);
-    mapInstanceRef.current = map;
+    // 少し遅延させて確実にDOMがレンダリングされてから初期化
+    const timer = setTimeout(() => {
+      if (!mapRef.current || mapInstanceRef.current) return;
+
+      const map = L.map(mapRef.current, {
+        scrollWheelZoom: true,
+      }).setView([initialLat, initialLng], 17);
+      mapInstanceRef.current = map;
 
     // 地理院タイル
     L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png', {
@@ -236,10 +246,22 @@ export const ZoningMapField: React.FC = () => {
     // 初回読み込み
     setIsLoading(true);
     loadData();
+    setMapReady(true);
+
+    // サイズを再計算（Leafletの既知の問題対策）
+    setTimeout(() => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize();
+      }
+    }, 200);
+    }, 100); // 100ms遅延
 
     return () => {
-      map.remove();
-      mapInstanceRef.current = null;
+      clearTimeout(timer);
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
     };
   }, []);
 
@@ -276,8 +298,29 @@ export const ZoningMapField: React.FC = () => {
               height: '300px',
               borderRadius: '8px',
               border: '1px solid #E5E7EB',
+              backgroundColor: '#F3F4F6',
+              position: 'relative',
             }}
           />
+          {/* 地図初期化前のプレースホルダー */}
+          {!mapReady && (
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#F3F4F6',
+              borderRadius: '8px',
+              color: '#6B7280',
+              fontSize: '12px',
+            }}>
+              地図を読み込み中...
+            </div>
+          )}
           {isLoading && (
             <div style={{
               position: 'absolute',
