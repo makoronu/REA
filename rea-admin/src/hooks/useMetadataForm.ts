@@ -161,8 +161,10 @@ export const useMetadataForm = ({
         // スキーマとデフォルト値を設定
         const newSchema = createZodSchema(columnsData);
         setSchema(newSchema);
-        
-        const defaultValues = userDefaultValues || createDefaultValues(columnsData);
+
+        // メタデータからのデフォルト値とユーザー指定のデフォルト値をマージ
+        const metadataDefaults = createDefaultValues(columnsData);
+        const defaultValues = { ...metadataDefaults, ...userDefaultValues };
         form.reset(defaultValues);
         
       } else if (tableNames && tableNames.length > 0) {
@@ -193,8 +195,10 @@ export const useMetadataForm = ({
         // スキーマとデフォルト値を設定
         const newSchema = createZodSchema(allColumnsFlat);
         setSchema(newSchema);
-        
-        const defaultValues = userDefaultValues || createDefaultValues(allColumnsFlat);
+
+        // メタデータからのデフォルト値とユーザー指定のデフォルト値をマージ
+        const metadataDefaults = createDefaultValues(allColumnsFlat);
+        const defaultValues = { ...metadataDefaults, ...userDefaultValues };
         form.reset(defaultValues);
       }
     } catch (err) {
