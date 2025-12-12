@@ -214,7 +214,16 @@ export const PropertyEditDynamicPage: React.FC = () => {
       <div className="bg-white shadow rounded-lg p-6">
         <PropertyFullForm
           onSubmit={handleSubmit}
-          defaultValues={property || undefined}
+          defaultValues={property || {
+            // 新規登録時のデフォルト値
+            sales_status: '準備中',
+            publication_status: '非公開',
+            price_status: '1:確定',
+            tax_type: '税込',
+            is_residential: true,
+            is_commercial: false,
+            is_investment: false,
+          }}
           showDebug={false}
           autoSave={!isNew}
         />
