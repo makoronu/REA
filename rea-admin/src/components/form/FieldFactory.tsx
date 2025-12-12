@@ -393,6 +393,47 @@ export const FieldFactory: React.FC<FieldFactoryProps> = ({ column, disabled = f
           />
         );
 
+      case 'radio':
+        const radioOptions = parseEnumValues(column.options);
+        return (
+          <Controller
+            name={column.column_name}
+            control={control}
+            render={({ field }) => (
+              <div style={{ display: 'flex', gap: '16px', padding: '8px 0' }}>
+                {radioOptions.map(option => (
+                  <label
+                    key={option.value}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      cursor: disabled || isReadOnly ? 'not-allowed' : 'pointer',
+                      gap: '6px',
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name={column.column_name}
+                      value={option.value}
+                      checked={field.value === option.value}
+                      onChange={() => field.onChange(option.value)}
+                      disabled={disabled || isReadOnly}
+                      style={{
+                        width: '16px',
+                        height: '16px',
+                        accentColor: '#3B82F6',
+                      }}
+                    />
+                    <span style={{ fontSize: '14px', color: '#374151' }}>
+                      {option.label}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
+          />
+        );
+
       case 'date':
         return (
           <Controller
