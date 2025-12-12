@@ -1,9 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useFormContext } from 'react-hook-form';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8005';
+
+// ユニークIDを生成（再マウント時の問題を防ぐ）
+let mapIdCounter = 0;
 
 // 用途地域の色マッピング
 const ZONE_COLORS: Record<number, string> = {
@@ -58,14 +61,18 @@ const URBAN_PLANNING_LEGEND = [
 
 export const ZoningMapField: React.FC = () => {
   const { watch } = useFormContext();
-  const mapRef = useRef<HTMLDivElement>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const geoJsonLayerRef = useRef<L.GeoJSON | null>(null);
   const urbanPlanningLayerRef = useRef<L.GeoJSON | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
+  const initializingRef = useRef(false);
 
+  // ユニークなマップIDを保持（再マウント対策）
+  const [mapId] = useState(() => `zoning-map-${++mapIdCounter}`);
   const [isLoading, setIsLoading] = useState(false);
   const [mapReady, setMapReady] = useState(false);
+  const [initError, setInitError] = useState<string | null>(null);
   const [selectedZone, setSelectedZone] = useState<any>(null);
   const [contextMenu, setContextMenu] = useState<{
     lat: number;
@@ -80,23 +87,30 @@ export const ZoningMapField: React.FC = () => {
   const lat = watch('latitude');
   const lng = watch('longitude');
 
-  // マップ初期化
-  useEffect(() => {
-    // 既に初期化済みならスキップ
-    if (mapInstanceRef.current) return;
+  // マップ初期化関数
+  const initializeMap = useCallback(() => {
+    // 既に初期化中または初期化済みならスキップ
+    if (initializingRef.current || mapInstanceRef.current) return;
 
-    // DOM要素がなければスキップ
-    if (!mapRef.current) return;
+    const container = mapContainerRef.current;
+    if (!container) return;
 
-    // 初期位置（緯度経度がなければ札幌駅）
-    const initialLat = lat || 43.0686;
-    const initialLng = lng || 141.3508;
+    // コンテナのサイズをチェック（0だと初期化失敗する）
+    const rect = container.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) {
+      console.log('ZoningMap: Container has no size, retrying...');
+      return;
+    }
 
-    // 少し遅延させて確実にDOMがレンダリングされてから初期化
-    const timer = setTimeout(() => {
-      if (!mapRef.current || mapInstanceRef.current) return;
+    initializingRef.current = true;
+    setInitError(null);
 
-      const map = L.map(mapRef.current, {
+    try {
+      // 初期位置（緯度経度がなければ札幌駅）
+      const initialLat = lat || 43.0686;
+      const initialLng = lng || 141.3508;
+
+      const map = L.map(container, {
         scrollWheelZoom: true,
       }).setView([initialLat, initialLng], 17);
       mapInstanceRef.current = map;
@@ -254,7 +268,35 @@ export const ZoningMapField: React.FC = () => {
         mapInstanceRef.current.invalidateSize();
       }
     }, 200);
-    }, 100); // 100ms遅延
+
+    } catch (err) {
+      console.error('ZoningMap: Initialization error', err);
+      setInitError('地図の初期化に失敗しました');
+    } finally {
+      initializingRef.current = false;
+    }
+  }, [lat, lng]);
+
+  // マップ初期化用useEffect
+  useEffect(() => {
+    // 初期化をリトライするインターバル
+    let retryCount = 0;
+    const maxRetries = 10;
+
+    const tryInit = () => {
+      if (mapInstanceRef.current) return; // 既に初期化済み
+
+      initializeMap();
+
+      // まだ初期化できていなければリトライ
+      if (!mapInstanceRef.current && retryCount < maxRetries) {
+        retryCount++;
+        setTimeout(tryInit, 100);
+      }
+    };
+
+    // 初回は少し待ってから実行（DOM描画を待つ）
+    const timer = setTimeout(tryInit, 50);
 
     return () => {
       clearTimeout(timer);
@@ -262,8 +304,10 @@ export const ZoningMapField: React.FC = () => {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
+      initializingRef.current = false;
+      setMapReady(false);
     };
-  }, []);
+  }, [initializeMap]);
 
   // 緯度経度が変わったらマップを移動
   useEffect(() => {
@@ -292,7 +336,8 @@ export const ZoningMapField: React.FC = () => {
         {/* 地図 */}
         <div style={{ flex: 1, position: 'relative' }}>
           <div
-            ref={mapRef}
+            ref={mapContainerRef}
+            id={mapId}
             style={{
               width: '100%',
               height: '300px',
@@ -303,7 +348,7 @@ export const ZoningMapField: React.FC = () => {
             }}
           />
           {/* 地図初期化前のプレースホルダー */}
-          {!mapReady && (
+          {!mapReady && !initError && (
             <div style={{
               position: 'absolute',
               top: 0,
@@ -319,6 +364,25 @@ export const ZoningMapField: React.FC = () => {
               fontSize: '12px',
             }}>
               地図を読み込み中...
+            </div>
+          )}
+          {/* エラー表示 */}
+          {initError && (
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#FEE2E2',
+              borderRadius: '8px',
+              color: '#991B1B',
+              fontSize: '12px',
+            }}>
+              {initError}
             </div>
           )}
           {isLoading && (
