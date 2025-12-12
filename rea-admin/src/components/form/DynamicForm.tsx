@@ -1126,30 +1126,26 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
       groups: Record<string, ColumnWithLabel[]>;
     }> = [];
 
-    // 1. 所在地・周辺情報タブを最初に追加
+    // 所在地・周辺情報タブ用のデータを先に準備
     const locationColumns = propertiesColumns.filter(col =>
       locationGroups.includes(col.group_name || '') &&
       isFieldVisibleForPropertyType(col.visible_for, currentPropertyType, col.column_name)
     );
-    if (locationColumns.length > 0) {
-      const locationGrouped = locationColumns.reduce((acc, column) => {
+    const locationTabData = locationColumns.length > 0 ? {
+      tableName: 'properties_location',
+      tableLabel: '所在地・周辺情報',
+      tableIcon: '📍',
+      groups: locationColumns.reduce((acc, column) => {
         const groupName = column.group_name || '所在地';
         if (!acc[groupName]) {
           acc[groupName] = [];
         }
         acc[groupName].push(column);
         return acc;
-      }, {} as Record<string, ColumnWithLabel[]>);
+      }, {} as Record<string, ColumnWithLabel[]>)
+    } : null;
 
-      tabGroups.push({
-        tableName: 'properties_location',
-        tableLabel: '所在地・周辺情報',
-        tableIcon: '📍',
-        groups: locationGrouped
-      });
-    }
-
-    // 2. 残りのタブを追加（propertiesは所在地・周辺情報を除外）
+    // タブを追加（propertiesは所在地・周辺情報を除外）
     orderedTables.forEach(table => {
       const tableColumns = allColumns?.[table.table_name] || [];
 
@@ -1197,6 +1193,11 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
           tableIcon: tableInfo.icon,
           groups: grouped
         });
+
+        // propertiesタブの後に所在地・周辺情報タブを追加
+        if (table.table_name === 'properties' && locationTabData) {
+          tabGroups.push(locationTabData);
+        }
       }
     });
 
@@ -1337,7 +1338,10 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                     <button
                       key={tabGroup.tableName}
                       type="button"
-                      onClick={() => setActiveTab(index)}
+                      onClick={() => {
+                        setActiveTab(index);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
                       style={{
                         backgroundColor: activeTab === index ? '#3B82F6' : '#fff',
                         color: activeTab === index ? '#ffffff' : '#6B7280',
@@ -1458,7 +1462,10 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
             }}>
               <button
                 type="button"
-                onClick={() => setActiveTab(Math.max(0, activeTab - 1))}
+                onClick={() => {
+                  setActiveTab(Math.max(0, activeTab - 1));
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
                 disabled={activeTab === 0}
                 style={{
                   backgroundColor: activeTab === 0 ? '#E5E7EB' : '#fff',
@@ -1481,7 +1488,10 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
 
               <button
                 type="button"
-                onClick={() => setActiveTab(Math.min(tabGroups.length - 1, activeTab + 1))}
+                onClick={() => {
+                  setActiveTab(Math.min(tabGroups.length - 1, activeTab + 1));
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
                 disabled={activeTab === tabGroups.length - 1}
                 style={{
                   backgroundColor: activeTab === tabGroups.length - 1 ? '#E5E7EB' : '#fff',
