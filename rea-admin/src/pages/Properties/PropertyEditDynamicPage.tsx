@@ -218,7 +218,7 @@ export const PropertyEditDynamicPage: React.FC = () => {
             // 新規登録時のデフォルト値
             sales_status: '準備中',
             publication_status: '非公開',
-            price_status: '1:確定',
+            price_status: '1',  // ENUM値のキー部分のみ
             tax_type: '税込',
             is_residential: true,
             is_commercial: false,
