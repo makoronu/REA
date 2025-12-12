@@ -14,6 +14,9 @@ import { LocationField } from './LocationField';
 import { TransportationField } from './TransportationField';
 import { BusStopsField } from './BusStopsField';
 import { NearbyFacilitiesField } from './NearbyFacilitiesField';
+import { ZoningMapField } from './ZoningMapField';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8005';
 
 interface FieldFactoryProps {
   column: ColumnWithLabel;
@@ -739,7 +742,9 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
   columns,
   disabled = false
 }) => {
-  const { watch } = useFormContext();
+  const { watch, setValue, getValues } = useFormContext();
+  const [isLoadingZoning, setIsLoadingZoning] = useState(false);
+  const [zoningMessage, setZoningMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // 引渡時期の値を監視（条件付き表示用）
   const deliveryTiming = watch('delivery_timing');
@@ -782,13 +787,81 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
       '基本情報': '🏠', '基本・取引情報': '🏠', '価格情報': '💰',
       '契約条件': '📋', '元請会社': '🏢', '土地情報': '🗺️',
       '建物情報': '🏗️', '設備・周辺環境': '🔧', '画像情報': '📸',
-      '管理情報': '⚙️', 'システム': '⚙️'
+      '管理情報': '⚙️', 'システム': '⚙️',
+      '法規制（自動取得）': '🔴'
     };
     return iconMap[groupName] || '📄';
   };
 
+  // 自動取得グループかどうか（ラベルを赤く表示）
+  const isAutoFetchGroup = groupName === '法規制（自動取得）';
+
   // 所在地グループかどうか
   const isLocationGroup = groupName === '所在地';
+
+  // 用途地域・都市計画区域自動取得ハンドラー
+  const handleFetchZoning = async () => {
+    const lat = getValues('latitude');
+    const lng = getValues('longitude');
+
+    if (!lat || !lng) {
+      setZoningMessage({ type: 'error', text: '緯度・経度を先に入力してください' });
+      setTimeout(() => setZoningMessage(null), 3000);
+      return;
+    }
+
+    setIsLoadingZoning(true);
+    setZoningMessage(null);
+
+    try {
+      // 用途地域と都市計画区域を同時に取得
+      const [zoningRes, urbanRes] = await Promise.all([
+        fetch(`${API_URL}/api/v1/geo/zoning?lat=${lat}&lng=${lng}`),
+        fetch(`${API_URL}/api/v1/geo/urban-planning?lat=${lat}&lng=${lng}`)
+      ]);
+
+      const zoningData = await zoningRes.json();
+      const urbanData = await urbanRes.json();
+
+      const messages: string[] = [];
+
+      // 用途地域を設定
+      if (zoningData.zones && zoningData.zones.length > 0) {
+        const primary = zoningData.zones.find((z: any) => z.is_primary) || zoningData.zones[0];
+
+        setValue('use_district', String(primary.zone_code), { shouldDirty: true });
+        if (primary.building_coverage_ratio) {
+          setValue('building_coverage_ratio', primary.building_coverage_ratio, { shouldDirty: true });
+        }
+        if (primary.floor_area_ratio) {
+          setValue('floor_area_ratio', primary.floor_area_ratio, { shouldDirty: true });
+        }
+
+        messages.push(primary.zone_name);
+      }
+
+      // 都市計画区域を設定
+      if (urbanData.areas && urbanData.areas.length > 0) {
+        const primaryUrban = urbanData.areas.find((a: any) => a.is_primary) || urbanData.areas[0];
+
+        // city_planningカラムに設定（layer_no: 1=市街化区域, 2=市街化調整区域）
+        setValue('city_planning', String(primaryUrban.layer_no), { shouldDirty: true });
+
+        messages.push(primaryUrban.area_type);
+      }
+
+      if (messages.length > 0) {
+        setZoningMessage({ type: 'success', text: messages.join(' / ') });
+      } else {
+        setZoningMessage({ type: 'error', text: '該当するデータが見つかりませんでした' });
+      }
+    } catch (err: any) {
+      setZoningMessage({ type: 'error', text: err.message || 'データの取得に失敗しました' });
+    } finally {
+      setIsLoadingZoning(false);
+      setTimeout(() => setZoningMessage(null), 5000);
+    }
+  };
 
   // 所在地グループの場合、緯度・経度フィールドを通常表示から除外
   const locationFieldNames = ['latitude', 'longitude'];
@@ -804,10 +877,71 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
       borderRadius: '12px',
     }}>
       {/* グループヘッダー */}
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: '24px' }}>
-        <span style={{ fontSize: '24px', marginRight: '12px' }}>{getGroupIcon(groupName)}</span>
-        <h3 style={{ fontSize: '18px', fontWeight: 600, color: '#1A1A1A', margin: 0 }}>{groupName}</h3>
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+        <span style={{ fontSize: '24px', marginRight: '4px' }}>{getGroupIcon(groupName)}</span>
+        <h3 style={{
+          fontSize: '18px',
+          fontWeight: 600,
+          color: isAutoFetchGroup ? '#DC2626' : '#1A1A1A',
+          margin: 0
+        }}>
+          {groupName}
+        </h3>
+        {isAutoFetchGroup && (
+          <>
+            <button
+              type="button"
+              onClick={handleFetchZoning}
+              disabled={isLoadingZoning || disabled}
+              style={{
+                marginLeft: '12px',
+                padding: '6px 12px',
+                fontSize: '12px',
+                fontWeight: 500,
+                color: '#fff',
+                backgroundColor: isLoadingZoning ? '#9CA3AF' : '#DC2626',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: isLoadingZoning || disabled ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              {isLoadingZoning ? (
+                <>
+                  <span style={{
+                    width: '12px',
+                    height: '12px',
+                    border: '2px solid #fff',
+                    borderTopColor: 'transparent',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite',
+                  }} />
+                  取得中...
+                </>
+              ) : (
+                '位置情報から自動取得'
+              )}
+            </button>
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          </>
+        )}
       </div>
+
+      {/* メッセージ表示 */}
+      {isAutoFetchGroup && zoningMessage && (
+        <div style={{
+          marginBottom: '16px',
+          padding: '10px 14px',
+          borderRadius: '6px',
+          fontSize: '13px',
+          backgroundColor: zoningMessage.type === 'success' ? '#D1FAE5' : '#FEE2E2',
+          color: zoningMessage.type === 'success' ? '#065F46' : '#991B1B',
+        }}>
+          {zoningMessage.text}
+        </div>
+      )}
 
       {/* 通常フィールド - 2列 */}
       {filteredRegularFields.length > 0 && (
@@ -879,6 +1013,11 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
             </div>
           ))}
         </div>
+      )}
+
+      {/* 用途地域マップ表示（法規制グループの場合） */}
+      {isAutoFetchGroup && (
+        <ZoningMapField />
       )}
     </div>
   );

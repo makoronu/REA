@@ -3,7 +3,9 @@
 
 - 最寄駅検索
 - 住所→緯度経度変換（Geocoding）
-- 用途地域判定（将来実装）
+- 用途地域判定
+- 学区判定
+- 周辺施設検索
 """
 
 from fastapi import APIRouter, Query, HTTPException
@@ -91,6 +93,33 @@ class FacilityCandidate(BaseModel):
 
 class NearestFacilitiesResponse(BaseModel):
     facilities: list[FacilityCandidate]
+    latitude: float
+    longitude: float
+
+
+class ZoningCandidate(BaseModel):
+    zone_code: int  # 用途地域コード（1-12, 21, 99）
+    zone_name: str  # 用途地域名
+    building_coverage_ratio: Optional[int]  # 建ぺい率（%）
+    floor_area_ratio: Optional[int]  # 容積率（%）
+    city_name: Optional[str]  # 市区町村名
+    is_primary: bool  # 主たる用途地域かどうか（面積最大）
+
+
+class ZoningResponse(BaseModel):
+    zones: list[ZoningCandidate]  # 複数の用途地域（跨っている場合）
+    latitude: float
+    longitude: float
+
+
+class UrbanPlanningCandidate(BaseModel):
+    layer_no: int  # 都市計画区分コード（1-4）
+    area_type: str  # 区分名（市街化区域、市街化調整区域等）
+    is_primary: bool  # 主たる区分かどうか
+
+
+class UrbanPlanningResponse(BaseModel):
+    areas: list[UrbanPlanningCandidate]
     latitude: float
     longitude: float
 
@@ -809,6 +838,371 @@ async def get_nearest_facilities_by_category(
             'latitude': lat,
             'longitude': lng,
             'categories': result
+        }
+
+    finally:
+        cur.close()
+        conn.close()
+
+
+# =============================================================================
+# 用途地域判定
+# =============================================================================
+
+@router.get("/zoning", response_model=ZoningResponse)
+async def get_zoning(
+    lat: float = Query(..., description="緯度", ge=-90, le=90),
+    lng: float = Query(..., description="経度", ge=-180, le=180)
+):
+    """
+    指定座標の用途地域を判定
+
+    - 座標が複数の用途地域にまたがる場合、すべて返す
+    - is_primary=true が主たる用途地域（面積最大）
+    - 建ぺい率・容積率も含めて返す
+    """
+    db = READatabase()
+    conn = db.get_connection()
+    cur = conn.cursor()
+
+    try:
+        # 座標を含む用途地域ポリゴンを検索
+        cur.execute("""
+            SELECT
+                zone_code,
+                zone_name,
+                building_coverage_ratio,
+                floor_area_ratio,
+                city_name,
+                ST_Area(geom::geography) as area_sq_m
+            FROM m_zoning
+            WHERE ST_Contains(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
+            ORDER BY area_sq_m DESC
+        """, (lng, lat))
+
+        rows = cur.fetchall()
+
+        zones = []
+        for i, row in enumerate(rows):
+            zone_code, zone_name, bcr, far, city_name, _ = row
+            zones.append(ZoningCandidate(
+                zone_code=zone_code,
+                zone_name=zone_name,
+                building_coverage_ratio=bcr,
+                floor_area_ratio=far,
+                city_name=city_name,
+                is_primary=(i == 0)  # 最初のものが面積最大
+            ))
+
+        return ZoningResponse(
+            zones=zones,
+            latitude=lat,
+            longitude=lng
+        )
+
+    finally:
+        cur.close()
+        conn.close()
+
+
+@router.post("/properties/{property_id}/set-zoning")
+async def set_property_zoning(property_id: int):
+    """
+    物件の緯度経度から用途地域を自動判定し、保存
+
+    - use_district: 複数の場合はJSON配列形式で保存
+    - building_coverage_ratio, floor_area_ratio: 主たる用途地域の値を設定（後で手動変更可能）
+    """
+    db = READatabase()
+    conn = db.get_connection()
+    cur = conn.cursor()
+
+    try:
+        # 物件の緯度経度を取得
+        cur.execute("""
+            SELECT latitude, longitude FROM properties WHERE id = %s
+        """, (property_id,))
+        row = cur.fetchone()
+
+        if not row:
+            raise HTTPException(status_code=404, detail="物件が見つかりません")
+
+        lat, lng = row
+        if not lat or not lng:
+            raise HTTPException(status_code=400, detail="物件に緯度経度が設定されていません")
+
+        # 用途地域を検索
+        cur.execute("""
+            SELECT
+                zone_code,
+                zone_name,
+                building_coverage_ratio,
+                floor_area_ratio,
+                ST_Area(geom::geography) as area_sq_m
+            FROM m_zoning
+            WHERE ST_Contains(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
+            ORDER BY area_sq_m DESC
+        """, (float(lng), float(lat)))
+
+        rows = cur.fetchall()
+
+        result = {
+            'property_id': property_id,
+            'zones': [],
+            'use_district': None,
+            'building_coverage_ratio': None,
+            'floor_area_ratio': None
+        }
+
+        if rows:
+            # 全ての用途地域を記録
+            zone_codes = []
+            for i, row in enumerate(rows):
+                zone_code, zone_name, bcr, far, _ = row
+                zone_codes.append(str(zone_code))
+                result['zones'].append({
+                    'zone_code': zone_code,
+                    'zone_name': zone_name,
+                    'building_coverage_ratio': bcr,
+                    'floor_area_ratio': far,
+                    'is_primary': (i == 0)
+                })
+
+            # 主たる用途地域（面積最大）の値を設定
+            primary = rows[0]
+            result['use_district'] = str(primary[0])  # zone_code
+            result['building_coverage_ratio'] = primary[2]
+            result['floor_area_ratio'] = primary[3]
+
+        # land_infoテーブルに保存
+        cur.execute("""
+            UPDATE land_info SET
+                use_district = %s,
+                building_coverage_ratio = %s,
+                floor_area_ratio = %s
+            WHERE property_id = %s
+        """, (
+            result['use_district'],
+            result['building_coverage_ratio'],
+            result['floor_area_ratio'],
+            property_id
+        ))
+
+        # 更新された行がない場合、land_infoレコードがないのでINSERT
+        if cur.rowcount == 0:
+            cur.execute("""
+                INSERT INTO land_info (property_id, use_district, building_coverage_ratio, floor_area_ratio)
+                VALUES (%s, %s, %s, %s)
+            """, (
+                property_id,
+                result['use_district'],
+                result['building_coverage_ratio'],
+                result['floor_area_ratio']
+            ))
+
+        conn.commit()
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        conn.close()
+
+
+# =============================================================================
+# 用途地域ポリゴン取得（地図表示用）
+# =============================================================================
+
+@router.get("/zoning/geojson")
+async def get_zoning_geojson(
+    min_lat: float = Query(..., description="最小緯度"),
+    min_lng: float = Query(..., description="最小経度"),
+    max_lat: float = Query(..., description="最大緯度"),
+    max_lng: float = Query(..., description="最大経度"),
+    simplify: float = Query(0.0001, description="ポリゴン簡略化の許容誤差（度）")
+):
+    """
+    指定範囲内の用途地域ポリゴンをGeoJSON形式で返す
+
+    - 地図表示用
+    - simplifyで精度を落としてデータ量削減
+    """
+    db = READatabase()
+    conn = db.get_connection()
+    cur = conn.cursor()
+
+    try:
+        # バウンディングボックスでフィルタ
+        cur.execute("""
+            SELECT
+                id,
+                zone_code,
+                zone_name,
+                building_coverage_ratio,
+                floor_area_ratio,
+                city_name,
+                ST_AsGeoJSON(ST_Simplify(geom, %s)) as geojson
+            FROM m_zoning
+            WHERE geom && ST_MakeEnvelope(%s, %s, %s, %s, 4326)
+            LIMIT 5000
+        """, (simplify, min_lng, min_lat, max_lng, max_lat))
+
+        features = []
+        for row in cur.fetchall():
+            zoning_id, zone_code, zone_name, bcr, far, city_name, geojson_str = row
+            if geojson_str:
+                import json
+                geometry = json.loads(geojson_str)
+                features.append({
+                    "type": "Feature",
+                    "properties": {
+                        "id": zoning_id,
+                        "zone_code": zone_code,
+                        "zone_name": zone_name,
+                        "building_coverage_ratio": bcr,
+                        "floor_area_ratio": far,
+                        "city_name": city_name
+                    },
+                    "geometry": geometry
+                })
+
+        return {
+            "type": "FeatureCollection",
+            "features": features
+        }
+
+    finally:
+        cur.close()
+        conn.close()
+
+
+@router.get("/zoning/legend")
+async def get_zoning_legend():
+    """
+    用途地域の凡例（色とラベル）を返す
+    """
+    # 用途地域コードと色のマッピング（都市計画法に基づく標準色）
+    legend = [
+        {"code": 1, "name": "第一種低層住居専用地域", "color": "#00FF00", "description": "低層住宅の良好な環境を保護"},
+        {"code": 2, "name": "第二種低層住居専用地域", "color": "#80FF00", "description": "小規模店舗も許容"},
+        {"code": 3, "name": "第一種中高層住居専用地域", "color": "#FFFF00", "description": "中高層住宅の良好な環境"},
+        {"code": 4, "name": "第二種中高層住居専用地域", "color": "#FFCC00", "description": "必要な利便施設も許容"},
+        {"code": 5, "name": "第一種住居地域", "color": "#FF9900", "description": "住居の環境を保護"},
+        {"code": 6, "name": "第二種住居地域", "color": "#FF6600", "description": "主に住居の環境を保護"},
+        {"code": 7, "name": "準住居地域", "color": "#FF3300", "description": "道路沿道の業務利便と住居の調和"},
+        {"code": 8, "name": "近隣商業地域", "color": "#FF00FF", "description": "近隣住民の日用品供給"},
+        {"code": 9, "name": "商業地域", "color": "#FF0000", "description": "商業等の業務の利便増進"},
+        {"code": 10, "name": "準工業地域", "color": "#00FFFF", "description": "環境悪化の恐れのない工業"},
+        {"code": 11, "name": "工業地域", "color": "#0080FF", "description": "工業の利便増進"},
+        {"code": 12, "name": "工業専用地域", "color": "#0000FF", "description": "工業の利便増進（住宅不可）"},
+        {"code": 21, "name": "田園住居地域", "color": "#90EE90", "description": "農業と調和した低層住宅"},
+        {"code": 99, "name": "無指定", "color": "#CCCCCC", "description": "用途地域の指定なし"}
+    ]
+    return legend
+
+
+# =============================================================================
+# 都市計画区域判定
+# =============================================================================
+
+@router.get("/urban-planning", response_model=UrbanPlanningResponse)
+async def get_urban_planning(
+    lat: float = Query(..., description="緯度", ge=-90, le=90),
+    lng: float = Query(..., description="経度", ge=-180, le=180)
+):
+    """
+    指定座標の都市計画区域を判定
+
+    - layer_no: 1=市街化区域, 2=市街化調整区域, 3=その他用途地域, 4=用途未設定
+    """
+    db = READatabase()
+    conn = db.get_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+            SELECT
+                layer_no,
+                area_type,
+                ST_Area(geom::geography) as area_sq_m
+            FROM m_urban_planning
+            WHERE ST_Contains(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
+            ORDER BY area_sq_m DESC
+        """, (lng, lat))
+
+        rows = cur.fetchall()
+
+        areas = []
+        for i, row in enumerate(rows):
+            layer_no, area_type, _ = row
+            areas.append(UrbanPlanningCandidate(
+                layer_no=layer_no,
+                area_type=area_type,
+                is_primary=(i == 0)
+            ))
+
+        return UrbanPlanningResponse(
+            areas=areas,
+            latitude=lat,
+            longitude=lng
+        )
+
+    finally:
+        cur.close()
+        conn.close()
+
+
+@router.get("/urban-planning/geojson")
+async def get_urban_planning_geojson(
+    min_lat: float = Query(..., description="最小緯度"),
+    min_lng: float = Query(..., description="最小経度"),
+    max_lat: float = Query(..., description="最大緯度"),
+    max_lng: float = Query(..., description="最大経度"),
+    simplify: float = Query(0.0001, description="ポリゴン簡略化の許容誤差（度）")
+):
+    """
+    指定範囲内の都市計画区域ポリゴンをGeoJSON形式で返す
+    """
+    db = READatabase()
+    conn = db.get_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+            SELECT
+                id,
+                layer_no,
+                area_type,
+                ST_AsGeoJSON(ST_Simplify(geom, %s)) as geojson
+            FROM m_urban_planning
+            WHERE geom && ST_MakeEnvelope(%s, %s, %s, %s, 4326)
+            LIMIT 3000
+        """, (simplify, min_lng, min_lat, max_lng, max_lat))
+
+        features = []
+        for row in cur.fetchall():
+            plan_id, layer_no, area_type, geojson_str = row
+            if geojson_str:
+                import json
+                geometry = json.loads(geojson_str)
+                features.append({
+                    "type": "Feature",
+                    "properties": {
+                        "id": plan_id,
+                        "layer_no": layer_no,
+                        "area_type": area_type
+                    },
+                    "geometry": geometry
+                })
+
+        return {
+            "type": "FeatureCollection",
+            "features": features
         }
 
     finally:

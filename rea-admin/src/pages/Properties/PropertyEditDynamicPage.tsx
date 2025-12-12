@@ -16,6 +16,7 @@ export const PropertyEditDynamicPage: React.FC = () => {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
   const [isSettingSchoolDistricts, setIsSettingSchoolDistricts] = useState(false);
+  const [isSettingZoning, setIsSettingZoning] = useState(false);
 
   // 既存データの取得
   useEffect(() => {
@@ -73,6 +74,43 @@ export const PropertyEditDynamicPage: React.FC = () => {
       setSaveStatus('error');
     } finally {
       setIsSettingSchoolDistricts(false);
+    }
+  };
+
+  // 用途地域自動設定
+  const handleSetZoning = async () => {
+    if (!id || isNew) return;
+
+    setIsSettingZoning(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_URL}/api/v1/geo/properties/${id}/set-zoning`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || '用途地域の取得に失敗しました');
+      }
+
+      const result = await response.json();
+
+      // 成功メッセージ
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+
+      // 結果を表示（複数の用途地域がある場合）
+      if (result.zones && result.zones.length > 1) {
+        alert(`複数の用途地域が検出されました:\n${result.zones.map((z: any) => `${z.zone_name}（建ぺい率${z.building_coverage_ratio}%、容積率${z.floor_area_ratio}%）${z.is_primary ? ' ★主' : ''}`).join('\n')}`);
+      }
+
+      // ページをリロードしてフォームを更新
+      window.location.reload();
+    } catch (err: any) {
+      setError(err.message || '用途地域の取得に失敗しました');
+      setSaveStatus('error');
+    } finally {
+      setIsSettingZoning(false);
     }
   };
 
@@ -170,6 +208,26 @@ export const PropertyEditDynamicPage: React.FC = () => {
           </div>
 
           <div className="flex items-center space-x-4">
+            {/* 用途地域自動取得ボタン */}
+            {!isNew && property?.latitude && property?.longitude && (
+              <button
+                onClick={handleSetZoning}
+                disabled={isSettingZoning}
+                className="px-4 py-2 text-sm font-medium text-white bg-purple-600 border border-purple-600 rounded-md hover:bg-purple-700 disabled:bg-gray-400 disabled:border-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isSettingZoning ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    取得中...
+                  </>
+                ) : (
+                  '用途地域を自動取得'
+                )}
+              </button>
+            )}
             {/* 学区自動取得ボタン */}
             {!isNew && property?.latitude && property?.longitude && (
               <button
@@ -186,9 +244,7 @@ export const PropertyEditDynamicPage: React.FC = () => {
                     取得中...
                   </>
                 ) : (
-                  <>
-                    🏫 学区を自動取得
-                  </>
+                  '学区を自動取得'
                 )}
               </button>
             )}
