@@ -337,11 +337,73 @@
 | 危険 | 危険物取扱施設 | 爆発・火災リスク |
 | 危険 | 高圧電線 | 健康懸念（心理的） |
 
-**9. 不動産情報ライブラリAPI（国交省）**
-- [ ] API利用申請・キー取得
-- [ ] 不動産取引価格情報の取得
-- [ ] 地価公示・地価調査データ連携
-- [ ] 周辺成約事例の自動表示
+**9. 不動産情報ライブラリAPI統合** 🔜 次回着手予定
+
+**基本方針**
+- メイン機能: 座標ベース自動判定 → テキスト表示（編集可能）
+- サブ機能: MAP表示は確認用として最小限
+- 免責: 「参考情報です。正確な内容は役所でご確認ください」
+
+**APIエンドポイント共通仕様**
+- ベースURL: https://www.reinfolib.mlit.go.jp/ex-api/external/
+- 認証: Ocp-Apim-Subscription-Key ヘッダー
+- 形式: XYZタイル方式（z/x/y指定）
+- 出力: GeoJSON または ベクトルタイル（pbf）
+
+**Phase 1-A: テキスト判定のみ（MAP不要）**
+- [ ] 立地適正化計画 (XKT003) → 表示例「居住誘導区域内」
+- [ ] 地区計画 (XKT024) → 表示例「○○地区計画区域内」or「対象外」
+- [ ] 高度利用地区 (XKT025) → 表示例「対象外」
+- [ ] 都市計画道路 (XKT030) → 表示例「計画道路あり（幅員○m）」or「なし」
+- [ ] 自然公園地域 (XKT020) → 表示例「対象外」
+- [ ] 災害危険区域 (XKT017) → 表示例「対象外」
+- [ ] 大規模盛土造成地 (XKT021) → 表示例「対象外」
+- [ ] 地すべり防止地区 (XKT022) → 表示例「対象外」
+- [ ] 急傾斜地崩壊危険区域 (XKT023) → 表示例「対象外」
+
+**Phase 1-B: テキスト判定 + MAP表示**
+- [ ] 防火・準防火地域 (XKT014) → 既存ZoningMapFieldに重ねて表示
+- [x] 用途地域 (XKT002) → 実装済み（ローカルDB）、MAP追加
+- [x] 都市計画区域/区域区分 (XKT001) → 実装済み（ローカルDB）
+- [ ] 洪水浸水想定区域 (XKT026) → 表示例「浸水想定あり（0.5〜3m）」
+- [ ] 土砂災害警戒区域 (XKT029) → 表示例「土砂災害警戒区域（急傾斜）」
+- [ ] 津波浸水想定 (XKT028) → 表示例「津波浸水想定あり（2m）」
+- [ ] 高潮浸水想定区域 (XKT027) → 表示例「対象外」
+- [ ] 液状化傾向図 (XKT023) → 表示例「液状化リスク：中」
+
+**Phase 1-C: 周辺施設（既存機能拡張）**
+- [x] 小学校区 (XKT004) → 実装済み
+- [x] 中学校区 (XKT005) → 実装済み
+- [x] 学校 (XKT006) → 実装済み
+- [ ] 保育園・幼稚園等 (XKT007) → 距離計算・リスト表示
+- [ ] 医療機関 (XKT010) → 距離計算・リスト表示
+- [ ] 指定緊急避難場所 (XGT001) → 距離計算・リスト表示
+
+**Phase 2: 価格情報（将来検討）**
+- [ ] 取引価格・成約価格 (XIT001)
+- [ ] 地価公示・調査 (XPT002)
+
+**DB設計: property_regulationsテーブル新規作成**
+- property_id: propertiesへの外部キー
+- 都市計画系: fire_prevention_district, height_district, district_plan, location_optimization, planned_road, planned_road_width
+- 災害リスク系: flood_risk_level, flood_depth_min, flood_depth_max, landslide_warning_area, landslide_type, tsunami_risk_level, tsunami_depth, storm_surge_risk, liquefaction_risk
+- その他制限: natural_park, disaster_risk_area, large_fill_area, landslide_prevention, steep_slope_area
+- メタ情報: auto_fetched_at, manually_edited, verified_at, verified_by
+
+**実装順序**
+1. 不動産情報ライブラリAPI申請・キー取得 ← **次回最優先**
+2. DB設計・マイグレーション作成
+3. 不動産情報ライブラリAPI共通クライアント作成（認証、タイル座標変換）
+4. Phase 1-A のAPI統合（テキスト判定のみ）
+5. Phase 1-B のAPI統合（MAP表示含む）
+6. Phase 1-C の周辺施設拡張
+7. フロントエンド：物件詳細画面に法令制限セクション追加
+8. フロントエンド：災害ハザードMAP表示コンポーネント
+
+**実装不要（スキップ）**
+- XIT002（市区町村一覧）、XCT001（鑑定評価書）、XPT001（価格ポイント）
+- XKT011（福祉施設）、XKT015（駅別乗降客数）、XKT018（図書館）
+- XKT019（市区町村役場）、XKT031（人口集中地区）、XKT013（将来推計人口）
 
 **10. 交通利便性（国土数値情報 P11/N07）**
 - [ ] バス停留所データ投入
