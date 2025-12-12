@@ -1159,6 +1159,10 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
         if (table.table_name === 'properties' && locationGroups.includes(col.group_name || '')) {
           return false;
         }
+        // ステータスグループはヘッダーで表示するので除外
+        if (col.group_name === 'ステータス') {
+          return false;
+        }
         // 物件種別によるフィルタリング
         return isFieldVisibleForPropertyType(col.visible_for, currentPropertyType, col.column_name);
       });
@@ -1197,19 +1201,45 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
     });
 
     // ステータス表示用
-    const getStatusDisplay = () => {
-      const status = formData.status;
-      const statusMap: Record<string, { label: string; color: string; bg: string }> = {
-        'draft': { label: '下書き', color: '#6B7280', bg: '#F3F4F6' },
-        'active': { label: '公開中', color: '#059669', bg: '#D1FAE5' },
-        'pending': { label: '審査中', color: '#D97706', bg: '#FEF3C7' },
-        'sold': { label: '成約済', color: '#DC2626', bg: '#FEE2E2' },
-        'inactive': { label: '非公開', color: '#6B7280', bg: '#E5E7EB' },
-      };
-      return statusMap[status] || { label: status || '下書き', color: '#6B7280', bg: '#F3F4F6' };
+    // 販売状況の色マップ
+    const salesStatusConfig: Record<string, { label: string; color: string; bg: string }> = {
+      '準備中': { label: '準備中', color: '#6B7280', bg: '#F3F4F6' },
+      '販売中': { label: '販売中', color: '#059669', bg: '#D1FAE5' },
+      '商談中': { label: '商談中', color: '#D97706', bg: '#FEF3C7' },
+      '成約済み': { label: '成約済み', color: '#DC2626', bg: '#FEE2E2' },
+      '販売終了': { label: '販売終了', color: '#374151', bg: '#E5E7EB' },
     };
 
-    const statusDisplay = getStatusDisplay();
+    // 公開状態の色マップ
+    const publicationStatusConfig: Record<string, { label: string; color: string; bg: string }> = {
+      '非公開': { label: '非公開', color: '#6B7280', bg: '#F3F4F6' },
+      '会員公開': { label: '会員公開', color: '#3B82F6', bg: '#DBEAFE' },
+      '公開': { label: '公開', color: '#059669', bg: '#D1FAE5' },
+    };
+
+    const currentSalesStatus = formData.sales_status || '準備中';
+    const currentPublicationStatus = formData.publication_status || '非公開';
+
+    // 販売状況に応じて公開状態の選択肢を制限
+    const isPublicationEditable = ['販売中', '商談中'].includes(currentSalesStatus);
+
+    // ステータス変更ハンドラー
+    const handleSalesStatusChange = (newStatus: string) => {
+      form.setValue('sales_status', newStatus, { shouldDirty: true });
+
+      // 連動ロジック: 準備中/成約済み/販売終了は強制的に非公開
+      if (['準備中', '成約済み', '販売終了'].includes(newStatus)) {
+        form.setValue('publication_status', '非公開', { shouldDirty: true });
+      }
+      // 販売中に変更した場合、デフォルトで公開に
+      if (newStatus === '販売中' && currentPublicationStatus === '非公開') {
+        form.setValue('publication_status', '公開', { shouldDirty: true });
+      }
+    };
+
+    const handlePublicationStatusChange = (newStatus: string) => {
+      form.setValue('publication_status', newStatus, { shouldDirty: true });
+    };
 
     return (
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 16px' }}>
@@ -1229,53 +1259,74 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
               paddingLeft: '16px',
               paddingRight: '16px',
             }}>
-              {/* ステータスバー */}
+              {/* ステータスバー - 販売状況・公開状態 */}
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 marginBottom: '12px',
+                padding: '12px 16px',
+                backgroundColor: '#fff',
+                borderRadius: '10px',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
               }}>
-                {/* 左：進行状況 */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: 500, color: '#6B7280' }}>
-                    {activeTab + 1} / {tabGroups.length}
-                  </span>
+                {/* 左：販売状況 */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '12px', color: '#6B7280', fontWeight: 500 }}>販売:</span>
                   <div style={{ display: 'flex', gap: '4px' }}>
-                    {tabGroups.map((_, index) => (
-                      <div
-                        key={index}
+                    {Object.entries(salesStatusConfig).map(([status, config]) => (
+                      <button
+                        key={status}
+                        type="button"
+                        onClick={() => handleSalesStatusChange(status)}
                         style={{
-                          width: '8px',
-                          height: '8px',
-                          borderRadius: '50%',
-                          backgroundColor: index <= activeTab ? '#3B82F6' : '#E5E7EB',
-                          transition: 'background-color 200ms',
+                          padding: '6px 12px',
+                          borderRadius: '6px',
+                          border: currentSalesStatus === status ? `2px solid ${config.color}` : '1px solid #E5E7EB',
+                          backgroundColor: currentSalesStatus === status ? config.bg : '#fff',
+                          color: currentSalesStatus === status ? config.color : '#6B7280',
+                          fontSize: '12px',
+                          fontWeight: currentSalesStatus === status ? 600 : 400,
+                          cursor: 'pointer',
+                          transition: 'all 150ms',
                         }}
-                      />
+                      >
+                        {config.label}
+                      </button>
                     ))}
                   </div>
                 </div>
 
-                {/* 右：ステータス */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  backgroundColor: statusDisplay.bg,
-                  color: statusDisplay.color,
-                  fontSize: '13px',
-                  fontWeight: 600,
-                }}>
-                  <span style={{
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    backgroundColor: statusDisplay.color,
-                  }} />
-                  {statusDisplay.label}
+                {/* 右：公開状態 */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '12px', color: '#6B7280', fontWeight: 500 }}>公開:</span>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    {Object.entries(publicationStatusConfig).map(([status, config]) => {
+                      const isDisabled = !isPublicationEditable && status !== '非公開';
+                      return (
+                        <button
+                          key={status}
+                          type="button"
+                          onClick={() => !isDisabled && handlePublicationStatusChange(status)}
+                          disabled={isDisabled}
+                          style={{
+                            padding: '6px 12px',
+                            borderRadius: '6px',
+                            border: currentPublicationStatus === status ? `2px solid ${config.color}` : '1px solid #E5E7EB',
+                            backgroundColor: currentPublicationStatus === status ? config.bg : (isDisabled ? '#F9FAFB' : '#fff'),
+                            color: currentPublicationStatus === status ? config.color : (isDisabled ? '#D1D5DB' : '#6B7280'),
+                            fontSize: '12px',
+                            fontWeight: currentPublicationStatus === status ? 600 : 400,
+                            cursor: isDisabled ? 'not-allowed' : 'pointer',
+                            transition: 'all 150ms',
+                            opacity: isDisabled ? 0.5 : 1,
+                          }}
+                        >
+                          {config.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
