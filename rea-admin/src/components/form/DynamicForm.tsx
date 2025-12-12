@@ -1172,10 +1172,27 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
         return acc;
       }, {} as Record<string, ColumnWithLabel[]>);
 
-      // フィールドがある場合のみタブ追加
+      // propertiesテーブルの処理
+      if (table.table_name === 'properties') {
+        // 基本・取引情報タブを追加（フィールドがある場合）
+        if (Object.keys(grouped).length > 0) {
+          tabGroups.push({
+            tableName: 'properties',
+            tableLabel: '基本・取引情報',
+            tableIcon: '🏠',
+            groups: grouped
+          });
+        }
+        // 所在地・周辺情報タブを追加
+        if (locationTabData) {
+          tabGroups.push(locationTabData);
+        }
+        return;
+      }
+
+      // 他のテーブルの処理（フィールドがある場合のみタブ追加）
       if (Object.keys(grouped).length > 0) {
         const tableLabels: Record<string, { label: string; icon: string }> = {
-          'properties': { label: '基本・取引情報', icon: '🏠' },
           'land_info': { label: '土地情報', icon: '🗺️' },
           'building_info': { label: '建物情報', icon: '🏗️' },
           'amenities': { label: '設備・周辺環境', icon: '🔧' },
@@ -1193,11 +1210,6 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
           tableIcon: tableInfo.icon,
           groups: grouped
         });
-
-        // propertiesタブの後に所在地・周辺情報タブを追加
-        if (table.table_name === 'properties' && locationTabData) {
-          tabGroups.push(locationTabData);
-        }
       }
     });
 
