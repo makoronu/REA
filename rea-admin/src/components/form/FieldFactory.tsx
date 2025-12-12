@@ -236,11 +236,55 @@ export const FieldFactory: React.FC<FieldFactoryProps> = ({ column, disabled = f
   // フィールドレンダリング
   const renderField = () => {
     const enumSource = column.options;
+    const inputType = column.input_type || getInputTypeFromDataType(column.data_type);
 
     // マスター参照チェック（文字列の場合のみ）
     const isMasterRef = typeof enumSource === 'string' && enumSource.includes('マスター参照');
 
-    // ENUM型セレクト
+    // input_typeがradioの場合は先にradioを返す
+    if (inputType === 'radio' && enumSource) {
+      const radioOptions = parseEnumValues(enumSource);
+      return (
+        <Controller
+          name={column.column_name}
+          control={control}
+          render={({ field }) => (
+            <div style={{ display: 'flex', gap: '16px', padding: '8px 0' }}>
+              {radioOptions.map(option => (
+                <label
+                  key={option.value}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    cursor: disabled || isReadOnly ? 'not-allowed' : 'pointer',
+                    gap: '6px',
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name={column.column_name}
+                    value={option.value}
+                    checked={field.value === option.value}
+                    onChange={() => field.onChange(option.value)}
+                    disabled={disabled || isReadOnly}
+                    style={{
+                      width: '16px',
+                      height: '16px',
+                      accentColor: '#3B82F6',
+                    }}
+                  />
+                  <span style={{ fontSize: '14px', color: '#374151' }}>
+                    {option.label}
+                  </span>
+                </label>
+              ))}
+            </div>
+          )}
+        />
+      );
+    }
+
+    // ENUM型セレクト（radioでない場合）
     if ((column.data_type === 'USER-DEFINED' || enumSource) &&
         enumSource &&
         !isMasterRef) {
@@ -302,8 +346,6 @@ export const FieldFactory: React.FC<FieldFactoryProps> = ({ column, disabled = f
         );
       }
     }
-
-    const inputType = column.input_type || getInputTypeFromDataType(column.data_type);
 
     switch (inputType) {
       case 'textarea':
