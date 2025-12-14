@@ -4,7 +4,7 @@ import PropertiesPage from './pages/Properties/PropertiesPage';
 import PropertyEditDynamicPage from './pages/Properties/PropertyEditDynamicPage';
 import FieldVisibilityPage from './pages/admin/FieldVisibilityPage';
 import ZoningMapPage from './pages/ZoningMap/ZoningMapPage';
-// import ToukiImportPage from './pages/Import/ToukiImportPage';
+import ZohoImportPage from './pages/Import/ZohoImportPage';
 import './styles/globals.css';
 
 function App() {
@@ -18,7 +18,7 @@ function App() {
           <Route path="/properties/new" element={<PropertyEditDynamicPage />} />
           <Route path="/admin/field-visibility" element={<FieldVisibilityPage />} />
           <Route path="/map/zoning" element={<ZoningMapPage />} />
-          {/* <Route path="/import/touki" element={<ToukiImportPage />} /> */}
+          <Route path="/import/zoho" element={<ZohoImportPage />} />
         </Routes>
       </Layout>
     </Router>

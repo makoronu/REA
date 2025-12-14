@@ -130,7 +130,8 @@ export const SelectableListModal: React.FC<SelectableListModalProps> = ({
           borderRadius: '12px',
           width: '90%',
           maxWidth: '600px',
-          maxHeight: '80vh',
+          height: '70vh',  // 固定高さ
+          minHeight: '400px',
           display: 'flex',
           flexDirection: 'column',
           boxShadow: '0 20px 40px rgba(0, 0, 0, 0.15)',

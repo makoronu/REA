@@ -440,42 +440,116 @@ export const FieldFactory: React.FC<FieldFactoryProps> = ({ column, disabled = f
 
       case 'radio':
         const radioOptions = parseEnumValues(column.options);
+        // 「未選択」オプションを先頭に追加
+        const radioOptionsWithEmpty = [{ value: '', label: '未選択' }, ...radioOptions];
         return (
           <Controller
             name={column.column_name}
             control={control}
             render={({ field }) => (
-              <div style={{ display: 'flex', gap: '16px', padding: '8px 0' }}>
-                {radioOptions.map(option => (
-                  <label
-                    key={option.value}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      cursor: disabled || isReadOnly ? 'not-allowed' : 'pointer',
-                      gap: '6px',
-                    }}
-                  >
-                    <input
-                      type="radio"
-                      name={column.column_name}
-                      value={option.value}
-                      checked={field.value === option.value}
-                      onChange={() => field.onChange(option.value)}
-                      disabled={disabled || isReadOnly}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', padding: '8px 0' }}>
+                {radioOptionsWithEmpty.map(option => {
+                  const isSelected = option.value === ''
+                    ? (!field.value || field.value === '')
+                    : field.value === option.value;
+                  return (
+                    <label
+                      key={option.value || '_empty'}
                       style={{
-                        width: '16px',
-                        height: '16px',
-                        accentColor: '#3B82F6',
+                        display: 'flex',
+                        alignItems: 'center',
+                        cursor: disabled || isReadOnly ? 'not-allowed' : 'pointer',
+                        gap: '6px',
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        backgroundColor: isSelected ? '#EFF6FF' : '#F9FAFB',
+                        border: isSelected ? '1px solid #3B82F6' : '1px solid #E5E7EB',
+                        transition: 'all 0.15s ease',
                       }}
-                    />
-                    <span style={{ fontSize: '14px', color: '#374151' }}>
-                      {option.label}
-                    </span>
-                  </label>
-                ))}
+                    >
+                      <input
+                        type="radio"
+                        name={column.column_name}
+                        value={option.value}
+                        checked={isSelected}
+                        onChange={() => field.onChange(option.value)}
+                        disabled={disabled || isReadOnly}
+                        style={{
+                          width: '16px',
+                          height: '16px',
+                          accentColor: '#3B82F6',
+                        }}
+                      />
+                      <span style={{ fontSize: '14px', color: isSelected ? '#1D4ED8' : '#374151' }}>
+                        {option.label}
+                      </span>
+                    </label>
+                  );
+                })}
               </div>
             )}
+          />
+        );
+
+      case 'multi_select':
+        const multiOptions = parseEnumValues(column.options);
+        return (
+          <Controller
+            name={column.column_name}
+            control={control}
+            render={({ field }) => {
+              // 値を配列として扱う（カンマ区切り文字列も対応）
+              const selectedValues: string[] = Array.isArray(field.value)
+                ? field.value
+                : (field.value ? String(field.value).split(',').map(v => v.trim()) : []);
+
+              const toggleValue = (value: string) => {
+                const newValues = selectedValues.includes(value)
+                  ? selectedValues.filter(v => v !== value)
+                  : [...selectedValues, value];
+                // カンマ区切り文字列で保存（DB互換性のため）
+                field.onChange(newValues.join(','));
+              };
+
+              return (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', padding: '8px 0' }}>
+                  {multiOptions.map(option => {
+                    const isSelected = selectedValues.includes(option.value);
+                    return (
+                      <label
+                        key={option.value}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          cursor: disabled || isReadOnly ? 'not-allowed' : 'pointer',
+                          gap: '6px',
+                          padding: '6px 12px',
+                          borderRadius: '6px',
+                          backgroundColor: isSelected ? '#DBEAFE' : '#F9FAFB',
+                          border: isSelected ? '1px solid #3B82F6' : '1px solid #E5E7EB',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleValue(option.value)}
+                          disabled={disabled || isReadOnly}
+                          style={{
+                            width: '16px',
+                            height: '16px',
+                            accentColor: '#3B82F6',
+                          }}
+                        />
+                        <span style={{ fontSize: '14px', color: isSelected ? '#1D4ED8' : '#374151' }}>
+                          {option.label}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              );
+            }}
           />
         );
 
@@ -735,13 +809,18 @@ interface FieldGroupProps {
   groupName: string;
   columns: ColumnWithLabel[];
   disabled?: boolean;
+  collapsible?: boolean;  // アコーディオン機能（折りたたみ可能）
+  defaultCollapsed?: boolean;  // 初期状態で折りたたみ
 }
 
 export const FieldGroup: React.FC<FieldGroupProps> = ({
   groupName,
   columns,
-  disabled = false
+  disabled = false,
+  collapsible = false,
+  defaultCollapsed = false,
 }) => {
+  const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
   const { watch, setValue, getValues } = useFormContext();
   const [isLoadingZoning, setIsLoadingZoning] = useState(false);
   const [zoningMessage, setZoningMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -934,7 +1013,30 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
       borderRadius: '12px',
     }}>
       {/* グループヘッダー */}
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          marginBottom: isCollapsed ? '0' : '16px',
+          flexWrap: 'wrap',
+          gap: '8px',
+          cursor: collapsible ? 'pointer' : 'default',
+          userSelect: 'none',
+        }}
+        onClick={() => collapsible && setIsCollapsed(!isCollapsed)}
+      >
+        {/* アコーディオン矢印 */}
+        {collapsible && (
+          <span style={{
+            fontSize: '14px',
+            color: '#9CA3AF',
+            marginRight: '4px',
+            transition: 'transform 200ms ease',
+            transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+          }}>
+            ▼
+          </span>
+        )}
         <span style={{ fontSize: '24px', marginRight: '4px' }}>{getGroupIcon(groupName)}</span>
         <h3 style={{
           fontSize: '18px',
@@ -944,6 +1046,16 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
         }}>
           {groupName}
         </h3>
+        {/* 折りたたみ時のフィールド数表示 */}
+        {collapsible && isCollapsed && (
+          <span style={{
+            fontSize: '12px',
+            color: '#9CA3AF',
+            marginLeft: '8px',
+          }}>
+            ({visibleColumns.length}項目)
+          </span>
+        )}
         {isAutoFetchGroup && (
           <>
             <button
@@ -987,7 +1099,7 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
       </div>
 
       {/* メッセージ表示 */}
-      {isAutoFetchGroup && zoningMessage && (
+      {isAutoFetchGroup && zoningMessage && !isCollapsed && (
         <div style={{
           marginBottom: '16px',
           padding: '10px 14px',
@@ -1000,81 +1112,86 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
         </div>
       )}
 
-      {/* 通常フィールド - 2列 */}
-      {filteredRegularFields.length > 0 && (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: '24px',
-          marginBottom: isLocationGroup || jsonFields.length > 0 || checkboxFields.length > 0 || textareaFields.length > 0 ? '24px' : 0,
-        }}>
-          {filteredRegularFields.map(column => (
-            <div key={column.column_name}>
-              <FieldFactory column={column} disabled={disabled} />
+      {/* アコーディオン: 折りたたみ時はコンテンツを非表示 */}
+      {!isCollapsed && (
+        <>
+          {/* 通常フィールド - 2列 */}
+          {filteredRegularFields.length > 0 && (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: '24px',
+              marginBottom: isLocationGroup || jsonFields.length > 0 || checkboxFields.length > 0 || textareaFields.length > 0 ? '24px' : 0,
+            }}>
+              {filteredRegularFields.map(column => (
+                <div key={column.column_name}>
+                  <FieldFactory column={column} disabled={disabled} />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          )}
 
-      {/* 所在地グループの場合、地図付き緯度経度フィールドを表示 */}
-      {isLocationGroup && (
-        <LocationField disabled={disabled} />
-      )}
+          {/* 所在地グループの場合、地図付き緯度経度フィールドを表示 */}
+          {isLocationGroup && (
+            <LocationField disabled={disabled} />
+          )}
 
-      {/* チェックボックス群 - 3列 */}
-      {checkboxFields.length > 0 && (
-        <div style={{ marginBottom: jsonFields.length > 0 || textareaFields.length > 0 ? '24px' : 0 }}>
-          <h4 style={{ fontSize: '13px', fontWeight: 600, color: '#6B7280', marginBottom: '12px' }}>設定項目</h4>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
-            {checkboxFields.map(column => (
-              <div key={column.column_name}>
-                <FieldFactory column={column} disabled={disabled} />
+          {/* チェックボックス群 - 3列 */}
+          {checkboxFields.length > 0 && (
+            <div style={{ marginBottom: jsonFields.length > 0 || textareaFields.length > 0 ? '24px' : 0 }}>
+              <h4 style={{ fontSize: '13px', fontWeight: 600, color: '#6B7280', marginBottom: '12px' }}>設定項目</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+                {checkboxFields.map(column => (
+                  <div key={column.column_name}>
+                    <FieldFactory column={column} disabled={disabled} />
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* JSON専用フィールド - フル幅 */}
-      {jsonFields.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: textareaFields.length > 0 || imageFields.length > 0 ? '24px' : 0 }}>
-          {jsonFields.map(column => (
-            <div key={column.column_name}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#6B7280', marginBottom: '8px' }}>
-                {column.label_ja || column.column_name}
-              </label>
-              <FieldFactory column={column} disabled={disabled} />
             </div>
-          ))}
-        </div>
-      )}
+          )}
 
-      {/* 画像アップロード - フル幅 */}
-      {imageFields.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: textareaFields.length > 0 ? '24px' : 0 }}>
-          {imageFields.map(column => (
-            <div key={column.column_name}>
-              <FieldFactory column={column} disabled={disabled} />
+          {/* JSON専用フィールド - フル幅 */}
+          {jsonFields.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: textareaFields.length > 0 || imageFields.length > 0 ? '24px' : 0 }}>
+              {jsonFields.map(column => (
+                <div key={column.column_name}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#6B7280', marginBottom: '8px' }}>
+                    {column.label_ja || column.column_name}
+                  </label>
+                  <FieldFactory column={column} disabled={disabled} />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          )}
 
-      {/* テキストエリア - フル幅 */}
-      {textareaFields.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <h4 style={{ fontSize: '13px', fontWeight: 600, color: '#6B7280' }}>詳細項目</h4>
-          {textareaFields.map(column => (
-            <div key={column.column_name}>
-              <FieldFactory column={column} disabled={disabled} />
+          {/* 画像アップロード - フル幅 */}
+          {imageFields.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: textareaFields.length > 0 ? '24px' : 0 }}>
+              {imageFields.map(column => (
+                <div key={column.column_name}>
+                  <FieldFactory column={column} disabled={disabled} />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          )}
 
-      {/* 用途地域マップ表示（法規制グループの場合） */}
-      {isAutoFetchGroup && (
-        <ZoningMapField />
+          {/* テキストエリア - フル幅 */}
+          {textareaFields.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <h4 style={{ fontSize: '13px', fontWeight: 600, color: '#6B7280' }}>詳細項目</h4>
+              {textareaFields.map(column => (
+                <div key={column.column_name}>
+                  <FieldFactory column={column} disabled={disabled} />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* 用途地域マップ表示（法規制グループの場合） */}
+          {isAutoFetchGroup && (
+            <ZoningMapField />
+          )}
+        </>
       )}
     </div>
   );
