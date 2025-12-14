@@ -8,6 +8,96 @@ from datetime import datetime
 
 
 # ========================================
+# ENUM値の変換マッピング
+# ========================================
+
+PUBLICATION_STATUS_MAP = {
+    "未公開": "非公開",
+    "公開": "公開",
+    "会員公開": "会員公開",
+}
+
+TRANSACTION_TYPE_MAP = {
+    "売主": "1:売主",
+    "代理": "2:代理",
+    "専任媒介": "3:専任媒介",
+    "一般媒介": "4:一般媒介",
+    "専属専任": "5:専属専任",
+    "専属専任媒介": "5:専属専任",
+}
+
+CURRENT_STATUS_MAP = {
+    "空家": "1:空家",
+    "空き家": "1:空家",
+    "居住中": "2:居住中",
+    "賃貸中": "3:賃貸中",
+    "その他": "9:その他",
+}
+
+DELIVERY_TIMING_MAP = {
+    "即時": "1:即時",
+    "即日": "1:即時",
+    "相談": "2:相談",
+    "期日指定": "3:期日指定",
+}
+
+USE_DISTRICT_MAP = {
+    "第一種低層住居専用": "1:第一種低層住居専用",
+    "第二種低層住居専用": "2:第二種低層住居専用",
+    "第一種中高層住居専用": "3:第一種中高層住居専用",
+    "第二種中高層住居専用": "4:第二種中高層住居専用",
+    "第一種住居": "5:第一種住居",
+    "第二種住居": "6:第二種住居",
+    "準住居": "7:準住居",
+    "近隣商業": "8:近隣商業",
+    "商業": "9:商業",
+    "準工業": "10:準工業",
+    "工業": "11:工業",
+    "工業専用": "12:工業専用",
+}
+
+LAND_RIGHTS_MAP = {
+    "所有権": "1:所有権",
+    "借地権": "2:借地権",
+    "定期借地権": "3:定期借地権",
+    "地上権": "4:地上権",
+}
+
+BUILDING_STRUCTURE_MAP = {
+    "木造": "1:木造",
+    "鉄骨造": "2:鉄骨造",
+    "RC造": "3:RC造",
+    "鉄筋コンクリート造": "3:RC造",
+    "SRC造": "4:SRC造",
+    "鉄骨鉄筋コンクリート造": "4:SRC造",
+    "軽量鉄骨": "5:軽量鉄骨",
+    "軽量鉄骨造": "5:軽量鉄骨",
+    "ALC": "6:ALC",
+    "その他": "9:その他",
+}
+
+PARKING_AVAILABILITY_MAP = {
+    "無": "1:無",
+    "なし": "1:無",
+    "有(無料)": "2:有(無料)",
+    "あり（無料）": "2:有(無料)",
+    "有(有料)": "3:有(有料)",
+    "あり（有料）": "3:有(有料)",
+    "近隣(無料)": "4:近隣(無料)",
+    "近隣(有料)": "5:近隣(有料)",
+}
+
+ROOM_TYPE_MAP = {
+    "R": "1:R",
+    "K": "2:K",
+    "DK": "3:DK",
+    "LDK": "4:LDK",
+    "SLDK": "5:SLDK",
+    "その他": "6:その他",
+}
+
+
+# ========================================
 # ZOHOフィールド → REAカラム マッピング
 # ========================================
 
@@ -148,6 +238,34 @@ class ZohoMapper:
         """フィールド固有の変換処理"""
         if value is None or value == "":
             return None
+
+        # ENUM値の変換
+        if column == "publication_status":
+            return PUBLICATION_STATUS_MAP.get(str(value), None)
+
+        if column == "transaction_type":
+            return TRANSACTION_TYPE_MAP.get(str(value), None)
+
+        if column == "current_status":
+            return CURRENT_STATUS_MAP.get(str(value), None)
+
+        if column == "delivery_timing":
+            return DELIVERY_TIMING_MAP.get(str(value), None)
+
+        if column == "use_district":
+            return USE_DISTRICT_MAP.get(str(value), None)
+
+        if column == "land_rights":
+            return LAND_RIGHTS_MAP.get(str(value), None)
+
+        if column == "building_structure":
+            return BUILDING_STRUCTURE_MAP.get(str(value), None)
+
+        if column == "parking_availability":
+            return PARKING_AVAILABILITY_MAP.get(str(value), None)
+
+        if column == "room_type":
+            return ROOM_TYPE_MAP.get(str(value), None)
 
         # 価格（数値に変換）
         if column == "sale_price":
