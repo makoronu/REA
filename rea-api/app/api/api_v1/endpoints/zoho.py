@@ -11,10 +11,14 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import RedirectResponse
 from typing import Optional, List
 from pydantic import BaseModel
+from datetime import datetime
 
 from app.services.zoho import ZohoClient, ZohoAuth
 from app.services.zoho.auth import zoho_auth
 from app.services.zoho.client import zoho_client
+from app.services.zoho.mapper import zoho_mapper
+
+from shared.database import READatabase
 
 
 router = APIRouter()
@@ -207,15 +211,82 @@ async def get_zoho_property(zoho_id: str):
 @router.post("/import", response_model=ZohoImportResult)
 async def import_properties(request: ZohoImportRequest):
     """ZOHO CRMから物件をインポート"""
-    # TODO: 実装
-    # 1. zoho_idsの物件を取得
-    # 2. データマッピングで変換
-    # 3. REAのDBに保存
-    # 4. 結果を返す
+    success_count = 0
+    failed_count = 0
+    skipped_count = 0
+    errors = []
+
+    db = READatabase()
+    conn = db.get_connection()
+    cur = conn.cursor()
+
+    try:
+        for zoho_id in request.zoho_ids:
+            try:
+                # 1. ZOHOから物件データを取得
+                zoho_record = await zoho_client.get_record(zoho_id)
+                if not zoho_record:
+                    errors.append({"zoho_id": zoho_id, "message": "物件が見つかりません"})
+                    failed_count += 1
+                    continue
+
+                # 2. データマッピングで変換
+                rea_data = zoho_mapper.map_record(zoho_record)
+
+                # 3. 既存物件チェック
+                cur.execute(
+                    "SELECT id FROM properties WHERE zoho_id = %s",
+                    (zoho_id,)
+                )
+                existing = cur.fetchone()
+
+                if existing:
+                    if not request.update_existing:
+                        skipped_count += 1
+                        continue
+
+                    # 更新
+                    property_id = existing[0]
+                    update_columns = []
+                    update_values = []
+                    for col, val in rea_data.items():
+                        if col != "zoho_id":  # zoho_idは更新しない
+                            update_columns.append(f"{col} = %s")
+                            update_values.append(val)
+                    update_values.append(property_id)
+
+                    if update_columns:
+                        cur.execute(
+                            f"UPDATE properties SET {', '.join(update_columns)}, updated_at = NOW() WHERE id = %s",
+                            update_values
+                        )
+                else:
+                    # 新規登録
+                    columns = list(rea_data.keys())
+                    placeholders = ["%s"] * len(columns)
+                    values = list(rea_data.values())
+
+                    cur.execute(
+                        f"INSERT INTO properties ({', '.join(columns)}, created_at, updated_at) VALUES ({', '.join(placeholders)}, NOW(), NOW()) RETURNING id",
+                        values
+                    )
+                    property_id = cur.fetchone()[0]
+
+                conn.commit()
+                success_count += 1
+
+            except Exception as e:
+                conn.rollback()
+                errors.append({"zoho_id": zoho_id, "message": str(e)})
+                failed_count += 1
+
+    finally:
+        cur.close()
+        conn.close()
 
     return {
-        "success": 0,
-        "failed": 0,
-        "skipped": 0,
-        "errors": [{"message": "インポート機能は未実装です"}]
+        "success": success_count,
+        "failed": failed_count,
+        "skipped": skipped_count,
+        "errors": errors
     }
