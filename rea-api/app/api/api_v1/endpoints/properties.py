@@ -73,13 +73,26 @@ def read_property_full(property_id: int, db: Session = Depends(get_db)) -> Dict[
     properties, building_info, land_info, amenities を全て含めて返す。
     編集画面で使用する。
     """
-    # properties
-    db_property = property_crud.get_property(db, property_id=property_id)
-    if db_property is None:
+    # properties - 直接SQLで取得して確実にデータを取る
+    prop_result = db.execute(
+        text("SELECT * FROM properties WHERE id = :pid"),
+        {"pid": property_id}
+    ).fetchone()
+
+    if prop_result is None:
         raise HTTPException(status_code=404, detail="Property not found")
 
     # propertiesをdictに変換
-    result = {c.name: getattr(db_property, c.name) for c in db_property.__table__.columns}
+    result = dict(prop_result._mapping)
+
+    # デバッグ: 住所関連データを出力
+    import logging
+    logging.warning(f"DEBUG property_id={property_id}: postal_code={result.get('postal_code')}, prefecture={result.get('prefecture')}, city={result.get('city')}, address={result.get('address')}")
+
+    # created_at, updated_atは除外（シリアライズ問題を避ける）
+    for key in ['created_at', 'updated_at']:
+        if key in result and result[key] is not None:
+            result[key] = str(result[key])
 
     # building_info取得
     building_result = db.execute(

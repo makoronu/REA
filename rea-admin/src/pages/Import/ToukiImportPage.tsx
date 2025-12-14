@@ -57,6 +57,10 @@ export default function ToukiImportPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [linkingRecordId, setLinkingRecordId] = useState<number | null>(null);
+  const [linkPropertyId, setLinkPropertyId] = useState<string>('');
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [registering, setRegistering] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 初回読み込み
@@ -165,7 +169,7 @@ export default function ToukiImportPage() {
     setSuccess(null);
 
     try {
-      const res = await fetch(`${API_URL}/api/v1/touki/parse/${importId}`, {
+      const res = await fetch(`${API_URL}/api/v1/touki/${importId}/parse`, {
         method: 'POST',
       });
 
@@ -174,7 +178,10 @@ export default function ToukiImportPage() {
         throw new Error(err.detail || 'パースに失敗しました');
       }
 
-      setSuccess('PDFを解析しました');
+      const result = await res.json();
+      const recordIds = result.touki_record_ids || [];
+
+      setSuccess(`解析完了: ${recordIds.length}件の登記レコードを作成しました`);
       await loadData();
     } catch (e: any) {
       setError(e.message);
@@ -183,7 +190,7 @@ export default function ToukiImportPage() {
     }
   };
 
-  // 物件登録
+  // 物件登録（登録後、登記レコードは削除）
   const handleCreateProperty = async (record: ToukiRecord) => {
     setCreatingId(record.id);
     setError(null);
@@ -206,7 +213,14 @@ export default function ToukiImportPage() {
       }
 
       const result = await res.json();
+
+      // 登記レコードを削除（一時データなので）
+      await fetch(`${API_URL}/api/v1/touki/records/${record.id}`, {
+        method: 'DELETE',
+      });
+
       setSuccess(`物件ID ${result.property_id} を登録しました`);
+      await loadData();
 
       // 編集ページを新しいタブで開く
       window.open(`/properties/${result.property_id}/edit`, '_blank');
@@ -235,6 +249,121 @@ export default function ToukiImportPage() {
       await loadData();
     } catch (e: any) {
       setError(e.message);
+    }
+  };
+
+  // 既存物件に反映（反映後、登記レコードは削除）
+  const handleLinkToProperty = async (record: ToukiRecord) => {
+    const propertyId = parseInt(linkPropertyId);
+    if (!propertyId || isNaN(propertyId)) {
+      setError('物件IDを入力してください');
+      return;
+    }
+
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const linkType = record.document_type === 'land' ? 'main_land' : 'main_building';
+
+      const res = await fetch(`${API_URL}/api/v1/touki/records/link`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          property_id: propertyId,
+          touki_record_id: record.id,
+          link_type: linkType
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || '反映に失敗しました');
+      }
+
+      // 登記レコードを削除（一時データなので）
+      await fetch(`${API_URL}/api/v1/touki/records/${record.id}`, {
+        method: 'DELETE',
+      });
+
+      setSuccess(`物件ID ${propertyId} に登記情報を反映しました`);
+      setLinkingRecordId(null);
+      setLinkPropertyId('');
+      await loadData();
+
+      // 物件編集ページを開く
+      window.open(`/properties/${propertyId}/edit`, '_blank');
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
+
+  // 選択トグル
+  const toggleSelect = (id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  // 全選択/全解除
+  const toggleSelectAll = () => {
+    if (selectedIds.size === records.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(records.map(r => r.id)));
+    }
+  };
+
+  // 選択した登記をまとめて物件登録
+  const handleBulkRegister = async () => {
+    if (selectedIds.size === 0) {
+      setError('登記を選択してください');
+      return;
+    }
+
+    setRegistering(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const res = await fetch(`${API_URL}/api/v1/touki/records/create-property`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          touki_record_ids: Array.from(selectedIds)
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || '物件登録に失敗しました');
+      }
+
+      const result = await res.json();
+
+      // 登記レコードを削除（一時データなので）
+      for (const id of selectedIds) {
+        await fetch(`${API_URL}/api/v1/touki/records/${id}`, {
+          method: 'DELETE',
+        });
+      }
+
+      setSuccess(result.message);
+      setSelectedIds(new Set());
+      await loadData();
+
+      // 編集ページを新しいタブで開く
+      window.open(`/properties/${result.property_id}/edit`, '_blank');
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setRegistering(false);
     }
   };
 
@@ -355,7 +484,17 @@ export default function ToukiImportPage() {
       {/* 登記レコード一覧 */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-medium">登記レコード ({records.length}件)</h2>
+          <div className="flex items-center gap-4">
+            <h2 className="text-lg font-medium">取込待ち ({records.length}件)</h2>
+            {records.length > 0 && (
+              <button
+                onClick={toggleSelectAll}
+                className="px-2 py-1 text-xs bg-gray-100 rounded hover:bg-gray-200"
+              >
+                {selectedIds.size === records.length ? '全解除' : '全選択'}
+              </button>
+            )}
+          </div>
           <button
             onClick={loadData}
             className="px-3 py-1 text-sm bg-gray-100 rounded hover:bg-gray-200"
@@ -364,15 +503,52 @@ export default function ToukiImportPage() {
           </button>
         </div>
 
+        {/* まとめて物件登録ボタン */}
+        {selectedIds.size > 0 && (
+          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="font-medium text-blue-800">
+                  {selectedIds.size}件の登記を選択中
+                </span>
+                <span className="ml-2 text-sm text-blue-600">
+                  （土地{records.filter(r => selectedIds.has(r.id) && r.document_type === 'land').length}筆、
+                  建物{records.filter(r => selectedIds.has(r.id) && r.document_type !== 'land').length}棟）
+                </span>
+              </div>
+              <button
+                onClick={handleBulkRegister}
+                disabled={registering}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 font-medium"
+              >
+                {registering ? '登録中...' : 'まとめて物件登録'}
+              </button>
+            </div>
+          </div>
+        )}
+
         {records.length === 0 ? (
           <div className="p-8 text-center text-gray-500 border rounded-lg">
-            登記レコードがありません。PDFをアップロード・解析してください。
+            取込待ちデータがありません。PDFをアップロードしてください。
           </div>
         ) : (
           <div className="border rounded-lg divide-y">
             {records.map(record => (
-              <div key={record.id} className="p-4">
-                <div className="flex items-start justify-between">
+              <label
+                key={record.id}
+                className={`block p-4 cursor-pointer transition ${
+                  selectedIds.has(record.id) ? 'bg-blue-50' : 'hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  {/* チェックボックス */}
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(record.id)}
+                    onChange={() => toggleSelect(record.id)}
+                    className="mt-1 w-5 h-5 rounded border-gray-300"
+                  />
+
                   <div className="flex-1">
                     {/* ヘッダー */}
                     <div className="flex items-center gap-2 mb-2">
@@ -430,24 +606,16 @@ export default function ToukiImportPage() {
                     </div>
                   </div>
 
-                  {/* アクション */}
-                  <div className="flex gap-2 ml-4">
-                    <button
-                      onClick={() => handleCreateProperty(record)}
-                      disabled={creating === record.id}
-                      className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition disabled:opacity-50"
-                    >
-                      {creating === record.id ? '登録中...' : '物件登録'}
-                    </button>
-                    <button
-                      onClick={() => handleDeleteRecord(record.id)}
-                      className="px-3 py-1 text-red-600 border border-red-200 rounded hover:bg-red-50 transition"
-                    >
-                      削除
-                    </button>
-                  </div>
+                  {/* 破棄ボタン */}
+                  <button
+                    onClick={(e) => { e.preventDefault(); handleDeleteRecord(record.id); }}
+                    className="px-3 py-1 text-gray-400 hover:text-red-500 transition text-sm"
+                    title="この登記を破棄"
+                  >
+                    ✕
+                  </button>
                 </div>
-              </div>
+              </label>
             ))}
           </div>
         )}
@@ -457,11 +625,14 @@ export default function ToukiImportPage() {
       <div className="p-4 bg-gray-50 rounded-lg text-sm text-gray-600">
         <h3 className="font-medium text-gray-800 mb-2">使い方</h3>
         <ol className="list-decimal list-inside space-y-1">
-          <li>登記事項証明書のPDFをアップロード</li>
+          <li>登記事項証明書のPDFをドラッグ&ドロップ（複数可）</li>
           <li>「解析」ボタンでPDFの内容を読み取り</li>
-          <li>読み取った情報を確認</li>
-          <li>「物件登録」ボタンで物件DBに登録</li>
+          <li>1物件にまとめたい登記をチェックで選択（土地数筆＋建物1棟）</li>
+          <li>「まとめて物件登録」ボタンで物件DBに登録</li>
         </ol>
+        <p className="mt-2 text-xs text-gray-500">
+          ※ 登記データは物件登録後に自動削除されます
+        </p>
       </div>
     </div>
   );

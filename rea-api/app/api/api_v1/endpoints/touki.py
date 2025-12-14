@@ -77,6 +77,8 @@ class ToukiRecordListResponse(BaseModel):
 class CreatePropertyFromToukiRequest(BaseModel):
     land_touki_record_id: Optional[int] = None
     building_touki_record_id: Optional[int] = None
+    # 複数登記をまとめて登録
+    touki_record_ids: Optional[List[int]] = None
 
 
 class LinkToukiRequest(BaseModel):
@@ -516,66 +518,119 @@ async def get_touki_record(record_id: int):
         conn.close()
 
 
+def map_structure_to_enum(structure: str) -> str:
+    """登記の構造文字列をbuilding_structure_enumにマッピング"""
+    if not structure:
+        return '9:その他'
+    structure = structure.lower()
+    if '木造' in structure or 'もくぞう' in structure:
+        return '1:木造'
+    if 'src' in structure or '鉄骨鉄筋コンクリート' in structure:
+        return '4:SRC造'
+    if 'rc' in structure or '鉄筋コンクリート' in structure:
+        return '3:RC造'
+    if '軽量鉄骨' in structure:
+        return '5:軽量鉄骨'
+    if '鉄骨' in structure:
+        return '2:鉄骨造'
+    if 'alc' in structure:
+        return '6:ALC'
+    return '9:その他'
+
+
 @router.post("/records/create-property")
 async def create_property_from_touki(request: CreatePropertyFromToukiRequest):
-    """登記レコードから物件を作成"""
-    if not request.land_touki_record_id and not request.building_touki_record_id:
-        raise HTTPException(status_code=400, detail="土地または建物の登記レコードIDが必要です")
+    """
+    登記レコードから物件を作成
+    - touki_record_ids: 複数の登記（土地数筆＋建物1棟）をまとめて1物件に
+    - 旧API互換: land_touki_record_id, building_touki_record_id も使用可
+    """
+    import re
+
+    # 新APIか旧APIか判定
+    record_ids = request.touki_record_ids or []
+    if request.land_touki_record_id:
+        record_ids.append(request.land_touki_record_id)
+    if request.building_touki_record_id:
+        record_ids.append(request.building_touki_record_id)
+
+    if not record_ids:
+        raise HTTPException(status_code=400, detail="登記レコードIDが必要です")
 
     db = READatabase()
     conn = db.get_connection()
     cur = conn.cursor()
 
     try:
-        land_record = None
-        building_record = None
+        # 全レコード取得
+        land_records = []
+        building_records = []
 
-        # 土地レコード取得
-        if request.land_touki_record_id:
-            cur.execute("SELECT * FROM touki_records WHERE id = %s", (request.land_touki_record_id,))
-            land_record = cur.fetchone()
-            if not land_record:
-                raise HTTPException(status_code=404, detail="土地登記レコードが見つかりません")
+        for rid in record_ids:
+            cur.execute("""
+                SELECT id, real_estate_number, document_type, location,
+                       lot_number, land_category, land_area_m2,
+                       building_number, building_type, structure,
+                       floor_area_m2, floor_areas, construction_date, owners
+                FROM touki_records WHERE id = %s
+            """, (rid,))
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail=f"登記レコードID {rid} が見つかりません")
 
-        # 建物レコード取得
-        if request.building_touki_record_id:
-            cur.execute("SELECT * FROM touki_records WHERE id = %s", (request.building_touki_record_id,))
-            building_record = cur.fetchone()
-            if not building_record:
-                raise HTTPException(status_code=404, detail="建物登記レコードが見つかりません")
+            rec = {
+                'id': row[0], 'real_estate_number': row[1], 'document_type': row[2],
+                'location': row[3], 'lot_number': row[4], 'land_category': row[5],
+                'land_area_m2': row[6], 'building_number': row[7], 'building_type': row[8],
+                'structure': row[9], 'floor_area_m2': row[10], 'floor_areas': row[11],
+                'construction_date': row[12], 'owners': row[13] or []
+            }
+
+            if rec['document_type'] == 'land':
+                land_records.append(rec)
+            else:
+                building_records.append(rec)
 
         # 物件タイプ判定
-        if land_record and building_record:
+        if building_records and land_records:
             property_type = '中古戸建'
-        elif building_record:
+        elif building_records:
             property_type = '中古戸建'
         else:
             property_type = '売地'
 
-        # 所在地（建物優先、なければ土地）
+        # 所在地（建物優先）
         location = ''
-        if building_record:
-            location = building_record[3]  # location
-        elif land_record:
-            location = land_record[3]
+        if building_records:
+            location = building_records[0]['location']
+        elif land_records:
+            location = land_records[0]['location']
 
-        # 所有者情報
+        # 所有者情報（建物優先）
         owners = []
-        if building_record and building_record[13]:  # owners
-            owners = building_record[13]
-        elif land_record and land_record[13]:
-            owners = land_record[13]
+        if building_records and building_records[0]['owners']:
+            owners = building_records[0]['owners']
+        elif land_records and land_records[0]['owners']:
+            owners = land_records[0]['owners']
 
         owner_name = owners[0]['name'] if owners else None
-        owner_address = owners[0]['address'] if owners else None
+        owner_address = owners[0].get('address') if owners else None
 
-        # propertiesに挿入（owner_name, owner_addressはpropertiesテーブルにないので、remarksに保存）
-        owner_remarks = ""
+        # remarksに所有者情報と登記概要
+        remarks_parts = []
         if owner_name:
-            owner_remarks = f"所有者: {owner_name}"
+            remarks_parts.append(f"所有者: {owner_name}")
             if owner_address:
-                owner_remarks += f" ({owner_address})"
+                remarks_parts.append(f"住所: {owner_address}")
+        if land_records:
+            remarks_parts.append(f"土地{len(land_records)}筆")
+        if building_records:
+            remarks_parts.append(f"建物{len(building_records)}棟")
 
+        # 土地面積合計
+        total_land_area = sum(r['land_area_m2'] or 0 for r in land_records)
+
+        # propertiesに挿入
         cur.execute("""
             INSERT INTO properties (
                 property_name, property_type, address, remarks,
@@ -583,37 +638,41 @@ async def create_property_from_touki(request: CreatePropertyFromToukiRequest):
             ) VALUES (%s, %s, %s, %s, NOW(), NOW())
             RETURNING id
         """, (
-            location,  # property_name = 所在地
+            location,
             property_type,
             location,
-            owner_remarks
+            '\n'.join(remarks_parts)
         ))
         property_id = cur.fetchone()[0]
 
-        # land_infoに挿入
-        if land_record:
+        # land_infoに挿入（複数筆の場合は合計面積＋地番リスト）
+        if land_records:
+            chiban_list = ', '.join(r['lot_number'] or '' for r in land_records if r['lot_number'])
+            land_category = land_records[0]['land_category']  # 最初の地目を使用
+
             cur.execute("""
                 INSERT INTO land_info (
                     property_id, chiban, land_category, land_area, address
                 ) VALUES (%s, %s, %s, %s, %s)
             """, (
                 property_id,
-                land_record[4],   # lot_number -> chiban
-                land_record[5],   # land_category
-                land_record[6],   # land_area_m2 -> land_area
-                land_record[3]    # location -> address
+                chiban_list,
+                land_category,
+                total_land_area,
+                land_records[0]['location']
             ))
 
         # building_infoに挿入
-        if building_record:
-            # 構造から階数を抽出（例: "木造亜鉛メッキ鋼板葺2階建" -> 2）
+        if building_records:
+            br = building_records[0]  # 最初の建物
             floors_above = None
-            structure = building_record[9]
-            if structure:
-                import re
-                floor_match = re.search(r'(\d+)階', structure)
+            if br['structure']:
+                floor_match = re.search(r'(\d+)階', br['structure'])
                 if floor_match:
                     floors_above = int(floor_match.group(1))
+
+            # 構造をENUM値にマッピング
+            structure_enum = map_structure_to_enum(br['structure'])
 
             cur.execute("""
                 INSERT INTO building_info (
@@ -622,31 +681,19 @@ async def create_property_from_touki(request: CreatePropertyFromToukiRequest):
                 ) VALUES (%s, %s, %s, %s, %s)
             """, (
                 property_id,
-                structure,                # structure -> building_structure
-                building_record[10],      # floor_area_m2 -> total_floor_area
-                building_record[12],      # construction_date
+                structure_enum,
+                br['floor_area_m2'],
+                br['construction_date'],
                 floors_above
             ))
-
-        # property_touki_linksに挿入
-        if land_record:
-            cur.execute("""
-                INSERT INTO property_touki_links (property_id, touki_record_id, link_type)
-                VALUES (%s, %s, 'main_land')
-            """, (property_id, request.land_touki_record_id))
-
-        if building_record:
-            cur.execute("""
-                INSERT INTO property_touki_links (property_id, touki_record_id, link_type)
-                VALUES (%s, %s, 'main_building')
-            """, (property_id, request.building_touki_record_id))
 
         conn.commit()
 
         return {
             "status": "success",
             "property_id": property_id,
-            "message": f"物件ID {property_id} を作成しました"
+            "message": f"物件ID {property_id} を作成しました（土地{len(land_records)}筆、建物{len(building_records)}棟）",
+            "touki_record_ids": record_ids
         }
 
     except HTTPException:
