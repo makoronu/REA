@@ -18,22 +18,27 @@
 | 項目 | 内容 |
 |------|------|
 | 作業中 | なし |
-| 完了 | ZOHOインポート機能完成、UI精査タスク1-33全完了、ダミーデータ20件登録 |
-| 残り | ZOHO連携の残作業（画像同期、定期同期等）、Selenium E2Eテスト |
-| 最終更新 | 2025-12-14 17:30 |
-| 備考 | ダミーデータID: 102-121（削除コマンドは下記参照） |
+| 完了 | メタ駆動マッピングシステム完成、ZOHO再インポート2370件成功、UI精査全完了 |
+| 残り | Selenium E2Eテスト、ZOHO画像同期、定期同期機能 |
+| 最終更新 | 2025-12-14 20:30 |
+| 備考 | 全物件はZOHOからインポート（zoho_import_stagingに元データ保存）|
 
-### ダミーデータ（テスト用）
+### メタ駆動マッピングシステム
 
-**登録日**: 2025-12-14
-**ID一覧**: 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121
+**作成日**: 2025-12-14
+**概要**: DBテーブルから変換ルールを読み込む汎用マッパー
 
-**削除コマンド**:
-```sql
-DELETE FROM land_info WHERE property_id IN (102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121);
-DELETE FROM building_info WHERE property_id IN (102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121);
-DELETE FROM amenities WHERE property_id IN (102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121);
-DELETE FROM properties WHERE id IN (102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121);
+**テーブル**:
+- `import_field_mappings`: フィールドマッピング（50件）
+- `import_value_mappings`: 値変換マッピング（192件）
+
+**対応フィールド**: property_type, publication_status, sales_status, current_status, use_district, building_structure, direction, room_type, land_rights, setback, terrain, land_category, city_planning, road_access, road_type, parking_availability, transaction_type, delivery_timing
+
+**使い方**:
+```python
+from app.services.zoho.mapper import MetaDrivenMapper
+mapper = MetaDrivenMapper(source_type="zoho")  # 他のソースは source_type変更
+result = mapper.map_record(raw_data)
 ```
 
 ### セッション運用ルール
