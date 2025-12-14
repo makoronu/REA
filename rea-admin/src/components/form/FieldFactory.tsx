@@ -287,10 +287,76 @@ export const FieldFactory: React.FC<FieldFactoryProps> = ({ column, disabled = f
       );
     }
 
-    // ENUM型セレクト（radioでない場合）
+    // input_typeがmulti_selectの場合は先にmulti_selectを返す
+    if (inputType === 'multi_select' && enumSource) {
+      const multiOptions = parseEnumValues(enumSource);
+      return (
+        <Controller
+          name={column.column_name}
+          control={control}
+          render={({ field }) => {
+            // 値を配列として扱う（カンマ区切り文字列も対応）
+            const selectedValues: string[] = Array.isArray(field.value)
+              ? field.value
+              : (field.value ? String(field.value).split(',').map(v => v.trim()) : []);
+
+            const toggleValue = (value: string) => {
+              const newValues = selectedValues.includes(value)
+                ? selectedValues.filter(v => v !== value)
+                : [...selectedValues, value];
+              // カンマ区切り文字列で保存（DB互換性のため）
+              field.onChange(newValues.join(','));
+            };
+
+            return (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', padding: '8px 0' }}>
+                {multiOptions.map(option => {
+                  const isSelected = selectedValues.includes(option.value);
+                  return (
+                    <label
+                      key={option.value}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        cursor: disabled || isReadOnly ? 'not-allowed' : 'pointer',
+                        gap: '6px',
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        backgroundColor: isSelected ? '#DBEAFE' : '#F9FAFB',
+                        border: isSelected ? '1px solid #3B82F6' : '1px solid #E5E7EB',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleValue(option.value)}
+                        disabled={disabled || isReadOnly}
+                        style={{
+                          width: '16px',
+                          height: '16px',
+                          accentColor: '#3B82F6',
+                        }}
+                      />
+                      <span style={{ fontSize: '14px', color: isSelected ? '#1D4ED8' : '#374151' }}>
+                        {option.label}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            );
+          }}
+        />
+      );
+    }
+
+    // ENUM型セレクト（radioでもmulti_selectでもない場合）
     if ((column.data_type === 'USER-DEFINED' || enumSource) &&
         enumSource &&
-        !isMasterRef) {
+        !isMasterRef &&
+        inputType !== 'radio' &&
+        inputType !== 'multi_select') {
       const enumOptions = parseEnumValues(enumSource);
       if (enumOptions.length > 0) {
         // グループがあるかチェック
