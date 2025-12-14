@@ -210,7 +210,9 @@ async def get_zoho_property(zoho_id: str):
 
 @router.post("/import", response_model=ZohoImportResult)
 async def import_properties(request: ZohoImportRequest):
-    """ZOHO CRMから物件をインポート"""
+    """ZOHO CRMから物件をインポート（3テーブル対応）"""
+    import json
+
     success_count = 0
     failed_count = 0
     skipped_count = 0
@@ -230,8 +232,11 @@ async def import_properties(request: ZohoImportRequest):
                     failed_count += 1
                     continue
 
-                # 2. データマッピングで変換
+                # 2. データマッピングで変換（3テーブル分）
                 rea_data = zoho_mapper.map_record(zoho_record)
+                properties_data = rea_data["properties"]
+                land_info_data = rea_data["land_info"]
+                building_info_data = rea_data["building_info"]
 
                 # 3. 既存物件チェック
                 cur.execute(
@@ -247,30 +252,95 @@ async def import_properties(request: ZohoImportRequest):
 
                     # 更新
                     property_id = existing[0]
-                    update_columns = []
-                    update_values = []
-                    for col, val in rea_data.items():
-                        if col != "zoho_id":  # zoho_idは更新しない
-                            update_columns.append(f"{col} = %s")
-                            update_values.append(val)
-                    update_values.append(property_id)
 
-                    if update_columns:
-                        cur.execute(
-                            f"UPDATE properties SET {', '.join(update_columns)}, updated_at = NOW() WHERE id = %s",
-                            update_values
-                        )
+                    # propertiesテーブル更新
+                    if properties_data:
+                        update_parts = []
+                        update_values = []
+                        for col, val in properties_data.items():
+                            if col != "zoho_id":
+                                update_parts.append(f"{col} = %s")
+                                update_values.append(val)
+                        if update_parts:
+                            update_values.append(property_id)
+                            cur.execute(
+                                f"UPDATE properties SET {', '.join(update_parts)}, updated_at = NOW() WHERE id = %s",
+                                update_values
+                            )
+
+                    # land_infoテーブル更新
+                    if land_info_data:
+                        cur.execute("SELECT id FROM land_info WHERE property_id = %s", (property_id,))
+                        land_exists = cur.fetchone()
+
+                        # road_infoをJSON文字列に変換
+                        if "road_info" in land_info_data:
+                            land_info_data["road_info"] = json.dumps(land_info_data["road_info"])
+
+                        if land_exists:
+                            update_parts = [f"{col} = %s" for col in land_info_data.keys()]
+                            update_values = list(land_info_data.values()) + [property_id]
+                            cur.execute(
+                                f"UPDATE land_info SET {', '.join(update_parts)}, updated_at = NOW() WHERE property_id = %s",
+                                update_values
+                            )
+                        else:
+                            land_info_data["property_id"] = property_id
+                            cols = list(land_info_data.keys())
+                            cur.execute(
+                                f"INSERT INTO land_info ({', '.join(cols)}, created_at, updated_at) VALUES ({', '.join(['%s']*len(cols))}, NOW(), NOW())",
+                                list(land_info_data.values())
+                            )
+
+                    # building_infoテーブル更新
+                    if building_info_data:
+                        cur.execute("SELECT id FROM building_info WHERE property_id = %s", (property_id,))
+                        building_exists = cur.fetchone()
+
+                        if building_exists:
+                            update_parts = [f"{col} = %s" for col in building_info_data.keys()]
+                            update_values = list(building_info_data.values()) + [property_id]
+                            cur.execute(
+                                f"UPDATE building_info SET {', '.join(update_parts)}, updated_at = NOW() WHERE property_id = %s",
+                                update_values
+                            )
+                        else:
+                            building_info_data["property_id"] = property_id
+                            cols = list(building_info_data.keys())
+                            cur.execute(
+                                f"INSERT INTO building_info ({', '.join(cols)}, created_at, updated_at) VALUES ({', '.join(['%s']*len(cols))}, NOW(), NOW())",
+                                list(building_info_data.values())
+                            )
+
                 else:
                     # 新規登録
-                    columns = list(rea_data.keys())
-                    placeholders = ["%s"] * len(columns)
-                    values = list(rea_data.values())
-
+                    # propertiesテーブル
+                    cols = list(properties_data.keys())
                     cur.execute(
-                        f"INSERT INTO properties ({', '.join(columns)}, created_at, updated_at) VALUES ({', '.join(placeholders)}, NOW(), NOW()) RETURNING id",
-                        values
+                        f"INSERT INTO properties ({', '.join(cols)}, created_at, updated_at) VALUES ({', '.join(['%s']*len(cols))}, NOW(), NOW()) RETURNING id",
+                        list(properties_data.values())
                     )
                     property_id = cur.fetchone()[0]
+
+                    # land_infoテーブル
+                    if land_info_data:
+                        land_info_data["property_id"] = property_id
+                        if "road_info" in land_info_data:
+                            land_info_data["road_info"] = json.dumps(land_info_data["road_info"])
+                        cols = list(land_info_data.keys())
+                        cur.execute(
+                            f"INSERT INTO land_info ({', '.join(cols)}, created_at, updated_at) VALUES ({', '.join(['%s']*len(cols))}, NOW(), NOW())",
+                            list(land_info_data.values())
+                        )
+
+                    # building_infoテーブル
+                    if building_info_data:
+                        building_info_data["property_id"] = property_id
+                        cols = list(building_info_data.keys())
+                        cur.execute(
+                            f"INSERT INTO building_info ({', '.join(cols)}, created_at, updated_at) VALUES ({', '.join(['%s']*len(cols))}, NOW(), NOW())",
+                            list(building_info_data.values())
+                        )
 
                 conn.commit()
                 success_count += 1
