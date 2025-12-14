@@ -366,16 +366,39 @@ def simple_parse(raw_text: str) -> dict:
             year = era_start.get(era, 1926) + int(normalize(y)) - 1
             result['building_info']['construction_date'] = f"{year}-{int(normalize(m)):02d}-{int(normalize(d)):02d}"
 
-    # 所有者
-    matches = re.findall(r'所有者\s+([^\n│┃]+?)(?:\s*┃|\s*│|\n)\s*(?:│\s*)*([^\n│┃]+?)(?:\s*┃|\s*│|\n)', raw_text)
-    if matches:
-        for address, name in reversed(matches):
-            address = address.strip()
-            name = re.sub(r'\s+', '', name.strip())
-            if name and not re.match(r'^[０-９\d：:]+$', name):
-                result['owner_info']['owner_address'] = address
-                result['owner_info']['owner_name'] = name
-                break
+    # 所有者（行ごとに処理して最新を取得）
+    owner_blocks = []
+    lines = raw_text.split('\n')
+    for i, line in enumerate(lines):
+        if '所有者' in line and '登記名義人' not in line:
+            addr_match = re.search(r'所有者\s+([^┃\n]+)', line)
+            if addr_match:
+                address = addr_match.group(1).strip().rstrip('│')
+                # 次の数行から名前を探す（住所が複数行にまたがる場合対応）
+                for offset in range(1, 4):
+                    if i + offset >= len(lines):
+                        break
+                    check_line = lines[i + offset]
+                    # 名前パターン: ┃で終わる行の中身、または│...┃の間
+                    name_match = re.search(r'[│┃]\s*([^│┃\d０-９\n]{2,})\s*┃', check_line)
+                    if not name_match:
+                        # 行末が┃で、漢字名前がある場合
+                        name_match = re.search(r'^\s*([^\d０-９│┃\n]{2,})\s*┃$', check_line)
+                    if name_match:
+                        name = re.sub(r'\s+', '', name_match.group(1).strip())
+                        # 名前らしいか判定（2文字以上の非数字で、登記関連用語でない）
+                        skip_words = ['移記', '登記', '原因', '売買', '相続', '平成', '昭和', '令和', '順位']
+                        if name and len(name) >= 2 and not any(w in name for w in skip_words):
+                            owner_blocks.append({
+                                'address': address,
+                                'name': name
+                            })
+                            break
+
+    if owner_blocks:
+        latest = owner_blocks[-1]
+        result['owner_info']['owner_address'] = latest['address']
+        result['owner_info']['owner_name'] = latest['name']
 
     # 抵当権
     if '抵当権設定' in raw_text:

@@ -218,23 +218,45 @@ class ToukiParser:
         """所有者情報を抽出（甲区から最新の所有者）"""
         info = {}
 
-        # パターン1: 所有者 住所\n 名前
-        # 例: 所有者 北見市川東５６番地６\n        鈴 木 敏 文
-        matches = re.findall(
-            r'所有者\s+([^\n│┃]+?)(?:\s*┃|\s*│|\n)\s*(?:│\s*)*([^\n│┃]+?)(?:\s*┃|\s*│|\n)',
-            text
-        )
+        # 行ごとに処理して所有者情報を抽出
+        # パターン1: 所有者 住所 ┃ → 次行に名前
+        # パターン2: 所有者 住所 ┃ → 住所続き → 名前（複数行にまたがる場合）
+        owner_blocks = []
+        lines = text.split('\n')
 
-        if matches:
-            # 最後の所有者情報を使用（最新）
-            for address, name in reversed(matches):
-                address = address.strip()
-                name = re.sub(r'\s+', '', name.strip())
-                # 有効な名前かチェック（数字や記号のみは除外）
-                if name and not re.match(r'^[０-９\d：:]+$', name):
-                    info['owner_address'] = address
-                    info['owner_name'] = name
-                    break
+        for i, line in enumerate(lines):
+            # 「登記名義人」は除外（注釈文）
+            if '所有者' in line and '登記名義人' not in line:
+                # 住所を抽出
+                addr_match = re.search(r'所有者\s+([^┃\n]+)', line)
+                if addr_match:
+                    address = addr_match.group(1).strip().rstrip('│')
+                    # 次の数行から名前を探す（住所が複数行にまたがる場合対応）
+                    for offset in range(1, 4):
+                        if i + offset >= len(lines):
+                            break
+                        check_line = lines[i + offset]
+                        # 名前パターン: │...┃ または行全体が名前┃
+                        name_match = re.search(r'[│┃]\s*([^│┃\d０-９\n]{2,})\s*┃', check_line)
+                        if not name_match:
+                            # 行末が┃で、漢字名前がある場合
+                            name_match = re.search(r'^\s*([^\d０-９│┃\n]{2,})\s*┃$', check_line)
+                        if name_match:
+                            name = re.sub(r'\s+', '', name_match.group(1).strip())
+                            # 名前らしいか判定（2文字以上の非数字で、登記関連用語でない）
+                            skip_words = ['移記', '登記', '原因', '売買', '相続', '平成', '昭和', '令和', '順位']
+                            if name and len(name) >= 2 and not any(w in name for w in skip_words):
+                                owner_blocks.append({
+                                    'address': address,
+                                    'name': name
+                                })
+                                break
+
+        # 最後（最新）の所有者を使用
+        if owner_blocks:
+            latest = owner_blocks[-1]
+            info['owner_address'] = latest['address']
+            info['owner_name'] = latest['name']
 
         return info
 
