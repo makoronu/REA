@@ -208,6 +208,21 @@ export const PropertyEditDynamicPage: React.FC = () => {
           </div>
 
           <div className="flex items-center space-x-4">
+            {/* 新規登録ボタン */}
+            {isNew && (
+              <button
+                onClick={() => {
+                  const form = document.querySelector('form');
+                  if (form) {
+                    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+                  }
+                }}
+                disabled={saveStatus === 'saving'}
+                className="px-8 py-2.5 bg-sky-500 text-white font-bold rounded-lg shadow-lg hover:bg-sky-600 hover:shadow-xl disabled:bg-gray-400 disabled:cursor-not-allowed transition-all transform hover:scale-105"
+              >
+                {saveStatus === 'saving' ? '登録中...' : '登録'}
+              </button>
+            )}
             {/* 用途地域自動取得ボタン */}
             {!isNew && property?.latitude && property?.longitude && (
               <button
@@ -286,24 +301,6 @@ export const PropertyEditDynamicPage: React.FC = () => {
         />
       </div>
 
-      {/* 新規登録時のみ保存ボタンを表示 */}
-      {isNew && (
-        <div className="bg-white shadow rounded-lg p-6 mt-6">
-          <button
-            onClick={() => {
-              // フォームデータを取得してonSubmitを呼ぶ
-              const form = document.querySelector('form');
-              if (form) {
-                form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-              }
-            }}
-            disabled={saveStatus === 'saving'}
-            className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-          >
-            {saveStatus === 'saving' ? '登録中...' : '物件を登録'}
-          </button>
-        </div>
-      )}
 
       {/* 保存状態の表示 */}
       {renderSaveStatus()}

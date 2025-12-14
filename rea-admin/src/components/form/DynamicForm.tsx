@@ -947,7 +947,9 @@ const isFieldVisibleForPropertyType = (
   // 種別未選択なら他のフィールドは非表示
   if (!propertyType) return false;
   // visible_forがnull/undefinedなら全種別表示
-  if (!visibleFor || visibleFor.length === 0) return true;
+  if (visibleFor === null || visibleFor === undefined) return true;
+  // visible_forが空配列なら全種別で非表示
+  if (visibleFor.length === 0) return false;
   // 種別が含まれているか
   return visibleFor.includes(propertyType);
 };
@@ -982,13 +984,32 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
   const formData = form.watch();
 
   // 自動保存フック
-  useAutoSave(formData, {
+  const autoSaveEnabled = autoSave && !metadataLoading && !externalLoading;
+
+  const { saveStatus } = useAutoSave(formData, {
     onSave: async (data) => {
       await Promise.resolve(onSubmit(data));
     },
     delay: autoSaveDelay,
-    enabled: autoSave && !metadataLoading && !externalLoading,
+    enabled: autoSaveEnabled,
   });
+
+  // ステータス表示テキスト
+  const getSaveStatusDisplay = () => {
+    if (!autoSave) return null;
+    switch (saveStatus) {
+      case 'unsaved':
+        return { text: '下書き', color: '#F59E0B', bg: '#FEF3C7' };
+      case 'saving':
+        return { text: '保存中...', color: '#3B82F6', bg: '#DBEAFE' };
+      case 'saved':
+        return { text: '保存済み', color: '#10B981', bg: '#D1FAE5' };
+      case 'error':
+        return { text: '保存エラー', color: '#EF4444', bg: '#FEE2E2' };
+      default:
+        return { text: '保存済み', color: '#10B981', bg: '#D1FAE5' };
+    }
+  };
 
   const isLoading = metadataLoading || externalLoading;
 
@@ -1071,7 +1092,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
     ).filter(table => table !== undefined);
 
     // 所在地・周辺情報タブに含めるグループ名
-    const locationGroups = ['物件種別', '所在地', '学区', '電車・鉄道', 'バス', '周辺施設'];
+    const locationGroups = ['所在地', '学区', '電車・鉄道', 'バス', '周辺施設'];
 
     // 現在選択されている物件種別
     const currentPropertyType = formData.property_type;
@@ -1174,6 +1195,10 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
 
       // propertiesテーブルの処理
       if (table.table_name === 'properties') {
+        // 所在地・周辺情報タブを先に追加（ユーザー要望：所在地を最初に）
+        if (locationTabData) {
+          tabGroups.push(locationTabData);
+        }
         // 基本・取引情報タブを追加（フィールドがある場合）
         if (Object.keys(grouped).length > 0) {
           tabGroups.push({
@@ -1182,10 +1207,6 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
             tableIcon: '🏠',
             groups: grouped
           });
-        }
-        // 所在地・周辺情報タブを追加
-        if (locationTabData) {
-          tabGroups.push(locationTabData);
         }
         return;
       }
@@ -1272,6 +1293,24 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
               paddingLeft: '16px',
               paddingRight: '16px',
             }}>
+              {/* 最終更新日時（編集時のみ） */}
+              {formData.updated_at && (
+                <div style={{
+                  fontSize: '11px',
+                  color: '#9CA3AF',
+                  marginBottom: '8px',
+                  textAlign: 'right',
+                }}>
+                  最終更新: {new Date(formData.updated_at).toLocaleString('ja-JP', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </div>
+              )}
+
               {/* ステータスバー - 販売状況・公開状態 */}
               <div style={{
                 display: 'flex',
@@ -1493,10 +1532,23 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                 ← 前へ
               </button>
 
-              {/* 中央: 自動保存のヒント */}
-              <span style={{ fontSize: '12px', color: '#9CA3AF' }}>
-                変更は自動的に保存されます
-              </span>
+              {/* 中央: 保存ステータス */}
+              {autoSave && (() => {
+                const status = getSaveStatusDisplay();
+                if (!status) return null;
+                return (
+                  <span style={{
+                    fontSize: '12px',
+                    color: status.color,
+                    backgroundColor: status.bg,
+                    padding: '4px 12px',
+                    borderRadius: '12px',
+                    fontWeight: 500,
+                  }}>
+                    {status.text}
+                  </span>
+                );
+              })()}
 
               <button
                 type="button"

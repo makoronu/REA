@@ -80,14 +80,20 @@ export const useAutoSave = (data: any, options: UseAutoSaveOptions) => {
   const prevDataJsonRef = useRef<string>('');
   const isFirstRender = useRef(true);
   const hasUnsavedChanges = useRef(false);
+  const onSaveRef = useRef(onSave);
 
-  // 保存実行
-  const performSave = useCallback(async (dataToSave: any) => {
+  // onSaveの参照を常に最新に保つ
+  useEffect(() => {
+    onSaveRef.current = onSave;
+  }, [onSave]);
+
+  // 保存実行（関数をrefで保持してクロージャ問題を回避）
+  const performSaveRef = useRef(async (dataToSave: any) => {
     setState(prev => ({ ...prev, isSaving: true, saveStatus: 'saving', saveError: null }));
     setGlobalStatus('saving');
 
     try {
-      await onSave(dataToSave);
+      await onSaveRef.current(dataToSave);
       const now = new Date();
       setState(prev => ({
         ...prev,
@@ -108,12 +114,12 @@ export const useAutoSave = (data: any, options: UseAutoSaveOptions) => {
       setGlobalStatus('error');
       console.error('自動保存エラー:', error);
     }
-  }, [onSave]);
+  });
 
   // デバウンス保存
   const debouncedSave = useRef(
     debounce((dataToSave: any) => {
-      performSave(dataToSave);
+      performSaveRef.current(dataToSave);
     }, delay)
   ).current;
 
@@ -121,9 +127,9 @@ export const useAutoSave = (data: any, options: UseAutoSaveOptions) => {
   const saveImmediately = useCallback(async () => {
     debouncedSave.cancel();
     if (saveDataRef.current) {
-      await performSave(saveDataRef.current);
+      await performSaveRef.current(saveDataRef.current);
     }
-  }, [performSave, debouncedSave]);
+  }, [debouncedSave]);
 
   // データ変更時（JSON比較で本当に変わった場合のみ）
   useEffect(() => {
@@ -154,10 +160,7 @@ export const useAutoSave = (data: any, options: UseAutoSaveOptions) => {
       setGlobalStatus('unsaved');
     }
     debouncedSave(data);
-
-    return () => {
-      debouncedSave.cancel();
-    };
+    // クリーンアップでキャンセルしない（データ変更のたびにキャンセルされてしまうため）
   }, [data, enabled, debouncedSave]);
 
   // ページ離脱/タブ切替時に保存
@@ -172,7 +175,7 @@ export const useAutoSave = (data: any, options: UseAutoSaveOptions) => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden' && hasUnsavedChanges.current && saveDataRef.current) {
         debouncedSave.cancel();
-        performSave(saveDataRef.current);
+        performSaveRef.current(saveDataRef.current);
       }
     };
 
@@ -186,7 +189,7 @@ export const useAutoSave = (data: any, options: UseAutoSaveOptions) => {
         debouncedSave.flush();
       }
     };
-  }, [enabled, performSave, debouncedSave]);
+  }, [enabled, debouncedSave]);
 
   return {
     ...state,
