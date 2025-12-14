@@ -1,25 +1,28 @@
 """
 ZOHO CRM 連携エンドポイント
 
-機能:
-- OAuth認証（認証URL生成、コールバック）
-- 接続状態確認
-- 物件データ取得
-- インポート機能
+リファクタリング: 2025-12-15
+- コンテキストマネージャー使用
+- カスタム例外使用
+- 共通DB操作を関数化
 """
-from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import RedirectResponse
-from typing import Optional, List
-from pydantic import BaseModel
-from datetime import datetime
+import json
+from typing import List, Optional
 
-from app.services.zoho import ZohoClient, ZohoAuth
+from fastapi import APIRouter, Query
+from fastapi.responses import HTMLResponse
+from pydantic import BaseModel
+
+from app.core.exceptions import (
+    ConfigurationError,
+    DatabaseError,
+    ExternalServiceError,
+    ResourceNotFound,
+)
 from app.services.zoho.auth import zoho_auth
 from app.services.zoho.client import zoho_client
 from app.services.zoho.mapper import zoho_mapper
-
 from shared.database import READatabase
-
 
 router = APIRouter()
 
@@ -59,6 +62,88 @@ class ZohoImportResult(BaseModel):
 
 
 # ========================================
+# 共通ヘルパー関数
+# ========================================
+
+def _upsert_related_table(cur, table_name: str, property_id: int, data: dict):
+    """関連テーブルの更新または挿入（共通処理）"""
+    if not data:
+        return
+
+    # road_info等のJSONフィールドを文字列化
+    if "road_info" in data and isinstance(data["road_info"], (dict, list)):
+        data["road_info"] = json.dumps(data["road_info"])
+
+    # 既存レコードチェック
+    cur.execute(f"SELECT id FROM {table_name} WHERE property_id = %s", (property_id,))
+    existing = cur.fetchone()
+
+    if existing:
+        # UPDATE
+        update_parts = [f"{col} = %s" for col in data.keys()]
+        update_values = list(data.values()) + [property_id]
+        cur.execute(
+            f"UPDATE {table_name} SET {', '.join(update_parts)}, updated_at = NOW() WHERE property_id = %s",
+            update_values
+        )
+    else:
+        # INSERT
+        data["property_id"] = property_id
+        cols = list(data.keys())
+        cur.execute(
+            f"INSERT INTO {table_name} ({', '.join(cols)}, created_at, updated_at) VALUES ({', '.join(['%s']*len(cols))}, NOW(), NOW())",
+            list(data.values())
+        )
+
+
+def _update_properties(cur, property_id: int, data: dict):
+    """propertiesテーブルの更新"""
+    if not data:
+        return
+
+    update_parts = []
+    update_values = []
+    for col, val in data.items():
+        if col != "zoho_id":
+            update_parts.append(f"{col} = %s")
+            update_values.append(val)
+
+    if update_parts:
+        update_values.append(property_id)
+        cur.execute(
+            f"UPDATE properties SET {', '.join(update_parts)}, updated_at = NOW() WHERE id = %s",
+            update_values
+        )
+
+
+def _insert_property(cur, data: dict) -> int:
+    """propertiesテーブルに新規挿入"""
+    cols = list(data.keys())
+    cur.execute(
+        f"INSERT INTO properties ({', '.join(cols)}, created_at, updated_at) VALUES ({', '.join(['%s']*len(cols))}, NOW(), NOW()) RETURNING id",
+        list(data.values())
+    )
+    return cur.fetchone()[0]
+
+
+def _update_staging_status(cur, conn, zoho_id: str, status: str, error_message: str = None):
+    """stagingテーブルのステータス更新"""
+    if status == 'success':
+        cur.execute("""
+            UPDATE zoho_import_staging
+            SET import_status = 'success', imported_at = NOW(), error_message = NULL
+            WHERE zoho_id = %s
+        """, (zoho_id,))
+    else:
+        cur.execute("""
+            UPDATE zoho_import_staging
+            SET import_status = 'failed', error_message = %s
+            WHERE zoho_id = %s
+        """, (error_message, zoho_id))
+    conn.commit()
+
+
+# ========================================
 # OAuth認証
 # ========================================
 
@@ -66,9 +151,8 @@ class ZohoImportResult(BaseModel):
 async def get_auth_url():
     """OAuth認証URLを取得"""
     if not zoho_auth.is_configured():
-        raise HTTPException(
-            status_code=400,
-            detail="ZOHO認証情報が設定されていません。.envにZOHO_CLIENT_IDとZOHO_CLIENT_SECRETを設定してください。"
+        raise ConfigurationError(
+            "ZOHO認証情報が設定されていません。.envにZOHO_CLIENT_IDとZOHO_CLIENT_SECRETを設定してください。"
         )
 
     auth_url = zoho_auth.get_auth_url()
@@ -80,9 +164,8 @@ async def oauth_callback(code: str = Query(...)):
     """OAuthコールバック - 認証コードをトークンに交換"""
     try:
         result = await zoho_auth.exchange_code_for_tokens(code)
-
-        # リフレッシュトークンが取得できたことを通知
         refresh_token = result.get("refresh_token", "")
+
         message = f"""
         <html>
         <head><meta charset="utf-8"><title>ZOHO認証成功</title></head>
@@ -95,11 +178,10 @@ async def oauth_callback(code: str = Query(...)):
         </body>
         </html>
         """
-        from fastapi.responses import HTMLResponse
         return HTMLResponse(content=message)
 
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"トークン取得に失敗しました: {str(e)}")
+        raise ExternalServiceError("ZOHO", f"トークン取得に失敗しました: {str(e)}")
 
 
 # ========================================
@@ -126,7 +208,6 @@ async def get_status():
         status["error"] = "リフレッシュトークンが設定されていません。OAuth認証を完了してください。"
         return status
 
-    # 接続テスト
     try:
         result = await zoho_client.test_connection()
         status["connected"] = result.get("success", False)
@@ -150,7 +231,7 @@ async def get_modules():
         modules = await zoho_client.get_modules()
         return {"modules": modules}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise ExternalServiceError("ZOHO", str(e))
 
 
 @router.get("/fields")
@@ -160,7 +241,7 @@ async def get_fields(module: Optional[str] = None):
         fields = await zoho_client.get_fields(module)
         return {"fields": fields, "count": len(fields)}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise ExternalServiceError("ZOHO", str(e))
 
 
 # ========================================
@@ -177,7 +258,7 @@ async def get_zoho_properties(
     try:
         result = await zoho_client.get_records(
             page=page,
-            per_page=min(per_page, 200),  # ZOHO APIの上限は200
+            per_page=min(per_page, 200),
             criteria=criteria
         )
         return {
@@ -187,7 +268,7 @@ async def get_zoho_properties(
             "per_page": per_page
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise ExternalServiceError("ZOHO", str(e))
 
 
 @router.get("/properties/{zoho_id}")
@@ -196,12 +277,12 @@ async def get_zoho_property(zoho_id: str):
     try:
         record = await zoho_client.get_record(zoho_id)
         if not record:
-            raise HTTPException(status_code=404, detail="物件が見つかりません")
+            raise ResourceNotFound("ZOHO物件", zoho_id)
         return {"data": record}
-    except HTTPException:
+    except ResourceNotFound:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise ExternalServiceError("ZOHO", str(e))
 
 
 # ========================================
@@ -211,18 +292,12 @@ async def get_zoho_property(zoho_id: str):
 @router.post("/import", response_model=ZohoImportResult)
 async def import_properties(request: ZohoImportRequest):
     """ZOHO CRMから物件をインポート（3テーブル対応）"""
-    import json
-
     success_count = 0
     failed_count = 0
     skipped_count = 0
     errors = []
 
-    db = READatabase()
-    conn = db.get_connection()
-    cur = conn.cursor()
-
-    try:
+    with READatabase.cursor() as (cur, conn):
         for zoho_id in request.zoho_ids:
             try:
                 # 1. ZOHOから物件データを取得
@@ -251,10 +326,7 @@ async def import_properties(request: ZohoImportRequest):
                 building_info_data = rea_data["building_info"]
 
                 # 3. 既存物件チェック
-                cur.execute(
-                    "SELECT id FROM properties WHERE zoho_id = %s",
-                    (zoho_id,)
-                )
+                cur.execute("SELECT id FROM properties WHERE zoho_id = %s", (zoho_id,))
                 existing = cur.fetchone()
 
                 if existing:
@@ -262,125 +334,28 @@ async def import_properties(request: ZohoImportRequest):
                         skipped_count += 1
                         continue
 
-                    # 更新
                     property_id = existing[0]
-
-                    # propertiesテーブル更新
-                    if properties_data:
-                        update_parts = []
-                        update_values = []
-                        for col, val in properties_data.items():
-                            if col != "zoho_id":
-                                update_parts.append(f"{col} = %s")
-                                update_values.append(val)
-                        if update_parts:
-                            update_values.append(property_id)
-                            cur.execute(
-                                f"UPDATE properties SET {', '.join(update_parts)}, updated_at = NOW() WHERE id = %s",
-                                update_values
-                            )
-
-                    # land_infoテーブル更新
-                    if land_info_data:
-                        cur.execute("SELECT id FROM land_info WHERE property_id = %s", (property_id,))
-                        land_exists = cur.fetchone()
-
-                        # road_infoをJSON文字列に変換
-                        if "road_info" in land_info_data:
-                            land_info_data["road_info"] = json.dumps(land_info_data["road_info"])
-
-                        if land_exists:
-                            update_parts = [f"{col} = %s" for col in land_info_data.keys()]
-                            update_values = list(land_info_data.values()) + [property_id]
-                            cur.execute(
-                                f"UPDATE land_info SET {', '.join(update_parts)}, updated_at = NOW() WHERE property_id = %s",
-                                update_values
-                            )
-                        else:
-                            land_info_data["property_id"] = property_id
-                            cols = list(land_info_data.keys())
-                            cur.execute(
-                                f"INSERT INTO land_info ({', '.join(cols)}, created_at, updated_at) VALUES ({', '.join(['%s']*len(cols))}, NOW(), NOW())",
-                                list(land_info_data.values())
-                            )
-
-                    # building_infoテーブル更新
-                    if building_info_data:
-                        cur.execute("SELECT id FROM building_info WHERE property_id = %s", (property_id,))
-                        building_exists = cur.fetchone()
-
-                        if building_exists:
-                            update_parts = [f"{col} = %s" for col in building_info_data.keys()]
-                            update_values = list(building_info_data.values()) + [property_id]
-                            cur.execute(
-                                f"UPDATE building_info SET {', '.join(update_parts)}, updated_at = NOW() WHERE property_id = %s",
-                                update_values
-                            )
-                        else:
-                            building_info_data["property_id"] = property_id
-                            cols = list(building_info_data.keys())
-                            cur.execute(
-                                f"INSERT INTO building_info ({', '.join(cols)}, created_at, updated_at) VALUES ({', '.join(['%s']*len(cols))}, NOW(), NOW())",
-                                list(building_info_data.values())
-                            )
-
+                    _update_properties(cur, property_id, properties_data)
+                    _upsert_related_table(cur, "land_info", property_id, land_info_data)
+                    _upsert_related_table(cur, "building_info", property_id, building_info_data)
                 else:
                     # 新規登録
-                    # propertiesテーブル
-                    cols = list(properties_data.keys())
-                    cur.execute(
-                        f"INSERT INTO properties ({', '.join(cols)}, created_at, updated_at) VALUES ({', '.join(['%s']*len(cols))}, NOW(), NOW()) RETURNING id",
-                        list(properties_data.values())
-                    )
-                    property_id = cur.fetchone()[0]
-
-                    # land_infoテーブル
-                    if land_info_data:
-                        land_info_data["property_id"] = property_id
-                        if "road_info" in land_info_data:
-                            land_info_data["road_info"] = json.dumps(land_info_data["road_info"])
-                        cols = list(land_info_data.keys())
-                        cur.execute(
-                            f"INSERT INTO land_info ({', '.join(cols)}, created_at, updated_at) VALUES ({', '.join(['%s']*len(cols))}, NOW(), NOW())",
-                            list(land_info_data.values())
-                        )
-
-                    # building_infoテーブル
-                    if building_info_data:
-                        building_info_data["property_id"] = property_id
-                        cols = list(building_info_data.keys())
-                        cur.execute(
-                            f"INSERT INTO building_info ({', '.join(cols)}, created_at, updated_at) VALUES ({', '.join(['%s']*len(cols))}, NOW(), NOW())",
-                            list(building_info_data.values())
-                        )
+                    property_id = _insert_property(cur, properties_data)
+                    _upsert_related_table(cur, "land_info", property_id, land_info_data)
+                    _upsert_related_table(cur, "building_info", property_id, building_info_data)
 
                 # stagingテーブルのステータスを成功に更新
-                cur.execute("""
-                    UPDATE zoho_import_staging
-                    SET import_status = 'success', imported_at = NOW()
-                    WHERE zoho_id = %s
-                """, (zoho_id,))
-                conn.commit()
+                _update_staging_status(cur, conn, zoho_id, 'success')
                 success_count += 1
 
             except Exception as e:
                 conn.rollback()
-                # stagingテーブルのステータスを失敗に更新
                 try:
-                    cur.execute("""
-                        UPDATE zoho_import_staging
-                        SET import_status = 'failed', error_message = %s
-                        WHERE zoho_id = %s
-                    """, (str(e), zoho_id))
-                    conn.commit()
+                    _update_staging_status(cur, conn, zoho_id, 'failed', str(e))
                 except:
                     pass
                 errors.append({"zoho_id": zoho_id, "message": str(e)})
                 failed_count += 1
-
-    finally:
-        cur.close()
-        conn.close()
 
     return {
         "success": success_count,
@@ -391,17 +366,13 @@ async def import_properties(request: ZohoImportRequest):
 
 
 # ========================================
-# Staging管理（エラー追跡・再インポート）
+# Staging管理
 # ========================================
 
 @router.get("/staging/status")
 async def get_staging_status():
     """stagingテーブルのステータス集計"""
-    db = READatabase()
-    conn = db.get_connection()
-    cur = conn.cursor()
-
-    try:
+    with READatabase.cursor() as (cur, conn):
         cur.execute("""
             SELECT import_status, COUNT(*)
             FROM zoho_import_staging
@@ -418,19 +389,12 @@ async def get_staging_status():
             "success": status_counts.get("success", 0),
             "failed": status_counts.get("failed", 0)
         }
-    finally:
-        cur.close()
-        conn.close()
 
 
 @router.get("/staging/failed")
 async def get_failed_records():
     """失敗レコード一覧"""
-    db = READatabase()
-    conn = db.get_connection()
-    cur = conn.cursor()
-
-    try:
+    with READatabase.cursor() as (cur, conn):
         cur.execute("""
             SELECT zoho_id, error_message, created_at,
                    raw_data->>'Name' as property_name
@@ -438,35 +402,26 @@ async def get_failed_records():
             WHERE import_status = 'failed'
             ORDER BY created_at DESC
         """)
-        failed = []
-        for row in cur.fetchall():
-            failed.append({
+        failed = [
+            {
                 "zoho_id": row[0],
                 "error_message": row[1],
                 "created_at": str(row[2]) if row[2] else None,
                 "property_name": row[3]
-            })
+            }
+            for row in cur.fetchall()
+        ]
         return {"failed": failed, "count": len(failed)}
-    finally:
-        cur.close()
-        conn.close()
 
 
 @router.post("/staging/retry")
 async def retry_failed_imports():
     """失敗レコードをstagingの生データから再インポート"""
-    import json
-
-    db = READatabase()
-    conn = db.get_connection()
-    cur = conn.cursor()
-
     success_count = 0
     failed_count = 0
     errors = []
 
-    try:
-        # 失敗レコードを取得
+    with READatabase.cursor() as (cur, conn):
         cur.execute("""
             SELECT zoho_id, raw_data
             FROM zoho_import_staging
@@ -478,84 +433,33 @@ async def retry_failed_imports():
             try:
                 zoho_record = raw_data if isinstance(raw_data, dict) else json.loads(raw_data)
 
-                # データマッピング
                 rea_data = zoho_mapper.map_record(zoho_record)
                 properties_data = rea_data["properties"]
                 land_info_data = rea_data["land_info"]
                 building_info_data = rea_data["building_info"]
 
-                # 既存チェック
                 cur.execute("SELECT id FROM properties WHERE zoho_id = %s", (zoho_id,))
                 existing = cur.fetchone()
 
                 if existing:
                     property_id = existing[0]
-                    # 更新処理（簡略化）
-                    if properties_data:
-                        update_parts = []
-                        update_values = []
-                        for col, val in properties_data.items():
-                            if col != "zoho_id":
-                                update_parts.append(f"{col} = %s")
-                                update_values.append(val)
-                        if update_parts:
-                            update_values.append(property_id)
-                            cur.execute(
-                                f"UPDATE properties SET {', '.join(update_parts)}, updated_at = NOW() WHERE id = %s",
-                                update_values
-                            )
+                    _update_properties(cur, property_id, properties_data)
                 else:
-                    # 新規登録
-                    cols = list(properties_data.keys())
-                    cur.execute(
-                        f"INSERT INTO properties ({', '.join(cols)}, created_at, updated_at) VALUES ({', '.join(['%s']*len(cols))}, NOW(), NOW()) RETURNING id",
-                        list(properties_data.values())
-                    )
-                    property_id = cur.fetchone()[0]
+                    property_id = _insert_property(cur, properties_data)
+                    _upsert_related_table(cur, "land_info", property_id, land_info_data)
+                    _upsert_related_table(cur, "building_info", property_id, building_info_data)
 
-                    if land_info_data:
-                        land_info_data["property_id"] = property_id
-                        if "road_info" in land_info_data:
-                            land_info_data["road_info"] = json.dumps(land_info_data["road_info"])
-                        cols = list(land_info_data.keys())
-                        cur.execute(
-                            f"INSERT INTO land_info ({', '.join(cols)}, created_at, updated_at) VALUES ({', '.join(['%s']*len(cols))}, NOW(), NOW())",
-                            list(land_info_data.values())
-                        )
-
-                    if building_info_data:
-                        building_info_data["property_id"] = property_id
-                        cols = list(building_info_data.keys())
-                        cur.execute(
-                            f"INSERT INTO building_info ({', '.join(cols)}, created_at, updated_at) VALUES ({', '.join(['%s']*len(cols))}, NOW(), NOW())",
-                            list(building_info_data.values())
-                        )
-
-                # 成功ステータス更新
-                cur.execute("""
-                    UPDATE zoho_import_staging
-                    SET import_status = 'success', imported_at = NOW(), error_message = NULL
-                    WHERE zoho_id = %s
-                """, (zoho_id,))
-                conn.commit()
+                _update_staging_status(cur, conn, zoho_id, 'success')
                 success_count += 1
 
             except Exception as e:
                 conn.rollback()
-                cur.execute("""
-                    UPDATE zoho_import_staging
-                    SET error_message = %s
-                    WHERE zoho_id = %s
-                """, (str(e), zoho_id))
-                conn.commit()
+                _update_staging_status(cur, conn, zoho_id, 'failed', str(e))
                 errors.append({"zoho_id": zoho_id, "message": str(e)})
                 failed_count += 1
 
-        return {
-            "success": success_count,
-            "failed": failed_count,
-            "errors": errors
-        }
-    finally:
-        cur.close()
-        conn.close()
+    return {
+        "success": success_count,
+        "failed": failed_count,
+        "errors": errors
+    }

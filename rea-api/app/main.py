@@ -1,11 +1,13 @@
 import os
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .api.api_v1.api import api_router
 from .core.config import settings
+from .core.exceptions import REAException
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -40,3 +42,13 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+
+# カスタム例外ハンドラー
+@app.exception_handler(REAException)
+async def rea_exception_handler(request: Request, exc: REAException):
+    """REAカスタム例外を統一的にハンドリング"""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail, **exc.extra}
+    )

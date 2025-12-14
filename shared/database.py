@@ -28,8 +28,9 @@ DB_PASSWORD=rea_password # データベースパスワード
 """
 
 import os
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Generator, List, Optional, Tuple
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -127,6 +128,90 @@ class READatabase:
         except Exception as e:
             print(f"DB接続エラー: {e}")
             return False
+
+    @classmethod
+    @contextmanager
+    def cursor(cls, commit: bool = False) -> Generator[Tuple[Any, Any], None, None]:
+        """DB接続コンテキストマネージャー（カーソル付き）
+
+        try-finally ボイラープレートを削減するためのコンテキストマネージャー。
+        自動的に接続をクローズし、オプションでコミットも行う。
+
+        Args:
+            commit: Trueの場合、正常終了時にコミットする
+
+        Yields:
+            Tuple[cursor, connection]: カーソルと接続オブジェクト
+
+        Example:
+            # 読み取り専用
+            with READatabase.cursor() as (cur, conn):
+                cur.execute("SELECT * FROM properties LIMIT 5")
+                rows = cur.fetchall()
+
+            # 書き込み（自動コミット）
+            with READatabase.cursor(commit=True) as (cur, conn):
+                cur.execute("INSERT INTO ... VALUES ...")
+
+            # 書き込み（手動コミット）
+            with READatabase.cursor() as (cur, conn):
+                cur.execute("INSERT INTO ... VALUES ...")
+                conn.commit()
+        """
+        conn = None
+        cur = None
+        try:
+            conn = cls.get_connection()
+            cur = conn.cursor()
+            yield cur, conn
+            if commit:
+                conn.commit()
+        except Exception:
+            if conn:
+                conn.rollback()
+            raise
+        finally:
+            if cur:
+                cur.close()
+            if conn:
+                conn.close()
+
+    @classmethod
+    @contextmanager
+    def dict_cursor(cls, commit: bool = False) -> Generator[Tuple[Any, Any], None, None]:
+        """DB接続コンテキストマネージャー（辞書カーソル付き）
+
+        結果を辞書形式で取得したい場合に使用。
+
+        Args:
+            commit: Trueの場合、正常終了時にコミットする
+
+        Yields:
+            Tuple[cursor, connection]: 辞書カーソルと接続オブジェクト
+
+        Example:
+            with READatabase.dict_cursor() as (cur, conn):
+                cur.execute("SELECT * FROM properties LIMIT 5")
+                for row in cur.fetchall():
+                    print(row['property_name'])
+        """
+        conn = None
+        cur = None
+        try:
+            conn = cls.get_connection()
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            yield cur, conn
+            if commit:
+                conn.commit()
+        except Exception:
+            if conn:
+                conn.rollback()
+            raise
+        finally:
+            if cur:
+                cur.close()
+            if conn:
+                conn.close()
 
     @classmethod
     def execute_query(cls, query: str, params: Optional[tuple] = None) -> List[tuple]:
