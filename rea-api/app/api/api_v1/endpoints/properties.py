@@ -1,5 +1,5 @@
 from decimal import Decimal
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from app.core.database import get_db
 from app.crud.property import property_crud
@@ -11,6 +11,7 @@ from app.schemas.property import (
 )
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 router = APIRouter()
 
@@ -63,6 +64,60 @@ def read_property(property_id: int, db: Session = Depends(get_db)):
     if db_property is None:
         raise HTTPException(status_code=404, detail="Property not found")
     return db_property
+
+
+@router.get("/{property_id}/full")
+def read_property_full(property_id: int, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """物件詳細取得（関連テーブル含む）
+
+    properties, building_info, land_info, amenities を全て含めて返す。
+    編集画面で使用する。
+    """
+    # properties
+    db_property = property_crud.get_property(db, property_id=property_id)
+    if db_property is None:
+        raise HTTPException(status_code=404, detail="Property not found")
+
+    # propertiesをdictに変換
+    result = {c.name: getattr(db_property, c.name) for c in db_property.__table__.columns}
+
+    # building_info取得
+    building_result = db.execute(
+        text("SELECT * FROM building_info WHERE property_id = :pid"),
+        {"pid": property_id}
+    ).fetchone()
+    if building_result:
+        building_dict = dict(building_result._mapping)
+        # building_info のカラムを直接追加（idとproperty_idは除く）
+        for key, value in building_dict.items():
+            if key not in ['id', 'property_id', 'created_at', 'updated_at']:
+                result[key] = value
+
+    # land_info取得
+    land_result = db.execute(
+        text("SELECT * FROM land_info WHERE property_id = :pid"),
+        {"pid": property_id}
+    ).fetchone()
+    if land_result:
+        land_dict = dict(land_result._mapping)
+        # land_info のカラムを直接追加（idとproperty_idは除く）
+        for key, value in land_dict.items():
+            if key not in ['id', 'property_id', 'created_at', 'updated_at']:
+                result[key] = value
+
+    # amenities取得
+    amenities_result = db.execute(
+        text("SELECT * FROM amenities WHERE property_id = :pid"),
+        {"pid": property_id}
+    ).fetchone()
+    if amenities_result:
+        amenities_dict = dict(amenities_result._mapping)
+        # amenities のカラムを直接追加（idとproperty_idは除く）
+        for key, value in amenities_dict.items():
+            if key not in ['id', 'property_id', 'created_at', 'updated_at']:
+                result[key] = value
+
+    return result
 
 
 @router.post("/", response_model=Property)

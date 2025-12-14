@@ -18,13 +18,14 @@ export const PropertyEditDynamicPage: React.FC = () => {
   const [isSettingSchoolDistricts, setIsSettingSchoolDistricts] = useState(false);
   const [isSettingZoning, setIsSettingZoning] = useState(false);
 
-  // 既存データの取得
+  // 既存データの取得（関連テーブル含む）
   useEffect(() => {
     if (!isNew && id) {
       const fetchProperty = async () => {
         try {
           setIsLoading(true);
-          const data = await propertyService.getProperty(parseInt(id));
+          // getPropertyFull: properties + building_info + land_info + amenities を全て取得
+          const data = await propertyService.getPropertyFull(parseInt(id));
           setProperty(data);
         } catch (err) {
           setError('物件情報の取得に失敗しました');

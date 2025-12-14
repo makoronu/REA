@@ -50,6 +50,12 @@ export const propertyService = {
     return response.data;
   },
 
+  // 物件詳細取得（関連テーブル含む）- 編集画面用
+  async getPropertyFull(id: number): Promise<Property> {
+    const response = await api.get(`/properties/${id}/full`);
+    return response.data;
+  },
+
   // 物件更新
   async updateProperty(id: number, data: Partial<Property>): Promise<Property> {
     const response = await api.put(`/properties/${id}`, data);

@@ -6,6 +6,7 @@ import PropertyEditDynamicPage from './pages/Properties/PropertyEditDynamicPage'
 import FieldVisibilityPage from './pages/admin/FieldVisibilityPage';
 import ZoningMapPage from './pages/ZoningMap/ZoningMapPage';
 import ZohoImportPage from './pages/Import/ZohoImportPage';
+import ToukiImportPage from './pages/Import/ToukiImportPage';
 import CommandPalette from './components/CommandPalette';
 import './styles/globals.css';
 
@@ -36,6 +37,7 @@ function App() {
           <Route path="/admin/field-visibility" element={<FieldVisibilityPage />} />
           <Route path="/map/zoning" element={<ZoningMapPage />} />
           <Route path="/import/zoho" element={<ZohoImportPage />} />
+          <Route path="/import/touki" element={<ToukiImportPage />} />
         </Routes>
       </Layout>
       <CommandPalette open={commandPaletteOpen} onOpenChange={setCommandPaletteOpen} />
