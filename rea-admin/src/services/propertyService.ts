@@ -1,12 +1,47 @@
 // 物件関連のAPI呼び出し
 import { api } from './api';
-import { Property } from '../types/property';
+import { Property, PropertySearchParams } from '../types/property';
+
+export interface PropertiesResponse {
+  items: Property[];
+  total: number;
+  page: number;
+  limit: number;
+  total_pages: number;
+}
 
 export const propertyService = {
-  // 物件一覧取得
-  async getProperties(params?: any): Promise<Property[]> {
-    const response = await api.get('/properties', { params });
-    return response.data;
+  // 物件一覧取得（ページネーション対応）
+  async getProperties(params?: PropertySearchParams): Promise<Property[]> {
+    const response = await api.get('/properties/', { params });
+    // APIが配列を返す場合はそのまま返す
+    if (Array.isArray(response.data)) {
+      return response.data;
+    }
+    // ページネーション付きレスポンスの場合
+    return response.data.items || response.data;
+  },
+
+  // 物件一覧取得（総件数付き）
+  async getPropertiesWithCount(params?: PropertySearchParams): Promise<{ items: Property[]; total: number }> {
+    const queryParams = new URLSearchParams();
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.property_type) queryParams.append('property_type', params.property_type);
+    if (params?.sales_status) queryParams.append('sales_status', params.sales_status);
+    if (params?.publication_status) queryParams.append('publication_status', params.publication_status);
+    if (params?.sort_by) queryParams.append('sort_by', params.sort_by);
+    if (params?.sort_order) queryParams.append('sort_order', params.sort_order);
+    if (params?.skip !== undefined) queryParams.append('skip', params.skip.toString());
+    if (params?.limit !== undefined) queryParams.append('limit', params.limit.toString());
+
+    const response = await api.get(`/properties/?${queryParams.toString()}`);
+
+    // APIが配列を返す場合
+    if (Array.isArray(response.data)) {
+      return { items: response.data, total: response.data.length };
+    }
+    // ページネーション付きレスポンスの場合
+    return { items: response.data.items || response.data, total: response.data.total || response.data.length };
   },
 
   // 物件詳細取得
@@ -23,7 +58,7 @@ export const propertyService = {
 
   // 物件作成
   async createProperty(data: Partial<Property>): Promise<Property> {
-    const response = await api.post('/properties', data);
+    const response = await api.post('/properties/', data);
     return response.data;
   },
 
@@ -44,8 +79,8 @@ export const propertyService = {
           'Content-Type': 'multipart/form-data',
         },
       });
-      
-      return response.data.url; // アップロードされた画像のURL
+
+      return response.data.url;
     });
 
     return Promise.all(uploadPromises);
@@ -53,7 +88,6 @@ export const propertyService = {
 
   // 画像削除
   async deleteImage(propertyId: number, imageUrl: string): Promise<void> {
-    // URLからファイル名を抽出
     const fileName = imageUrl.split('/').pop();
     await api.delete(`/properties/${propertyId}/images/${fileName}`);
   },
@@ -62,7 +96,7 @@ export const propertyService = {
   async updatePropertyWithImages(id: number, data: Partial<Property>, imageUrls: string[]): Promise<Property> {
     const updateData = {
       ...data,
-      images: imageUrls // 画像URLの配列を含める
+      images: imageUrls
     };
     return this.updateProperty(id, updateData);
   },
