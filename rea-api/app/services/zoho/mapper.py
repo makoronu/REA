@@ -1,155 +1,158 @@
 """
 ZOHO CRM データマッピング
 
-ZOHOのフィールド名 → REAのカラム名への変換を行う。
-フィールド名はZOHO側の設定に依存するため、環境変数またはDBで設定可能。
+ZOHOのフィールド名 → REAのカラム名への変換
 """
 from typing import Dict, Any, Optional, List
 from datetime import datetime
-import os
 
 
-# デフォルトのフィールドマッピング
-# ZOHO側のフィールド名（API名）→ REA側のカラム名
-DEFAULT_FIELD_MAPPING = {
-    # 基本情報
+# ========================================
+# ZOHOフィールド → REAカラム マッピング
+# ========================================
+
+# propertiesテーブル用
+PROPERTIES_MAPPING = {
     "Name": "property_name",
-    "物件名": "property_name",
-    "Property_Name": "property_name",
-
-    # 価格
-    "Price": "sale_price",
-    "価格": "sale_price",
-    "販売価格": "sale_price",
-    "Sale_Price": "sale_price",
-
-    # 住所
-    "Address": "address",
-    "住所": "address",
-    "所在地": "address",
-
-    # 都道府県
-    "Prefecture": "prefecture",
-    "都道府県": "prefecture",
-
-    # 市区町村
-    "City": "city",
-    "市区町村": "city",
-
-    # 町名・番地
-    "Town": "town",
-    "町名": "town",
-    "番地": "chome_banchi",
-
-    # 物件種別
-    "Property_Type": "property_type",
-    "物件種別": "property_type",
-
-    # 土地面積
-    "Land_Area": "land_area",
-    "土地面積": "land_area",
-
-    # 建物面積
-    "Building_Area": "building_area",
-    "建物面積": "building_area",
-    "延床面積": "building_area",
-
-    # 築年月
-    "Built_Year": "construction_date",
-    "築年月": "construction_date",
-    "建築年月": "construction_date",
-
-    # 間取り
-    "Floor_Plan": "floor_plan",
-    "間取り": "floor_plan",
-
-    # 構造
-    "Structure": "building_structure",
-    "建物構造": "building_structure",
-
-    # 備考
-    "Remarks": "remarks",
-    "備考": "remarks",
-    "Description": "remarks",
-
-    # ステータス
-    "Status": "status",
-    "ステータス": "status",
+    "field57": "company_property_number",  # 物件番号
+    "field3": "sale_price",  # 価格
+    "field8": "property_type",  # 物件種別
+    "field6": "transaction_type",  # 取引態様
+    "field7": "publication_status",  # 公開
+    "field24": "current_status",  # 現況
+    "field23": "delivery_timing",  # 引渡時期
+    "field5": "prefecture",  # 都道府県
+    "field4": "city",  # 市町村
+    "field16": "address",  # 住居表示
+    "field14": "address_detail",  # 町名
+    "field18": "latitude",  # 緯度
+    "field15": "longitude",  # 経度
+    "field46": "elementary_school",  # 小学校区
+    "field47": "junior_high_school",  # 中学校区
+    "field50": "catch_copy",  # キャッチコピー1
+    "field49": "catch_copy2",  # キャッチコピー2
+    "field52": "catch_copy3",  # キャッチコピー3
+    "field51": "remarks",  # 備考
 }
 
+# land_infoテーブル用
+LAND_INFO_MAPPING = {
+    "field28": "land_area",  # 土地面積
+    "field26": "land_category",  # 地目
+    "field25": "use_district",  # 用途地域
+    "field30": "city_planning",  # 都市計画
+    "field27": "building_coverage_ratio",  # 建蔽率
+    "field29": "floor_area_ratio",  # 容積率
+    "field42": "land_rights",  # 土地の権利
+    "field31": "terrain",  # 地勢
+    "field32": "legal_restrictions",  # その他法令上の制限
+    "field43": "land_law_permission",  # 国土法の許可
+    "field13": "chiban",  # 地番
+}
 
-# 物件種別の変換マッピング
-PROPERTY_TYPE_MAPPING = {
-    "一戸建て": "detached_house",
-    "マンション": "apartment",
-    "アパート": "apartment_building",
-    "土地": "land",
-    "店舗": "store",
-    "事務所": "office",
-    "倉庫": "warehouse",
-    "工場": "factory",
-    "ビル": "building",
-    "駐車場": "parking",
+# building_infoテーブル用
+BUILDING_INFO_MAPPING = {
+    "m2": "building_area",  # 建物面積
+    "field22": "building_structure",  # 建物構造
+    "field21": "building_floors_above",  # 地上階
+    "field20": "building_floors_below",  # 地下階
+    "field2": "room_type",  # 間取り
+    "field48": "floor_plan_notes",  # 間取り内訳
+    "field45": "parking_availability",  # 駐車場の有無
+    "field44": "parking_notes",  # 駐車場その他
+}
+
+# 接道情報（JSONBで保存）
+ROAD_INFO_FIELDS = {
+    "field37": "road_access",  # 接道状況
+    "field38": "road1_type",  # 接道1種別
+    "field39": "road1_direction",  # 接道1方角
+    "field33": "road1_width",  # 接道1幅員
+    "field34": "road1_frontage",  # 接道1間口
+    "field40": "road2_type",  # 接道2種別
+    "field41": "road2_direction",  # 接道2方角
+    "field35": "road2_width",  # 接道2幅員
+    "field36": "road2_frontage",  # 接道2間口
 }
 
 
 class ZohoMapper:
     """ZOHOデータをREA形式に変換するマッパー"""
 
-    def __init__(self, custom_mapping: Optional[Dict[str, str]] = None):
-        """
-        Args:
-            custom_mapping: カスタムフィールドマッピング（デフォルトをオーバーライド）
-        """
-        self.field_mapping = {**DEFAULT_FIELD_MAPPING}
-        if custom_mapping:
-            self.field_mapping.update(custom_mapping)
-
-    def map_record(self, zoho_record: Dict[str, Any]) -> Dict[str, Any]:
+    def map_record(self, zoho_record: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
         """
         ZOHOレコードをREA形式に変換
 
-        Args:
-            zoho_record: ZOHOから取得したレコード
-
         Returns:
-            REAのpropertiesテーブル形式のデータ
+            {
+                "properties": {...},
+                "land_info": {...},
+                "building_info": {...}
+            }
         """
-        rea_data = {}
+        result = {
+            "properties": {},
+            "land_info": {},
+            "building_info": {}
+        }
 
         # ZOHOのIDを保存
-        rea_data["zoho_id"] = str(zoho_record.get("id", ""))
-        rea_data["zoho_synced_at"] = datetime.now()
-        rea_data["zoho_sync_status"] = "synced"
+        zoho_id = str(zoho_record.get("id", ""))
+        result["properties"]["zoho_id"] = zoho_id
+        result["properties"]["zoho_synced_at"] = datetime.now()
+        result["properties"]["zoho_sync_status"] = "synced"
 
-        # フィールドマッピングに従って変換
-        for zoho_field, rea_column in self.field_mapping.items():
+        # propertiesテーブル
+        for zoho_field, rea_column in PROPERTIES_MAPPING.items():
             if zoho_field in zoho_record:
-                value = zoho_record[zoho_field]
-                # 特殊な変換が必要なフィールド
-                value = self._transform_value(rea_column, value)
+                value = self._transform_value(rea_column, zoho_record[zoho_field])
                 if value is not None:
-                    rea_data[rea_column] = value
+                    result["properties"][rea_column] = value
 
-        # 追加の処理
-        rea_data = self._post_process(rea_data, zoho_record)
+        # land_infoテーブル
+        for zoho_field, rea_column in LAND_INFO_MAPPING.items():
+            if zoho_field in zoho_record:
+                value = self._transform_value(rea_column, zoho_record[zoho_field])
+                if value is not None:
+                    result["land_info"][rea_column] = value
 
-        return rea_data
+        # 接道情報（JSONB）
+        road_info = {}
+        for zoho_field, key in ROAD_INFO_FIELDS.items():
+            if zoho_field in zoho_record and zoho_record[zoho_field]:
+                road_info[key] = zoho_record[zoho_field]
+        if road_info:
+            result["land_info"]["road_info"] = road_info
+
+        # building_infoテーブル
+        for zoho_field, rea_column in BUILDING_INFO_MAPPING.items():
+            if zoho_field in zoho_record:
+                value = self._transform_value(rea_column, zoho_record[zoho_field])
+                if value is not None:
+                    result["building_info"][rea_column] = value
+
+        # 築年月の処理（field12=年、field11=月）
+        year = zoho_record.get("field12")
+        month = zoho_record.get("field11")
+        if year:
+            try:
+                y = int(year)
+                m = int(month) if month else 1
+                result["building_info"]["construction_date"] = f"{y}-{m:02d}-01"
+            except (ValueError, TypeError):
+                pass
+
+        return result
 
     def _transform_value(self, column: str, value: Any) -> Any:
         """フィールド固有の変換処理"""
-        if value is None:
+        if value is None or value == "":
             return None
-
-        # 物件種別の変換
-        if column == "property_type":
-            return PROPERTY_TYPE_MAPPING.get(str(value), str(value))
 
         # 価格（数値に変換）
         if column == "sale_price":
             try:
                 if isinstance(value, str):
-                    # カンマや円記号を除去
                     value = value.replace(",", "").replace("円", "").replace("¥", "")
                 return int(float(value))
             except (ValueError, TypeError):
@@ -164,102 +167,30 @@ class ZohoMapper:
             except (ValueError, TypeError):
                 return None
 
-        # 日付
-        if column == "construction_date":
-            return self._parse_date(value)
+        # 建蔽率・容積率（%を数値に）
+        if column in ("building_coverage_ratio", "floor_area_ratio"):
+            try:
+                if isinstance(value, str):
+                    value = value.replace("%", "")
+                return float(value)
+            except (ValueError, TypeError):
+                return None
+
+        # 緯度経度
+        if column in ("latitude", "longitude"):
+            try:
+                return float(value)
+            except (ValueError, TypeError):
+                return None
+
+        # 階数
+        if column in ("building_floors_above", "building_floors_below"):
+            try:
+                return int(value)
+            except (ValueError, TypeError):
+                return None
 
         return value
-
-    def _parse_date(self, value: Any) -> Optional[str]:
-        """日付文字列をパース"""
-        if value is None:
-            return None
-
-        if isinstance(value, datetime):
-            return value.strftime("%Y-%m-%d")
-
-        # 文字列の場合、いくつかのフォーマットを試す
-        date_formats = [
-            "%Y-%m-%d",
-            "%Y/%m/%d",
-            "%Y年%m月%d日",
-            "%Y年%m月",
-            "%Y-%m",
-            "%Y/%m",
-        ]
-
-        value_str = str(value)
-        for fmt in date_formats:
-            try:
-                dt = datetime.strptime(value_str, fmt)
-                return dt.strftime("%Y-%m-%d")
-            except ValueError:
-                continue
-
-        return None
-
-    def _post_process(self, rea_data: Dict[str, Any], zoho_record: Dict[str, Any]) -> Dict[str, Any]:
-        """変換後の追加処理"""
-        # 住所から都道府県・市区町村を分離（住所があるが都道府県がない場合）
-        if rea_data.get("address") and not rea_data.get("prefecture"):
-            prefecture, city, town = self._parse_address(rea_data["address"])
-            if prefecture:
-                rea_data.setdefault("prefecture", prefecture)
-            if city:
-                rea_data.setdefault("city", city)
-            if town:
-                rea_data.setdefault("town", town)
-
-        # ステータスのデフォルト値
-        if not rea_data.get("status"):
-            rea_data["status"] = "査定中"
-
-        return rea_data
-
-    def _parse_address(self, address: str) -> tuple:
-        """住所を都道府県・市区町村・町名に分離"""
-        # 都道府県リスト
-        prefectures = [
-            "北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県",
-            "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県",
-            "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県", "岐阜県",
-            "静岡県", "愛知県", "三重県", "滋賀県", "京都府", "大阪府", "兵庫県",
-            "奈良県", "和歌山県", "鳥取県", "島根県", "岡山県", "広島県", "山口県",
-            "徳島県", "香川県", "愛媛県", "高知県", "福岡県", "佐賀県", "長崎県",
-            "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"
-        ]
-
-        prefecture = None
-        city = None
-        town = None
-        remaining = address
-
-        # 都道府県を抽出
-        for pref in prefectures:
-            if address.startswith(pref):
-                prefecture = pref
-                remaining = address[len(pref):]
-                break
-
-        # 市区町村を抽出（簡易版：〜市、〜区、〜町、〜村で分割）
-        import re
-        city_match = re.match(r'^(.+?[市区町村])', remaining)
-        if city_match:
-            city = city_match.group(1)
-            town = remaining[len(city):]
-        else:
-            town = remaining
-
-        return prefecture, city, town
-
-    def get_unmapped_fields(self, zoho_record: Dict[str, Any]) -> List[str]:
-        """マッピングされていないフィールドを取得"""
-        mapped_fields = set(self.field_mapping.keys())
-        record_fields = set(zoho_record.keys())
-        # システムフィールドを除外
-        system_fields = {"id", "Created_Time", "Modified_Time", "Created_By", "Modified_By", "$"}
-        unmapped = record_fields - mapped_fields - system_fields
-        return [f for f in unmapped if not f.startswith("$")]
 
 
 # シングルトンインスタンス
