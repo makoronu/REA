@@ -111,7 +111,7 @@ const SchoolDistrictAutoFetchButton: React.FC = () => {
           <p style={{ fontSize: '13px', color: '#6B7280' }}>候補が見つかりませんでした</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            {candidates.map((school, index) => {
+            {candidates.slice(0, 5).map((school, index) => {
               const isSelected = currentValue === school.school_name;
               return (
                 <button
@@ -965,6 +965,8 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
   autoSaveDelay = 2000,
 }) => {
   const [activeTab, setActiveTab] = useState(0);
+  // 公開バリデーションエラー状態（全モードで必要なため、早期リターン前に定義）
+  const [publicationValidationError, setPublicationValidationError] = useState<string | null>(null);
 
   const {
     form,
@@ -1275,8 +1277,41 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
       }
     };
 
+    // 公開に必須な項目（最低限これがないと公開できない）
+    const requiredFieldsForPublication = [
+      { field: 'property_name', label: '物件名' },
+      { field: 'price', label: '価格' },
+      { field: 'prefecture', label: '都道府県' },
+      { field: 'city', label: '市区町村' },
+    ];
+
     const handlePublicationStatusChange = (newStatus: string) => {
+      // 非公開への変更はバリデーション不要
+      if (newStatus === '非公開') {
+        form.setValue('publication_status', newStatus, { shouldDirty: true });
+        setPublicationValidationError(null);
+        return;
+      }
+
+      // 公開/会員公開の場合は必須項目をチェック
+      const missingFields: string[] = [];
+      for (const { field, label } of requiredFieldsForPublication) {
+        const value = formData[field];
+        if (value === null || value === undefined || value === '') {
+          missingFields.push(label);
+        }
+      }
+
+      if (missingFields.length > 0) {
+        setPublicationValidationError(`公開には以下の項目が必要です: ${missingFields.join('、')}`);
+        // 3秒後にエラーを消す
+        setTimeout(() => setPublicationValidationError(null), 5000);
+        return;
+      }
+
+      // バリデーション通過
       form.setValue('publication_status', newStatus, { shouldDirty: true });
+      setPublicationValidationError(null);
     };
 
     return (
@@ -1386,6 +1421,24 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                   </div>
                 </div>
               </div>
+
+              {/* 公開バリデーションエラー表示 */}
+              {publicationValidationError && (
+                <div style={{
+                  marginBottom: '12px',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  backgroundColor: '#FEE2E2',
+                  color: '#991B1B',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}>
+                  <span style={{ fontSize: '16px' }}>⚠️</span>
+                  {publicationValidationError}
+                </div>
+              )}
 
               {/* タブヘッダー */}
               <div style={{ overflowX: 'auto' }}>
@@ -1504,6 +1557,8 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                             groupName={groupName}
                             columns={groupColumns}
                             disabled={false}
+                            collapsible={tabGroup.tableName === 'amenities'}
+                            defaultCollapsed={false}
                           />
                         )}
                       </div>
