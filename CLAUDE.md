@@ -18,10 +18,10 @@
 | 項目 | 内容 |
 |------|------|
 | 作業中 | なし |
-| 完了 | メタ駆動マッピングシステム完成、ZOHO再インポート2370件成功、UI精査全完了 |
-| 残り | Selenium E2Eテスト、ZOHO画像同期、定期同期機能 |
-| 最終更新 | 2025-12-14 20:30 |
-| 備考 | 全物件はZOHOからインポート（zoho_import_stagingに元データ保存）|
+| 完了 | メタ駆動マッピング完成、ZOHO再インポート2370件成功、郵便番号自動補完機能、E2Eテスト完了 |
+| 残り | ZOHO画像同期、定期同期機能 |
+| 最終更新 | 2025-12-14 20:45 |
+| 備考 | 郵便番号: m_postal_codesマスター（北海道8202件）から自動補完。残り17件はZOHOに市区町村データなし |
 
 ### メタ駆動マッピングシステム
 
@@ -64,6 +64,31 @@ result = mapper.map_record(raw_data)
 4. **セッション終了時**: 必ずログを残す（`docs/logs/YYYY-MM-DD.md`）
 
 **心得**: 記録は「後で」ではなく「今すぐ」。セッションはいつ落ちるかわからない。
+
+### 失敗事例: ZOHOインポートの値体系不整合（2025-12-14）
+
+**問題**: ZOHOからインポートしたデータが編集画面で正しく表示されない
+
+**原因**:
+1. **property_type**: DBに「一戸建て」（label）を入れたが、selectのvalueは「detached」（id）を期待
+2. **郵便番号**: ZOHOにそもそもデータがない（96.6%がNULL）
+3. **property_name_public**: DBカラムがboolean型だがスキーマはstring型を期待
+
+**根本原因**:
+- `property_types`テーブルの構造（id=英語, label=日本語）を確認せずにマッピングした
+- 複数の値体系（ENUM, master_options, property_types, column_labels.enum_values）が混在
+- インポート後の動作確認をSeleniumでちゃんとやらなかった
+
+**対策（必ず守る）**:
+1. **マッピング作成前**: 対象テーブルの構造と既存データを必ず確認
+2. **selectフィールド**: valueとlabelの両方を確認（APIのmetadata/columnsでoptionsを確認）
+3. **インポート後**: 必ず編集画面をSeleniumで開いてフィールドに値が表示されるか確認
+4. **値体系の統一**: property_typesテーブルのid（英語）を使用、日本語はlabelのみ
+
+**修正したもの**:
+- property_type: 「一戸建て」→「detached」等に一括変換
+- property_name_public: boolean→text型に変更
+- 郵便番号: m_postal_codesマスター作成、住所から自動補完
 
 ---
 
