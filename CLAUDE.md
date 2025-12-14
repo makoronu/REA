@@ -443,6 +443,17 @@ def validate(data):
 - エスケープ回避: f-stringより`format()`使用
 - 環境変数フィルタ: `grep -v '^#'`でコメント除外
 
+### コミュニケーションルール
+
+- **URLは単独行で表示**（前後に改行を入れる。文章とくっつけない）
+  ```
+  ❌ 編集画面（http://localhost:5173/properties/1/edit）を開いて
+
+  ✅ 編集画面を開いてください。
+
+     http://localhost:5173/properties/1/edit
+  ```
+
 ### 禁止事項
 
 1. 手動フォームフィールド追加（メタデータ駆動で）

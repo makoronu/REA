@@ -1460,7 +1460,14 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
 
                   {/* フィールドグループ */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                    {Object.entries(tabGroup.groups).map(([groupName, groupColumns]) => (
+                    {Object.entries(tabGroup.groups).map(([groupName, groupColumns]) => {
+                      // 元請会社グループは仲介（3:専任媒介, 4:一般媒介, 5:専属専任）の場合のみ表示
+                      if (groupName === '元請会社') {
+                        const transactionType = formData.transaction_type;
+                        const isBrokerage = ['3', '4', '5'].includes(String(transactionType));
+                        if (!isBrokerage) return null;
+                      }
+                      return (
                       <div key={`${tabGroup.tableName}-${groupName}`}>
                         {/* 学区グループの場合、自動取得ボタンを表示 */}
                         {groupName === '学区' && <SchoolDistrictAutoFetchButton />}
@@ -1496,7 +1503,8 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                           />
                         )}
                       </div>
-                    ))}
+                    );
+                    })}
                   </div>
                 </div>
               ))}
