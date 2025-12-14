@@ -154,3 +154,4 @@ backup_*/
 *.tmp
 temp/
 tmp/backups/
+backups/*.sql
