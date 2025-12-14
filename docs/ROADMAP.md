@@ -97,6 +97,50 @@
 
 ---
 
+## データ表示修正（2025-12-14発見）
+
+### 住所データ上書き問題 🔥 要修正
+
+**問題**: `/properties/{id}/full` APIで住所データがNULLになる
+
+**原因**:
+- `land_info`テーブルにも`postal_code`, `prefecture`, `city`, `address`カラムがある
+- これらがNULLのまま
+- APIで`land_info`のdictをマージする際、NULLで`properties`の値を上書きしてしまう
+
+**影響を受けるフィールド**:
+- postal_code（郵便番号）
+- prefecture（都道府県）
+- city（市区町村）
+- address（住所）
+
+**修正方針（2案）**:
+1. マージ時にNULL値をスキップ（propertiesの値を優先）
+2. land_infoの重複カラムをプレフィックス付きでマージ（land_postal_code等）
+
+| # | 項目 | 状態 |
+|---|------|------|
+| 35 | 住所データ上書き問題の修正（/properties/{id}/full） | [ ] |
+| 36 | 全物件で住所データ表示確認 | [ ] |
+
+### 全項目データ表示確認
+
+**目的**: DBにデータがある項目が全て編集画面に表示されることを確認
+
+| # | 項目 | 状態 |
+|---|------|------|
+| 37 | propertiesテーブルの全カラム表示確認 | [ ] |
+| 38 | building_infoテーブルの全カラム表示確認 | [ ] |
+| 39 | land_infoテーブルの全カラム表示確認 | [ ] |
+| 40 | amenitiesテーブルの全カラム表示確認 | [ ] |
+
+**関連ファイル**:
+- `rea-api/app/api/api_v1/endpoints/properties.py:69-133`（/fullエンドポイント）
+- `rea-admin/src/pages/Properties/PropertyEditDynamicPage.tsx`
+- `docs/logs/2025-12-14-edit-form-fix.md`（詳細ログ）
+
+---
+
 ## 実装済み機能一覧
 
 ### API
