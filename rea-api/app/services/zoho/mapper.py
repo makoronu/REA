@@ -1,395 +1,300 @@
 """
-ZOHO CRM データマッピング
+メタデータ駆動インポートマッパー
 
-ZOHOのフィールド名 → REAのカラム名への変換
+DBテーブル（import_field_mappings, import_value_mappings）から
+マッピング定義を読み込み、ソースデータをREA形式に変換する。
+
+使い回し可能: source_type を変えるだけで他のソース（scraper, csv等）にも対応可能
 """
-from typing import Dict, Any, Optional, List
+import json
+from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime
+from functools import lru_cache
 
 
-# ========================================
-# ENUM値の変換マッピング
-# ========================================
+class MetaDrivenMapper:
+    """
+    メタデータ駆動マッパー
 
-PUBLICATION_STATUS_MAP = {
-    "未公開": "非公開",
-    "公開": "公開",
-    "会員公開": "会員公開",
-}
+    DBからマッピング定義を読み込み、汎用的な変換を行う。
+    source_typeを変えるだけで、ZOHO以外のソースにも対応可能。
+    """
 
-TRANSACTION_TYPE_MAP = {
-    "売主": "1:売主",
-    "代理": "2:代理",
-    "専任媒介": "3:専任媒介",
-    "一般媒介": "4:一般媒介",
-    "専属専任": "5:専属専任",
-    "専属専任媒介": "5:専属専任",
-    # ZOHOの短縮形
-    "仲介": "4:一般媒介",  # 一般的な仲介
-    "専任": "3:専任媒介",
-    "一般": "4:一般媒介",
-    "買取": "6:買取",
-    # 賃貸は売買物件に不適合のためスキップ（マップに含めない）
-}
+    def __init__(self, source_type: str = "zoho"):
+        self.source_type = source_type
+        self._field_mappings: Optional[List[Dict]] = None
+        self._value_mappings: Optional[Dict[str, Dict[str, Tuple[str, Dict]]]] = None
+        self._db = None
 
-CURRENT_STATUS_MAP = {
-    "空家": "1:空家",
-    "空き家": "1:空家",
-    "居住中": "2:居住中",
-    "賃貸中": "3:賃貸中",
-    "その他": "9:その他",
-}
+    def _get_db(self):
+        """DB接続を取得（遅延初期化）"""
+        if self._db is None:
+            from shared.database import READatabase
+            self._db = READatabase()
+        return self._db
 
-DELIVERY_TIMING_MAP = {
-    "即時": "1:即時",
-    "即日": "1:即時",
-    "相談": "2:相談",
-    "期日指定": "3:期日指定",
-}
+    def load_mappings(self) -> None:
+        """DBからマッピング定義を読み込む"""
+        db = self._get_db()
+        conn = db.get_connection()
+        cur = conn.cursor()
 
-USE_DISTRICT_MAP = {
-    "第一種低層住居専用": "1:第一種低層住居専用",
-    "第二種低層住居専用": "2:第二種低層住居専用",
-    "第一種中高層住居専用": "3:第一種中高層住居専用",
-    "第二種中高層住居専用": "4:第二種中高層住居専用",
-    "第一種住居": "5:第一種住居",
-    "第二種住居": "6:第二種住居",
-    "準住居": "7:準住居",
-    "近隣商業": "8:近隣商業",
-    "商業": "9:商業",
-    "準工業": "10:準工業",
-    "工業": "11:工業",
-    "工業専用": "12:工業専用",
-}
+        # フィールドマッピング
+        cur.execute("""
+            SELECT source_field, target_table, target_column, transform_type, transform_config, description
+            FROM import_field_mappings
+            WHERE source_type = %s AND is_active = true
+            ORDER BY display_order
+        """, (self.source_type,))
 
-LAND_RIGHTS_MAP = {
-    "所有権": "1:所有権",
-    "借地権": "2:借地権",
-    "定期借地権": "3:定期借地権",
-    "地上権": "4:地上権",
-}
+        self._field_mappings = []
+        for row in cur.fetchall():
+            # PostgreSQLのJSONBはすでにdictとして返される
+            config = row[4]
+            if isinstance(config, str):
+                config = json.loads(config)
+            self._field_mappings.append({
+                "source_field": row[0],
+                "target_table": row[1],
+                "target_column": row[2],
+                "transform_type": row[3],
+                "transform_config": config,
+                "description": row[5]
+            })
 
-BUILDING_STRUCTURE_MAP = {
-    "木造": "1:木造",
-    "鉄骨造": "2:鉄骨造",
-    "RC造": "3:RC造",
-    "鉄筋コンクリート造": "3:RC造",
-    "SRC造": "4:SRC造",
-    "鉄骨鉄筋コンクリート造": "4:SRC造",
-    "軽量鉄骨": "5:軽量鉄骨",
-    "軽量鉄骨造": "5:軽量鉄骨",
-    "ALC": "6:ALC",
-    "その他": "9:その他",
-}
+        # 値マッピング（field_name -> source_value -> (target_value, extra_data)）
+        cur.execute("""
+            SELECT field_name, source_value, target_value, extra_data
+            FROM import_value_mappings
+            WHERE source_type = %s AND is_active = true
+            ORDER BY display_order
+        """, (self.source_type,))
 
-PARKING_AVAILABILITY_MAP = {
-    "無": "1:無",
-    "なし": "1:無",
-    "有(無料)": "2:有(無料)",
-    "あり（無料）": "2:有(無料)",
-    "有(有料)": "3:有(有料)",
-    "あり（有料）": "3:有(有料)",
-    "近隣(無料)": "4:近隣(無料)",
-    "近隣(有料)": "5:近隣(有料)",
-    # ZOHOの台数表記（料金情報なしのため有(無料)にマップ）
-    "有": "2:有(無料)",
-    "有(1台)": "2:有(無料)",
-    "有(2台)": "2:有(無料)",
-    "有(3台以上)": "2:有(無料)",
-}
+        self._value_mappings = {}
+        for row in cur.fetchall():
+            field_name = row[0]
+            source_value = row[1]
+            target_value = row[2]
+            # PostgreSQLのJSONBはすでにdictとして返される
+            extra_data = row[3] if row[3] else {}
+            if isinstance(extra_data, str):
+                extra_data = json.loads(extra_data)
 
-ROOM_TYPE_MAP = {
-    "R": "1:R",
-    "K": "2:K",
-    "DK": "3:DK",
-    "LDK": "4:LDK",
-    "SLDK": "5:SLDK",
-    "その他": "6:その他",
-    # ZOHOの形式（半角数字+半角文字）
-    "1R": "1:R",
-    "1K": "2:K",
-    "1DK": "3:DK", "2DK": "3:DK", "3DK": "3:DK", "4DK": "3:DK",
-    "1LDK": "4:LDK", "2LDK": "4:LDK", "3LDK": "4:LDK", "4LDK": "4:LDK", "5LDK": "4:LDK", "6LDK": "4:LDK", "7LDK": "4:LDK",
-    "1SLDK": "5:SLDK", "2SLDK": "5:SLDK", "3SLDK": "5:SLDK", "4SLDK": "5:SLDK",
-    # ZOHOの形式（半角数字+全角文字）★これが実際のデータ形式
-    "1ＬＤＫ": "4:LDK", "2ＬＤＫ": "4:LDK", "3ＬＤＫ": "4:LDK", "4ＬＤＫ": "4:LDK", "5ＬＤＫ": "4:LDK", "6ＬＤＫ": "4:LDK", "7ＬＤＫ": "4:LDK",
-    "1ＤＫ": "3:DK", "2ＤＫ": "3:DK", "3ＤＫ": "3:DK", "4ＤＫ": "3:DK",
-    "1ＳＬＤＫ": "5:SLDK", "2ＳＬＤＫ": "5:SLDK", "3ＳＬＤＫ": "5:SLDK", "4ＳＬＤＫ": "5:SLDK",
-    "1Ｋ": "2:K", "2Ｋ": "2:K",
-    "1Ｒ": "1:R",
-    "1ルーム": "1:R",  # ワンルーム表記
-    # 全角数字+全角文字
-    "１Ｒ": "1:R",
-    "１Ｋ": "2:K",
-    "１ＤＫ": "3:DK", "２ＤＫ": "3:DK", "３ＤＫ": "3:DK", "４ＤＫ": "3:DK",
-    "１ＬＤＫ": "4:LDK", "２ＬＤＫ": "4:LDK", "３ＬＤＫ": "4:LDK", "４ＬＤＫ": "4:LDK", "５ＬＤＫ": "4:LDK", "６ＬＤＫ": "4:LDK", "７ＬＤＫ": "4:LDK",
-    "１ＳＬＤＫ": "5:SLDK", "２ＳＬＤＫ": "5:SLDK", "３ＳＬＤＫ": "5:SLDK", "４ＳＬＤＫ": "5:SLDK",
-    # 特殊形式（その他に分類）
-    "貸家": "6:その他",
-    "事業用": "6:その他",
-}
+            if field_name not in self._value_mappings:
+                self._value_mappings[field_name] = {}
+            self._value_mappings[field_name][source_value] = (target_value, extra_data)
 
+        cur.close()
+        conn.close()
 
-# ========================================
-# ZOHOフィールド → REAカラム マッピング
-# ========================================
-
-# propertiesテーブル用
-PROPERTIES_MAPPING = {
-    "Name": "property_name",
-    "field57": "company_property_number",  # 物件番号
-    "field3": "sale_price",  # 価格
-    "field8": "property_type",  # 物件種別
-    "field6": "transaction_type",  # 取引態様
-    "field7": "publication_status",  # 公開
-    "field24": "current_status",  # 現況
-    "field23": "delivery_timing",  # 引渡時期
-    "field88": "postal_code",  # 郵便番号
-    "field5": "prefecture",  # 都道府県
-    "field4": "city",  # 市町村
-    # field16 (住居表示) と field14 (町名) は下記で結合処理
-    # "field16": "address",  # 住居表示 → 結合処理へ
-    # "field14": "address_detail",  # 町名 → 結合処理へ
-    "field18": "latitude",  # 緯度
-    "field15": "longitude",  # 経度
-    "field46": "elementary_school",  # 小学校区
-    "field47": "junior_high_school",  # 中学校区
-    "field50": "catch_copy",  # キャッチコピー1
-    "field49": "catch_copy2",  # キャッチコピー2
-    "field52": "catch_copy3",  # キャッチコピー3
-    "field51": "remarks",  # 備考
-    # 追加マッピング
-    "field89": "contractor_phone",  # 元請電話番号
-    "field91": "contractor_email",  # 元請メール
-}
-
-# land_infoテーブル用
-LAND_INFO_MAPPING = {
-    "field28": "land_area",  # 土地面積
-    "field26": "land_category",  # 地目
-    "field25": "use_district",  # 用途地域
-    "field30": "city_planning",  # 都市計画
-    "field27": "building_coverage_ratio",  # 建蔽率
-    "field29": "floor_area_ratio",  # 容積率
-    "field42": "land_rights",  # 土地の権利
-    "field31": "terrain",  # 地勢
-    "field32": "legal_restrictions",  # その他法令上の制限
-    "field43": "land_law_permission",  # 国土法の許可
-    "field13": "chiban",  # 地番
-}
-
-# building_infoテーブル用
-BUILDING_INFO_MAPPING = {
-    "m2": "building_area",  # 建物面積
-    "field22": "building_structure",  # 建物構造
-    "field21": "building_floors_above",  # 地上階
-    "field20": "building_floors_below",  # 地下階
-    "field2": "room_type",  # 間取り
-    "field48": "floor_plan_notes",  # 間取り内訳
-    "field45": "parking_availability",  # 駐車場の有無
-    "field44": "parking_notes",  # 駐車場その他
-}
-
-# 接道情報（JSONBで保存）
-ROAD_INFO_FIELDS = {
-    "field37": "road_access",  # 接道状況
-    "field38": "road1_type",  # 接道1種別
-    "field39": "road1_direction",  # 接道1方角
-    "field33": "road1_width",  # 接道1幅員
-    "field34": "road1_frontage",  # 接道1間口
-    "field40": "road2_type",  # 接道2種別
-    "field41": "road2_direction",  # 接道2方角
-    "field35": "road2_width",  # 接道2幅員
-    "field36": "road2_frontage",  # 接道2間口
-}
-
-
-class ZohoMapper:
-    """ZOHOデータをREA形式に変換するマッパー"""
-
-    def map_record(self, zoho_record: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    def map_record(self, source_record: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
         """
-        ZOHOレコードをREA形式に変換
+        ソースレコードをREA形式に変換
+
+        Args:
+            source_record: ソースデータ（ZOHOのレコード等）
 
         Returns:
             {
                 "properties": {...},
                 "land_info": {...},
-                "building_info": {...}
+                "building_info": {...},
+                "amenities": {...}
             }
         """
+        if self._field_mappings is None:
+            self.load_mappings()
+
         result = {
             "properties": {},
             "land_info": {},
-            "building_info": {}
+            "building_info": {},
+            "amenities": {}
         }
 
-        # ZOHOのIDを保存
-        zoho_id = str(zoho_record.get("id", ""))
-        result["properties"]["zoho_id"] = zoho_id
-        result["properties"]["zoho_synced_at"] = datetime.now()
-        result["properties"]["zoho_sync_status"] = "synced"
+        # ソースID保存（ZOHO用）
+        if "id" in source_record:
+            result["properties"]["zoho_id"] = str(source_record["id"])
+            result["properties"]["zoho_synced_at"] = datetime.now()
+            result["properties"]["zoho_sync_status"] = "synced"
 
-        # propertiesテーブル
-        for zoho_field, rea_column in PROPERTIES_MAPPING.items():
-            if zoho_field in zoho_record:
-                value = self._transform_value(rea_column, zoho_record[zoho_field])
-                if value is not None:
-                    result["properties"][rea_column] = value
+        # 各フィールドマッピングを適用
+        for mapping in self._field_mappings:
+            source_field = mapping["source_field"]
+            target_table = mapping["target_table"]
+            target_column = mapping["target_column"]
+            transform_type = mapping["transform_type"]
+            transform_config = mapping["transform_config"]
 
-        # 住所の整形（町名 + 住居表示 or 地番）
-        # field14 = 町名（錦町、美山町東など）
-        # field16 = 住居表示（番地: 178-32、３丁目70番地108など）
-        # field13 = 地番（法務局: 178番32など）※住居表示がない地域用
-        town = zoho_record.get("field14", "") or ""
-        street_address = zoho_record.get("field16", "") or ""
-        chiban = zoho_record.get("field13", "") or ""
+            # ソース値を取得
+            source_value = source_record.get(source_field)
 
-        # 住居表示がなければ地番を使用
-        address_number = street_address if street_address else chiban
-
-        if town and address_number:
-            # 町名に丁目が含まれていて、番地にも丁目がある場合は重複を避ける
-            if "丁目" in town and "丁目" in address_number:
-                result["properties"]["address"] = address_number if address_number[0].isdigit() else f"{town}{address_number}"
+            # 変換タイプに応じて処理
+            if transform_type == "direct":
+                transformed = self._transform_direct(source_value)
+            elif transform_type == "value_map":
+                transformed, extra = self._transform_value_map(target_column, source_value)
+                # extra_dataがあれば適用（例: is_new_construction, sales_status）
+                if extra:
+                    for key, val in extra.items():
+                        if key.startswith("is_"):
+                            result["properties"][key] = val
+                        elif key == "sales_status":
+                            result["properties"]["sales_status"] = val
+            elif transform_type == "numeric":
+                transformed = self._transform_numeric(source_value)
+            elif transform_type == "composite":
+                transformed = self._transform_composite(source_record, transform_config)
+            elif transform_type == "date_composite":
+                transformed = self._transform_date_composite(source_record, transform_config)
+            elif transform_type == "object_extract":
+                transformed = self._transform_object_extract(source_value, transform_config)
+            elif transform_type == "derived_flag":
+                # フラグは value_map で処理されるのでスキップ
+                continue
             else:
-                result["properties"]["address"] = f"{town}{address_number}"
-        elif address_number:
-            result["properties"]["address"] = address_number
-        elif town:
-            result["properties"]["address"] = town
+                transformed = source_value
 
-        # address_detail は建物名等に使用（ZOHOには該当フィールドなし）
-        # result["properties"]["address_detail"] = None
+            # 結果に格納
+            if transformed is not None and target_table in result:
+                result[target_table][target_column] = transformed
 
-        # land_infoテーブル
-        for zoho_field, rea_column in LAND_INFO_MAPPING.items():
-            if zoho_field in zoho_record:
-                value = self._transform_value(rea_column, zoho_record[zoho_field])
-                if value is not None:
-                    result["land_info"][rea_column] = value
+        return result
 
-        # 接道情報（JSONB）
-        road_info = {}
-        for zoho_field, key in ROAD_INFO_FIELDS.items():
-            if zoho_field in zoho_record and zoho_record[zoho_field]:
-                road_info[key] = zoho_record[zoho_field]
-        if road_info:
-            result["land_info"]["road_info"] = road_info
+    def _transform_direct(self, value: Any) -> Any:
+        """そのまま返す（NULLチェックのみ）"""
+        if value is None or value == "":
+            return None
+        return value
 
-        # building_infoテーブル
-        for zoho_field, rea_column in BUILDING_INFO_MAPPING.items():
-            if zoho_field in zoho_record:
-                value = self._transform_value(rea_column, zoho_record[zoho_field])
-                if value is not None:
-                    result["building_info"][rea_column] = value
+    def _transform_value_map(self, field_name: str, value: Any) -> Tuple[Any, Dict]:
+        """値マッピングを適用"""
+        if value is None or value == "":
+            return None, {}
 
-        # 築年月の処理（field12=年、field11=月）
-        year = zoho_record.get("field12")
-        month = zoho_record.get("field11")
+        str_value = str(value).strip()
+
+        if field_name in self._value_mappings:
+            mapping = self._value_mappings[field_name]
+            if str_value in mapping:
+                target, extra = mapping[str_value]
+                return target, extra
+
+        # マッピングが見つからない場合はNone
+        return None, {}
+
+    def _transform_numeric(self, value: Any) -> Optional[float]:
+        """数値変換"""
+        if value is None or value == "":
+            return None
+
+        try:
+            if isinstance(value, str):
+                # カンマ、単位を除去
+                value = value.replace(",", "").replace("円", "").replace("¥", "")
+                value = value.replace("㎡", "").replace("m2", "").replace("%", "")
+            return float(value)
+        except (ValueError, TypeError):
+            return None
+
+    def _transform_composite(self, record: Dict, config: Dict) -> Any:
+        """複合フィールド変換"""
+        if not config:
+            return None
+
+        composite_type = config.get("type")
+
+        if composite_type == "address":
+            # 住所結合: 町名 + 住居表示/地番
+            fields = config.get("fields", [])
+            town = record.get(fields[0], "") or "" if len(fields) > 0 else ""
+            street = record.get(fields[1], "") or "" if len(fields) > 1 else ""
+            chiban = record.get(fields[2], "") or "" if len(fields) > 2 else ""
+
+            address_number = street if street else chiban
+
+            if town and address_number:
+                if "丁目" in town and "丁目" in address_number:
+                    return address_number if address_number[0].isdigit() else f"{town}{address_number}"
+                return f"{town}{address_number}"
+            return address_number or town or None
+
+        elif composite_type == "road_info":
+            # 道路情報JSONB
+            fields_map = config.get("fields", {})
+            road_info = {}
+
+            for key, source_field in fields_map.items():
+                value = record.get(source_field)
+                if value:
+                    # 値マッピングが必要な場合
+                    if key in ["road_access", "road1_type", "road2_type"]:
+                        mapped, _ = self._transform_value_map(key.replace("road1_", "road_").replace("road2_", "road_"), value)
+                        road_info[key] = mapped if mapped else value
+                    elif key in ["road1_direction", "road2_direction"]:
+                        mapped, _ = self._transform_value_map("direction", value)
+                        road_info[key] = mapped if mapped else value
+                    elif key in ["road1_width", "road2_width", "road1_frontage", "road2_frontage"]:
+                        road_info[key] = self._transform_numeric(value)
+                    else:
+                        road_info[key] = value
+
+            return road_info if road_info else None
+
+        return None
+
+    def _transform_date_composite(self, record: Dict, config: Dict) -> Optional[str]:
+        """日付複合変換（年+月）"""
+        if not config:
+            return None
+
+        year_field = config.get("year_field")
+        month_field = config.get("month_field")
+
+        year = record.get(year_field)
+        month = record.get(month_field)
+
         if year:
             try:
                 y = int(year)
                 m = int(month) if month else 1
-                result["building_info"]["construction_date"] = f"{y}-{m:02d}-01"
+                return f"{y}-{m:02d}-01"
             except (ValueError, TypeError):
                 pass
 
-        # 担当者（オブジェクト形式）
-        manager = zoho_record.get("field56")
-        if manager and isinstance(manager, dict):
-            result["properties"]["property_manager_name"] = manager.get("name", "")
+        return None
 
-        # 販売状態の推測（ZOHOに直接対応フィールドがないため）
-        publication = zoho_record.get("field7", "")  # 公開状態
-        end_date = zoho_record.get("field95")  # 媒介終了日
-
-        if publication == "公開":
-            result["properties"]["sales_status"] = "販売中"
-        elif end_date:
-            # 終了日がある = 成約済みまたは販売終了
-            result["properties"]["sales_status"] = "成約済み"
-        else:
-            result["properties"]["sales_status"] = "販売準備"
-
-        return result
-
-    def _transform_value(self, column: str, value: Any) -> Any:
-        """フィールド固有の変換処理"""
-        if value is None or value == "":
+    def _transform_object_extract(self, value: Any, config: Dict) -> Any:
+        """オブジェクトからキー抽出"""
+        if not value or not config:
             return None
 
-        # ENUM値の変換
-        if column == "publication_status":
-            return PUBLICATION_STATUS_MAP.get(str(value), None)
+        key = config.get("key")
+        if isinstance(value, dict) and key:
+            return value.get(key)
 
-        if column == "transaction_type":
-            return TRANSACTION_TYPE_MAP.get(str(value), None)
+        return None
 
-        if column == "current_status":
-            return CURRENT_STATUS_MAP.get(str(value), None)
+    def get_mapping_stats(self) -> Dict[str, Any]:
+        """マッピング統計を取得"""
+        if self._field_mappings is None:
+            self.load_mappings()
 
-        if column == "delivery_timing":
-            return DELIVERY_TIMING_MAP.get(str(value), None)
-
-        if column == "use_district":
-            return USE_DISTRICT_MAP.get(str(value), None)
-
-        if column == "land_rights":
-            return LAND_RIGHTS_MAP.get(str(value), None)
-
-        if column == "building_structure":
-            return BUILDING_STRUCTURE_MAP.get(str(value), None)
-
-        if column == "parking_availability":
-            return PARKING_AVAILABILITY_MAP.get(str(value), None)
-
-        if column == "room_type":
-            return ROOM_TYPE_MAP.get(str(value), None)
-
-        # 価格（数値に変換）
-        if column == "sale_price":
-            try:
-                if isinstance(value, str):
-                    value = value.replace(",", "").replace("円", "").replace("¥", "")
-                return int(float(value))
-            except (ValueError, TypeError):
-                return None
-
-        # 面積（小数に変換）
-        if column in ("land_area", "building_area"):
-            try:
-                if isinstance(value, str):
-                    value = value.replace(",", "").replace("㎡", "").replace("m2", "")
-                return float(value)
-            except (ValueError, TypeError):
-                return None
-
-        # 建蔽率・容積率（%を数値に）
-        if column in ("building_coverage_ratio", "floor_area_ratio"):
-            try:
-                if isinstance(value, str):
-                    value = value.replace("%", "")
-                return float(value)
-            except (ValueError, TypeError):
-                return None
-
-        # 緯度経度
-        if column in ("latitude", "longitude"):
-            try:
-                return float(value)
-            except (ValueError, TypeError):
-                return None
-
-        # 階数
-        if column in ("building_floors_above", "building_floors_below"):
-            try:
-                return int(value)
-            except (ValueError, TypeError):
-                return None
-
-        return value
+        return {
+            "source_type": self.source_type,
+            "field_mappings_count": len(self._field_mappings),
+            "value_mappings_count": sum(len(v) for v in self._value_mappings.values()),
+            "value_mapping_fields": list(self._value_mappings.keys())
+        }
 
 
-# シングルトンインスタンス
-zoho_mapper = ZohoMapper()
+# ZOHO用シングルトンインスタンス
+zoho_mapper = MetaDrivenMapper(source_type="zoho")
+
+
+# 後方互換性のため、旧ZohoMapperクラスも残す
+class ZohoMapper(MetaDrivenMapper):
+    """ZOHO専用マッパー（後方互換性用）"""
+
+    def __init__(self):
+        super().__init__(source_type="zoho")
