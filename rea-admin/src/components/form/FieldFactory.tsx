@@ -252,35 +252,43 @@ export const FieldFactory: React.FC<FieldFactoryProps> = ({ column, disabled = f
           name={column.column_name}
           control={control}
           render={({ field }) => (
-            <div style={{ display: 'flex', gap: '16px', padding: '8px 0' }}>
-              {radioOptions.map(option => (
-                <label
-                  key={option.value}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    cursor: disabled || isReadOnly ? 'not-allowed' : 'pointer',
-                    gap: '6px',
-                  }}
-                >
-                  <input
-                    type="radio"
-                    name={column.column_name}
-                    value={option.value}
-                    checked={field.value === option.value}
-                    onChange={() => field.onChange(option.value)}
-                    disabled={disabled || isReadOnly}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', padding: '8px 0' }}>
+              {radioOptions.map(option => {
+                const isSelected = field.value === option.value;
+                return (
+                  <label
+                    key={option.value}
                     style={{
-                      width: '16px',
-                      height: '16px',
-                      accentColor: '#3B82F6',
+                      display: 'flex',
+                      alignItems: 'center',
+                      cursor: disabled || isReadOnly ? 'not-allowed' : 'pointer',
+                      gap: '6px',
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      backgroundColor: isSelected ? '#EFF6FF' : '#F9FAFB',
+                      border: isSelected ? '1px solid #3B82F6' : '1px solid #E5E7EB',
+                      transition: 'all 0.15s ease',
                     }}
-                  />
-                  <span style={{ fontSize: '14px', color: '#374151' }}>
-                    {option.label}
-                  </span>
-                </label>
-              ))}
+                  >
+                    <input
+                      type="radio"
+                      name={column.column_name}
+                      value={option.value}
+                      checked={isSelected}
+                      onChange={() => field.onChange(option.value)}
+                      disabled={disabled || isReadOnly}
+                      style={{
+                        width: '16px',
+                        height: '16px',
+                        accentColor: '#3B82F6',
+                      }}
+                    />
+                    <span style={{ fontSize: '14px', color: isSelected ? '#1D4ED8' : '#374151' }}>
+                      {option.label}
+                    </span>
+                  </label>
+                );
+              })}
             </div>
           )}
         />
