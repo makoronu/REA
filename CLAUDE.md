@@ -119,6 +119,37 @@ result = mapper.map_record(raw_data)
 - 物件登録後、登記レコードは自動削除
 - UIタイトルを「取込待ち」に変更（一時データであることを明示）
 
+### 失敗事例: 同名カラムの上書き問題（2025-12-14）
+
+**問題**: 編集画面で住所データ（postal_code, prefecture, city, address）がNULLで表示される
+
+**原因**:
+- `/properties/{id}/full` APIで複数テーブルをマージする際の処理
+- `properties`テーブルと`land_info`テーブルに同名カラムがある
+- `land_info`の値（NULL）が`properties`の値を上書きした
+
+**コード（問題箇所）**:
+```python
+# properties.py:117-119
+for key, value in land_dict.items():
+    if key not in ['id', 'property_id', 'created_at', 'updated_at']:
+        result[key] = value  # ← NULLでも上書きしてしまう
+```
+
+**対策（必ず守る）**:
+1. **複数テーブルマージ時**: カラム名の重複を事前に確認
+2. **マージロジック**: NULLの場合は上書きしない、または優先順位を設定
+3. **デバッグ時**: SQLクエリ結果と最終レスポンスを両方確認
+
+**修正方針（明日対応）**:
+```python
+# NULL値はスキップ（propertiesの値を優先）
+for key, value in land_dict.items():
+    if key not in ['id', 'property_id', 'created_at', 'updated_at']:
+        if value is not None or key not in result:
+            result[key] = value
+```
+
 ---
 
 ## 最重要原則：メタデータ駆動ファースト
