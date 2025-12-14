@@ -80,8 +80,8 @@ const FieldVisibilityPage: React.FC = () => {
           setFields(fvData);
           // 最初のグループを選択
           if (fvData.length > 0) {
-            const groups = [...new Set(fvData.map((f: FieldVisibility) => f.group_name || 'その他'))];
-            const sorted = groups.sort((a, b) => {
+            const groups: string[] = Array.from(new Set<string>(fvData.map((f: FieldVisibility) => f.group_name || 'その他')));
+            const sorted = groups.sort((a: string, b: string) => {
               const aIdx = GROUP_ORDER.indexOf(a);
               const bIdx = GROUP_ORDER.indexOf(b);
               if (aIdx === -1 && bIdx === -1) return a.localeCompare(b);
@@ -89,7 +89,7 @@ const FieldVisibilityPage: React.FC = () => {
               if (bIdx === -1) return -1;
               return aIdx - bIdx;
             });
-            setSelectedFieldGroup(sorted[0]);
+            setSelectedFieldGroup(sorted[0] || null);
           }
         }
       } catch (err) {
@@ -127,12 +127,12 @@ const FieldVisibilityPage: React.FC = () => {
   // フィールドのvisible_for変更
   const handleToggle = (field: FieldVisibility, typeId: string) => {
     const key = `${field.table_name}.${field.column_name}`;
-    const currentValue = pendingChanges.has(key)
+    const currentValue: string[] | null | undefined = pendingChanges.has(key)
       ? pendingChanges.get(key)
       : field.visible_for;
 
     let newValue: string[] | null;
-    if (currentValue === null) {
+    if (currentValue === null || currentValue === undefined) {
       newValue = propertyTypes.map(pt => pt.id).filter(id => id !== typeId);
     } else if (currentValue.includes(typeId)) {
       newValue = currentValue.filter(id => id !== typeId);
@@ -155,12 +155,12 @@ const FieldVisibilityPage: React.FC = () => {
       const next = new Map(prev);
       displayFields.forEach(field => {
         const key = `${field.table_name}.${field.column_name}`;
-        const currentValue = next.has(key) ? next.get(key) : field.visible_for;
+        const currentValue: string[] | null | undefined = next.has(key) ? next.get(key) : field.visible_for;
 
         let newValue: string[] | null;
         if (select) {
           // 追加
-          if (currentValue === null) {
+          if (currentValue === null || currentValue === undefined) {
             newValue = null; // 既に全表示
           } else if (currentValue.includes(typeId)) {
             newValue = currentValue; // 既に含まれている
@@ -170,7 +170,7 @@ const FieldVisibilityPage: React.FC = () => {
           }
         } else {
           // 除外
-          if (currentValue === null) {
+          if (currentValue === null || currentValue === undefined) {
             newValue = propertyTypes.map(pt => pt.id).filter(id => id !== typeId);
           } else {
             newValue = currentValue.filter(id => id !== typeId);

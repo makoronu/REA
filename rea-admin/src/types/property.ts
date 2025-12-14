@@ -1,83 +1,35 @@
-// 物件の型定義（APIレスポンスに合わせて修正）
-export interface Property {
-  // 基本情報
+// 物件の型定義 - メタデータ駆動版
+//
+// 注意: 以前はここに全フィールドをハードコードしていたが、
+// メタデータ駆動に移行したため、最小限の定義のみ残す。
+// フィールド情報は /api/v1/metadata/columns/{table_name} から動的に取得する。
+
+/**
+ * 物件データ（動的型）
+ *
+ * APIから返されるデータは全て Record<string, any> として扱う。
+ * フィールドの存在確認は実行時に行う。
+ */
+export type Property = Record<string, any> & {
+  // 必須フィールドのみ定義（型安全性のため）
   id: number;
-  company_property_number?: string;
-  external_property_id?: string;
-  property_name?: string;
-  property_name_kana?: string;
-  property_name_public?: string;
-  property_type?: string;
-  investment_property?: boolean;
+};
 
-  // 販売情報
-  sales_status?: string;
-  publication_status?: string;
-  affiliated_group?: string;
-  priority_score?: number;
-  property_url?: string;
+/**
+ * 物件作成時のデータ
+ */
+export type PropertyCreate = Omit<Property, 'id'> & {
+  property_name: string; // 必須
+};
 
-  // 価格情報
-  sale_price?: number;
-  price_per_tsubo?: number;
-  price_status?: string;
-  tax_type?: string;
-  yield_rate?: number;
-  current_yield?: number;
+/**
+ * 物件更新時のデータ
+ */
+export type PropertyUpdate = Partial<Property>;
 
-  // 取引情報
-  transaction_type?: string;
-  brokerage_fee?: number;
-  commission_split_ratio?: number;
-  brokerage_contract_date?: string;
-  listing_start_date?: string;
-  listing_confirmation_date?: string;
-
-  // 引渡し情報
-  delivery_date?: string;
-  delivery_timing?: string;
-  current_status?: string;
-  move_in_consultation?: string;
-
-  // 管理費用
-  management_fee?: number;
-  repair_reserve_fund?: number;
-  repair_reserve_fund_base?: number;
-  parking_fee?: number;
-  housing_insurance?: number;
-
-  // 元請会社情報
-  contractor_company_name?: string;
-  contractor_contact_person?: string;
-  contractor_phone?: string;
-  contractor_email?: string;
-  contractor_address?: string;
-  contractor_license_number?: string;
-
-  // 担当者・メモ
-  property_manager_name?: string;
-  internal_memo?: string;
-
-  // 管理情報
-  created_at?: string;
-  updated_at?: string;
-
-  // 住所情報
-  prefecture?: string;
-  city?: string;
-  address_detail?: string;
-
-  // 互換性のための追加フィールド
-  latitude?: number;
-  longitude?: number;
-  images?: string[];
-  transportation?: { station_name: string; line_name: string; walk_minutes: number }[];
-}
-
-// フォーム用の型定義（互換性のため）
-export interface PropertyFormData extends Omit<Property, 'id' | 'created_at' | 'updated_at'> {}
-
-// 検索パラメータの型定義
+/**
+ * 検索パラメータの型定義
+ */
 export interface PropertySearchParams {
   search?: string;
   property_type?: string;
@@ -93,7 +45,9 @@ export interface PropertySearchParams {
   limit?: number;
 }
 
-// ページネーション付きレスポンス
+/**
+ * ページネーション付きレスポンス
+ */
 export interface PaginatedResponse<T> {
   items: T[];
   total: number;
@@ -101,3 +55,9 @@ export interface PaginatedResponse<T> {
   limit: number;
   total_pages: number;
 }
+
+// NOTE: 以前はここに全フィールドをハードコードしていた。
+// メタデータ駆動では column_labels テーブルからフィールド情報を取得する。
+//
+// 型安全性が必要な場合は、メタデータからTypeScriptの型を自動生成する
+// スクリプトを作成することを検討する。
