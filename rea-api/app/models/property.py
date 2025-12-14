@@ -26,6 +26,32 @@ class Property(Base):
     priority_score = Column(Integer, nullable=True, comment="優先度スコア")
     property_url = Column(String(500), nullable=True, comment="物件URL")
 
+    # 所在地
+    postal_code = Column(String(10), nullable=True, comment="郵便番号")
+    prefecture = Column(String(20), nullable=True, comment="都道府県")
+    city = Column(String(100), nullable=True, comment="市区町村")
+    address = Column(String(200), nullable=True, comment="町域・番地")
+    address_detail = Column(String(200), nullable=True, comment="建物名・部屋番号")
+    latitude = Column(Numeric(10, 8), nullable=True, comment="緯度")
+    longitude = Column(Numeric(11, 8), nullable=True, comment="経度")
+
+    # 学区・交通
+    elementary_school = Column(String(100), nullable=True, comment="小学校区")
+    elementary_school_minutes = Column(Integer, nullable=True, comment="小学校徒歩分")
+    junior_high_school = Column(String(100), nullable=True, comment="中学校区")
+    junior_high_school_minutes = Column(Integer, nullable=True, comment="中学校徒歩分")
+
+    # キャッチコピー・備考
+    catch_copy = Column(Text, nullable=True, comment="キャッチコピー1")
+    catch_copy2 = Column(Text, nullable=True, comment="キャッチコピー2")
+    catch_copy3 = Column(Text, nullable=True, comment="キャッチコピー3")
+    remarks = Column(Text, nullable=True, comment="備考")
+
+    # ZOHO連携
+    zoho_id = Column(String(50), nullable=True, comment="ZOHO ID")
+    zoho_synced_at = Column(DateTime, nullable=True, comment="ZOHO同期日時")
+    zoho_sync_status = Column(String(20), nullable=True, comment="ZOHO同期状態")
+
     # 価格情報
     sale_price = Column(Numeric(15, 2), nullable=True, comment="販売価格")
     price_per_tsubo = Column(Numeric(15, 2), nullable=True, comment="坪単価")

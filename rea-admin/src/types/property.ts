@@ -61,7 +61,16 @@ export interface Property {
   // 管理情報
   created_at?: string;
   updated_at?: string;
+
+  // 互換性のための追加フィールド
+  latitude?: number;
+  longitude?: number;
+  images?: string[];
+  transportation?: { station_name: string; line_name: string; walk_minutes: number }[];
 }
+
+// フォーム用の型定義（互換性のため）
+export interface PropertyFormData extends Omit<Property, 'id' | 'created_at' | 'updated_at'> {}
 
 // 検索パラメータの型定義
 export interface PropertySearchParams {

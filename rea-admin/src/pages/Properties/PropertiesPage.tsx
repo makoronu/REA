@@ -90,63 +90,104 @@ const PropertiesPage = () => {
 
   const formatPrice = (price?: number) => {
     if (!price) return '-';
+    if (price >= 100000000) {
+      return (price / 100000000).toFixed(1) + '億円';
+    }
+    if (price >= 10000) {
+      return (price / 10000).toFixed(0) + '万円';
+    }
     return price.toLocaleString() + '円';
   };
 
   const getSortIcon = (column: string) => {
-    if (sortBy !== column) return '↕';
-    return sortOrder === 'asc' ? '↑' : '↓';
+    if (sortBy !== column) return <span className="text-gray-300 ml-1">↕</span>;
+    return <span className="text-blue-600 ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>;
   };
 
   const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
 
-  if (error) return <div className="text-red-500 text-center py-8">{error}</div>;
+  // スケルトンローディング
+  const SkeletonRow = () => (
+    <tr className="animate-pulse">
+      {[...Array(8)].map((_, i) => (
+        <td key={i} className="px-4 py-4">
+          <div className="h-4 bg-gray-200 rounded w-full"></div>
+        </td>
+      ))}
+    </tr>
+  );
+
+  if (error) {
+    return (
+      <div className="min-h-[400px] flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={() => fetchProperties()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            再読み込み
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">物件一覧</h1>
+    <div className="min-h-screen bg-[#FAFAFA]">
+      {/* ヘッダー */}
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-2xl font-semibold text-[#1A1A1A]">物件一覧</h1>
         <button
           onClick={handleNew}
-          className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-md transition-colors"
+          className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium
+            transition-all duration-200 ease-out
+            hover:bg-blue-700 hover:scale-[1.02] hover:shadow-md
+            active:scale-[0.98]"
         >
           新規物件登録
         </button>
       </div>
 
       {/* 検索・フィルタ */}
-      <div className="bg-white p-4 rounded-lg shadow mb-4">
+      <div className="bg-white p-6 rounded-xl mb-6 shadow-sm">
         <form onSubmit={handleSearch} className="flex flex-wrap gap-4 items-end">
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-gray-700 mb-1">検索</label>
+          <div className="flex-1 min-w-[240px]">
+            <label className="block text-sm font-medium text-[#6B7280] mb-2">検索</label>
             <input
               type="text"
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               placeholder="物件名・物件番号で検索"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 border border-gray-200 rounded-lg
+                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                transition-all duration-200"
             />
           </div>
-          <div className="w-40">
-            <label className="block text-sm font-medium text-gray-700 mb-1">物件種別</label>
+          <div className="w-44">
+            <label className="block text-sm font-medium text-[#6B7280] mb-2">物件種別</label>
             <select
               value={filterType}
               onChange={(e) => { setFilterType(e.target.value); setCurrentPage(1); }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 border border-gray-200 rounded-lg
+                focus:outline-none focus:ring-2 focus:ring-blue-500
+                transition-all duration-200 bg-white"
             >
               <option value="">すべて</option>
-              <option value="【売地】売地">売地</option>
-              <option value="【売戸建】中古戸建">中古戸建</option>
-              <option value="mansion">マンション</option>
-              <option value="revenue">収益物件</option>
+              <option value="売地">売地</option>
+              <option value="中古戸建">中古戸建</option>
+              <option value="マンション">マンション</option>
+              <option value="収益">収益物件</option>
             </select>
           </div>
-          <div className="w-40">
-            <label className="block text-sm font-medium text-gray-700 mb-1">販売状態</label>
+          <div className="w-44">
+            <label className="block text-sm font-medium text-[#6B7280] mb-2">販売状態</label>
             <select
               value={filterStatus}
               onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 border border-gray-200 rounded-lg
+                focus:outline-none focus:ring-2 focus:ring-blue-500
+                transition-all duration-200 bg-white"
             >
               <option value="">すべて</option>
               <option value="準備中">準備中</option>
@@ -156,162 +197,184 @@ const PropertiesPage = () => {
           </div>
           <button
             type="submit"
-            className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+            className="px-6 py-3 bg-[#1A1A1A] text-white rounded-lg font-medium
+              transition-all duration-200 ease-out
+              hover:bg-gray-800 hover:scale-[1.02]
+              active:scale-[0.98]"
           >
             検索
           </button>
           <button
             type="button"
             onClick={() => { setSearchText(''); setFilterType(''); setFilterStatus(''); setCurrentPage(1); }}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+            className="px-6 py-3 bg-gray-100 text-[#6B7280] rounded-lg font-medium
+              transition-all duration-200 ease-out
+              hover:bg-gray-200
+              active:scale-[0.98]"
           >
             クリア
           </button>
         </form>
       </div>
 
-      {loading ? (
-        <div className="text-center py-8">読み込み中...</div>
-      ) : properties.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg shadow">
-          <p className="text-gray-500">物件データがありません</p>
-        </div>
-      ) : (
-        <>
-          <div className="bg-white shadow-md rounded-lg overflow-hidden">
-            <table className="min-w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort('id')}
-                  >
-                    ID {getSortIcon('id')}
-                  </th>
-                  <th
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort('company_property_number')}
-                  >
-                    物件番号 {getSortIcon('company_property_number')}
-                  </th>
-                  <th
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort('property_name')}
-                  >
-                    物件名 {getSortIcon('property_name')}
-                  </th>
-                  <th
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort('sale_price')}
-                  >
-                    価格 {getSortIcon('sale_price')}
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    物件種別
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    販売状態
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    公開状態
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                    アクション
-                  </th>
+      {/* テーブル */}
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <table className="min-w-full">
+          <thead>
+            <tr className="border-b border-gray-100">
+              <th
+                className="px-4 py-4 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider cursor-pointer
+                  hover:bg-gray-50 transition-colors select-none"
+                onClick={() => handleSort('id')}
+              >
+                <span className="flex items-center">ID{getSortIcon('id')}</span>
+              </th>
+              <th
+                className="px-4 py-4 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider cursor-pointer
+                  hover:bg-gray-50 transition-colors select-none"
+                onClick={() => handleSort('company_property_number')}
+              >
+                <span className="flex items-center">物件番号{getSortIcon('company_property_number')}</span>
+              </th>
+              <th
+                className="px-4 py-4 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider cursor-pointer
+                  hover:bg-gray-50 transition-colors select-none"
+                onClick={() => handleSort('property_name')}
+              >
+                <span className="flex items-center">物件名{getSortIcon('property_name')}</span>
+              </th>
+              <th
+                className="px-4 py-4 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider cursor-pointer
+                  hover:bg-gray-50 transition-colors select-none"
+                onClick={() => handleSort('sale_price')}
+              >
+                <span className="flex items-center">価格{getSortIcon('sale_price')}</span>
+              </th>
+              <th className="px-4 py-4 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
+                物件種別
+              </th>
+              <th className="px-4 py-4 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
+                販売状態
+              </th>
+              <th className="px-4 py-4 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
+                公開
+              </th>
+              <th className="px-4 py-4 text-right text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
+                操作
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              [...Array(5)].map((_, i) => <SkeletonRow key={i} />)
+            ) : properties.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="px-4 py-16 text-center text-[#6B7280]">
+                  物件データがありません
+                </td>
+              </tr>
+            ) : (
+              properties.map((property) => (
+                <tr
+                  key={property.id}
+                  className="border-b border-gray-50 hover:bg-blue-50/50 cursor-pointer
+                    transition-colors duration-150"
+                  onClick={() => handleEdit(property.id)}
+                >
+                  <td className="px-4 py-4 text-sm text-[#6B7280]">
+                    {property.id}
+                  </td>
+                  <td className="px-4 py-4 text-sm text-[#1A1A1A] font-medium">
+                    {property.company_property_number || '-'}
+                  </td>
+                  <td className="px-4 py-4 text-sm text-[#1A1A1A] max-w-xs">
+                    <span className="line-clamp-1">{property.property_name || '-'}</span>
+                  </td>
+                  <td className="px-4 py-4 text-sm text-[#1A1A1A] font-semibold">
+                    {formatPrice(property.sale_price)}
+                  </td>
+                  <td className="px-4 py-4 text-sm text-[#6B7280]">
+                    {property.property_type?.replace(/【.*?】/, '') || '-'}
+                  </td>
+                  <td className="px-4 py-4">
+                    <span className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full
+                      ${property.sales_status === '販売中' ? 'bg-green-50 text-green-700' :
+                        property.sales_status === '成約済' ? 'bg-blue-50 text-blue-700' :
+                        'bg-gray-100 text-gray-600'}`}
+                    >
+                      {property.sales_status || '未設定'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-4">
+                    <span className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full
+                      ${property.publication_status === '公開' ? 'bg-green-50 text-green-700' :
+                        'bg-gray-100 text-gray-600'}`}
+                    >
+                      {property.publication_status === '公開' ? '公開' : '非公開'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-4 text-right">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleEdit(property.id); }}
+                      className="px-3 py-1.5 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded
+                        transition-colors duration-150 mr-2"
+                    >
+                      編集
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDelete(property.id); }}
+                      className="px-3 py-1.5 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded
+                        transition-colors duration-150"
+                    >
+                      削除
+                    </button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {properties.map((property) => (
-                  <tr
-                    key={property.id}
-                    className="hover:bg-gray-50 cursor-pointer"
-                    onClick={() => handleEdit(property.id)}
-                  >
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {property.id}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                      {property.company_property_number || '-'}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate">
-                      {property.property_name || '-'}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 font-medium">
-                      {formatPrice(property.sale_price)}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                      {property.property_type || '-'}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        property.sales_status === '販売中' ? 'bg-green-100 text-green-800' :
-                        property.sales_status === '成約済' ? 'bg-blue-100 text-blue-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {property.sales_status || '未設定'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        property.publication_status === '公開' ? 'bg-green-100 text-green-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {property.publication_status || '非公開'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleEdit(property.id); }}
-                        className="text-indigo-600 hover:text-indigo-900 mr-3"
-                      >
-                        編集
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDelete(property.id); }}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        削除
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
 
-          {/* ページネーション */}
-          <div className="flex items-center justify-between mt-4 bg-white px-4 py-3 rounded-lg shadow">
-            <div className="text-sm text-gray-700">
-              {((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, totalItems)} 件表示
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setCurrentPage(1)}
-                disabled={currentPage === 1}
-                className="px-3 py-1 rounded border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
-              >
-                最初
-              </button>
-              <button
-                onClick={() => setCurrentPage(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="px-3 py-1 rounded border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
-              >
-                前へ
-              </button>
-              <span className="px-3 py-1">
-                {currentPage} / {totalPages || 1}
-              </span>
-              <button
-                onClick={() => setCurrentPage(currentPage + 1)}
-                disabled={properties.length < ITEMS_PER_PAGE}
-                className="px-3 py-1 rounded border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
-              >
-                次へ
-              </button>
-            </div>
+      {/* ページネーション */}
+      {!loading && properties.length > 0 && (
+        <div className="flex items-center justify-between mt-6 bg-white px-6 py-4 rounded-xl shadow-sm">
+          <div className="text-sm text-[#6B7280]">
+            {((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, totalItems)} 件表示
           </div>
-        </>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCurrentPage(1)}
+              disabled={currentPage === 1}
+              className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium
+                disabled:opacity-40 disabled:cursor-not-allowed
+                hover:bg-gray-50 transition-colors duration-150"
+            >
+              最初
+            </button>
+            <button
+              onClick={() => setCurrentPage(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium
+                disabled:opacity-40 disabled:cursor-not-allowed
+                hover:bg-gray-50 transition-colors duration-150"
+            >
+              前へ
+            </button>
+            <span className="px-4 py-2 text-sm font-medium text-[#6B7280]">
+              {currentPage} / {totalPages || 1}
+            </span>
+            <button
+              onClick={() => setCurrentPage(currentPage + 1)}
+              disabled={properties.length < ITEMS_PER_PAGE}
+              className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium
+                disabled:opacity-40 disabled:cursor-not-allowed
+                hover:bg-gray-50 transition-colors duration-150"
+            >
+              次へ
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

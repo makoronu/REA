@@ -22,6 +22,32 @@ class PropertyBase(BaseModel):
     priority_score: Optional[int] = None
     property_url: Optional[str] = None
 
+    # 所在地
+    postal_code: Optional[str] = None
+    prefecture: Optional[str] = None
+    city: Optional[str] = None
+    address: Optional[str] = None
+    address_detail: Optional[str] = None
+    latitude: Optional[Decimal] = None
+    longitude: Optional[Decimal] = None
+
+    # 学区・交通
+    elementary_school: Optional[str] = None
+    elementary_school_minutes: Optional[int] = None
+    junior_high_school: Optional[str] = None
+    junior_high_school_minutes: Optional[int] = None
+
+    # キャッチコピー・備考
+    catch_copy: Optional[str] = None
+    catch_copy2: Optional[str] = None
+    catch_copy3: Optional[str] = None
+    remarks: Optional[str] = None
+
+    # ZOHO連携
+    zoho_id: Optional[str] = None
+    zoho_synced_at: Optional[datetime] = None
+    zoho_sync_status: Optional[str] = None
+
     # 価格情報
     sale_price: Optional[Decimal] = None
     price_per_tsubo: Optional[Decimal] = None
@@ -86,13 +112,17 @@ class Property(PropertyInDBBase):
 
 
 class PropertySearchParams(BaseModel):
+    search: Optional[str] = None  # 汎用検索（物件名・物件番号）
     sale_price_min: Optional[Decimal] = None
     sale_price_max: Optional[Decimal] = None
     property_type: Optional[str] = None
     property_name: Optional[str] = None
     sales_status: Optional[str] = None
+    publication_status: Optional[str] = None
     contractor_company_name: Optional[str] = None
     contractor_contact_person: Optional[str] = None
     contractor_license_number: Optional[str] = None
+    sort_by: Optional[str] = "id"  # ソート対象カラム
+    sort_order: Optional[str] = "desc"  # asc or desc
     skip: Optional[int] = 0
     limit: Optional[int] = 100

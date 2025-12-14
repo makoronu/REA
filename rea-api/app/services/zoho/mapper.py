@@ -133,6 +133,7 @@ PROPERTIES_MAPPING = {
     "field7": "publication_status",  # 公開
     "field24": "current_status",  # 現況
     "field23": "delivery_timing",  # 引渡時期
+    "field88": "postal_code",  # 郵便番号
     "field5": "prefecture",  # 都道府県
     "field4": "city",  # 市町村
     "field16": "address",  # 住居表示
@@ -253,6 +254,18 @@ class ZohoMapper:
                 result["building_info"]["construction_date"] = f"{y}-{m:02d}-01"
             except (ValueError, TypeError):
                 pass
+
+        # 販売状態の推測（ZOHOに直接対応フィールドがないため）
+        publication = zoho_record.get("field7", "")  # 公開状態
+        end_date = zoho_record.get("field95")  # 媒介終了日
+
+        if publication == "公開":
+            result["properties"]["sales_status"] = "販売中"
+        elif end_date:
+            # 終了日がある = 成約済みまたは販売終了
+            result["properties"]["sales_status"] = "成約済み"
+        else:
+            result["properties"]["sales_status"] = "販売準備"
 
         return result
 

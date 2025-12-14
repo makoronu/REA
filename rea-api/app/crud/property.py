@@ -2,11 +2,23 @@ from typing import Any, Dict, List, Optional
 
 from app.models.property import Property
 from app.schemas.property import PropertyCreate, PropertySearchParams, PropertyUpdate
-from sqlalchemy import func
+from sqlalchemy import func, asc, desc, or_
 from sqlalchemy.orm import Session
 
 
 class PropertyCRUD:
+    # ソート可能なカラム
+    SORTABLE_COLUMNS = {
+        "id": Property.id,
+        "company_property_number": Property.company_property_number,
+        "property_name": Property.property_name,
+        "sale_price": Property.sale_price,
+        "property_type": Property.property_type,
+        "sales_status": Property.sales_status,
+        "created_at": Property.created_at,
+        "updated_at": Property.updated_at,
+    }
+
     def get_properties(
         self,
         db: Session,
@@ -18,6 +30,16 @@ class PropertyCRUD:
         query = db.query(Property)
 
         if search_params:
+            # 汎用検索（物件名・物件番号）
+            if search_params.search:
+                search_term = f"%{search_params.search}%"
+                query = query.filter(
+                    or_(
+                        Property.property_name.ilike(search_term),
+                        Property.company_property_number.ilike(search_term),
+                    )
+                )
+
             # 価格範囲
             if search_params.sale_price_min is not None:
                 query = query.filter(Property.sale_price >= search_params.sale_price_min)
@@ -26,7 +48,7 @@ class PropertyCRUD:
 
             # 物件種別
             if search_params.property_type:
-                query = query.filter(Property.property_type == search_params.property_type)
+                query = query.filter(Property.property_type.ilike(f"%{search_params.property_type}%"))
 
             # 物件名検索
             if search_params.property_name:
@@ -37,6 +59,10 @@ class PropertyCRUD:
             # 販売状況
             if search_params.sales_status:
                 query = query.filter(Property.sales_status == search_params.sales_status)
+
+            # 公開状態
+            if search_params.publication_status:
+                query = query.filter(Property.publication_status == search_params.publication_status)
 
             # 元請会社検索
             if search_params.contractor_company_name:
@@ -55,6 +81,16 @@ class PropertyCRUD:
                 query = query.filter(
                     Property.contractor_license_number == search_params.contractor_license_number
                 )
+
+            # ソート
+            sort_column = self.SORTABLE_COLUMNS.get(search_params.sort_by, Property.id)
+            if search_params.sort_order == "asc":
+                query = query.order_by(asc(sort_column))
+            else:
+                query = query.order_by(desc(sort_column))
+        else:
+            # デフォルトソート
+            query = query.order_by(desc(Property.id))
 
         return query.offset(skip).limit(limit).all()
 
