@@ -232,6 +232,18 @@ async def import_properties(request: ZohoImportRequest):
                     failed_count += 1
                     continue
 
+                # 1.5. stagingテーブルに生データを保存
+                cur.execute("""
+                    INSERT INTO zoho_import_staging (zoho_id, raw_data, import_status)
+                    VALUES (%s, %s, 'pending')
+                    ON CONFLICT (zoho_id) DO UPDATE SET
+                        raw_data = EXCLUDED.raw_data,
+                        import_status = 'pending',
+                        error_message = NULL,
+                        created_at = NOW()
+                """, (zoho_id, json.dumps(zoho_record)))
+                conn.commit()
+
                 # 2. データマッピングで変換（3テーブル分）
                 rea_data = zoho_mapper.map_record(zoho_record)
                 properties_data = rea_data["properties"]
@@ -342,11 +354,27 @@ async def import_properties(request: ZohoImportRequest):
                             list(building_info_data.values())
                         )
 
+                # stagingテーブルのステータスを成功に更新
+                cur.execute("""
+                    UPDATE zoho_import_staging
+                    SET import_status = 'success', imported_at = NOW()
+                    WHERE zoho_id = %s
+                """, (zoho_id,))
                 conn.commit()
                 success_count += 1
 
             except Exception as e:
                 conn.rollback()
+                # stagingテーブルのステータスを失敗に更新
+                try:
+                    cur.execute("""
+                        UPDATE zoho_import_staging
+                        SET import_status = 'failed', error_message = %s
+                        WHERE zoho_id = %s
+                    """, (str(e), zoho_id))
+                    conn.commit()
+                except:
+                    pass
                 errors.append({"zoho_id": zoho_id, "message": str(e)})
                 failed_count += 1
 
@@ -360,3 +388,174 @@ async def import_properties(request: ZohoImportRequest):
         "skipped": skipped_count,
         "errors": errors
     }
+
+
+# ========================================
+# Staging管理（エラー追跡・再インポート）
+# ========================================
+
+@router.get("/staging/status")
+async def get_staging_status():
+    """stagingテーブルのステータス集計"""
+    db = READatabase()
+    conn = db.get_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+            SELECT import_status, COUNT(*)
+            FROM zoho_import_staging
+            GROUP BY import_status
+        """)
+        status_counts = {row[0]: row[1] for row in cur.fetchall()}
+
+        cur.execute("SELECT COUNT(*) FROM zoho_import_staging")
+        total = cur.fetchone()[0]
+
+        return {
+            "total": total,
+            "pending": status_counts.get("pending", 0),
+            "success": status_counts.get("success", 0),
+            "failed": status_counts.get("failed", 0)
+        }
+    finally:
+        cur.close()
+        conn.close()
+
+
+@router.get("/staging/failed")
+async def get_failed_records():
+    """失敗レコード一覧"""
+    db = READatabase()
+    conn = db.get_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+            SELECT zoho_id, error_message, created_at,
+                   raw_data->>'Name' as property_name
+            FROM zoho_import_staging
+            WHERE import_status = 'failed'
+            ORDER BY created_at DESC
+        """)
+        failed = []
+        for row in cur.fetchall():
+            failed.append({
+                "zoho_id": row[0],
+                "error_message": row[1],
+                "created_at": str(row[2]) if row[2] else None,
+                "property_name": row[3]
+            })
+        return {"failed": failed, "count": len(failed)}
+    finally:
+        cur.close()
+        conn.close()
+
+
+@router.post("/staging/retry")
+async def retry_failed_imports():
+    """失敗レコードをstagingの生データから再インポート"""
+    import json
+
+    db = READatabase()
+    conn = db.get_connection()
+    cur = conn.cursor()
+
+    success_count = 0
+    failed_count = 0
+    errors = []
+
+    try:
+        # 失敗レコードを取得
+        cur.execute("""
+            SELECT zoho_id, raw_data
+            FROM zoho_import_staging
+            WHERE import_status = 'failed'
+        """)
+        failed_records = cur.fetchall()
+
+        for zoho_id, raw_data in failed_records:
+            try:
+                zoho_record = raw_data if isinstance(raw_data, dict) else json.loads(raw_data)
+
+                # データマッピング
+                rea_data = zoho_mapper.map_record(zoho_record)
+                properties_data = rea_data["properties"]
+                land_info_data = rea_data["land_info"]
+                building_info_data = rea_data["building_info"]
+
+                # 既存チェック
+                cur.execute("SELECT id FROM properties WHERE zoho_id = %s", (zoho_id,))
+                existing = cur.fetchone()
+
+                if existing:
+                    property_id = existing[0]
+                    # 更新処理（簡略化）
+                    if properties_data:
+                        update_parts = []
+                        update_values = []
+                        for col, val in properties_data.items():
+                            if col != "zoho_id":
+                                update_parts.append(f"{col} = %s")
+                                update_values.append(val)
+                        if update_parts:
+                            update_values.append(property_id)
+                            cur.execute(
+                                f"UPDATE properties SET {', '.join(update_parts)}, updated_at = NOW() WHERE id = %s",
+                                update_values
+                            )
+                else:
+                    # 新規登録
+                    cols = list(properties_data.keys())
+                    cur.execute(
+                        f"INSERT INTO properties ({', '.join(cols)}, created_at, updated_at) VALUES ({', '.join(['%s']*len(cols))}, NOW(), NOW()) RETURNING id",
+                        list(properties_data.values())
+                    )
+                    property_id = cur.fetchone()[0]
+
+                    if land_info_data:
+                        land_info_data["property_id"] = property_id
+                        if "road_info" in land_info_data:
+                            land_info_data["road_info"] = json.dumps(land_info_data["road_info"])
+                        cols = list(land_info_data.keys())
+                        cur.execute(
+                            f"INSERT INTO land_info ({', '.join(cols)}, created_at, updated_at) VALUES ({', '.join(['%s']*len(cols))}, NOW(), NOW())",
+                            list(land_info_data.values())
+                        )
+
+                    if building_info_data:
+                        building_info_data["property_id"] = property_id
+                        cols = list(building_info_data.keys())
+                        cur.execute(
+                            f"INSERT INTO building_info ({', '.join(cols)}, created_at, updated_at) VALUES ({', '.join(['%s']*len(cols))}, NOW(), NOW())",
+                            list(building_info_data.values())
+                        )
+
+                # 成功ステータス更新
+                cur.execute("""
+                    UPDATE zoho_import_staging
+                    SET import_status = 'success', imported_at = NOW(), error_message = NULL
+                    WHERE zoho_id = %s
+                """, (zoho_id,))
+                conn.commit()
+                success_count += 1
+
+            except Exception as e:
+                conn.rollback()
+                cur.execute("""
+                    UPDATE zoho_import_staging
+                    SET error_message = %s
+                    WHERE zoho_id = %s
+                """, (str(e), zoho_id))
+                conn.commit()
+                errors.append({"zoho_id": zoho_id, "message": str(e)})
+                failed_count += 1
+
+        return {
+            "success": success_count,
+            "failed": failed_count,
+            "errors": errors
+        }
+    finally:
+        cur.close()
+        conn.close()
