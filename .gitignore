@@ -157,3 +157,5 @@ tmp/backups/
 backups/*.sql
 uploads/touki/*.PDF
 uploads/touki/*.pdf
+rea-api/uploads/touki/*.PDF
+rea-api/uploads/touki/*.pdf
