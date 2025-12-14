@@ -155,3 +155,5 @@ backup_*/
 temp/
 tmp/backups/
 backups/*.sql
+uploads/touki/*.PDF
+uploads/touki/*.pdf
