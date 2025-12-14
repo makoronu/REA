@@ -1235,13 +1235,17 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
     });
 
     // ステータス表示用
-    // 販売状況の色マップ
+    // 案件ステータスの色マップ
     const salesStatusConfig: Record<string, { label: string; color: string; bg: string }> = {
-      '準備中': { label: '準備中', color: '#6B7280', bg: '#F3F4F6' },
+      '査定中': { label: '査定中', color: '#8B5CF6', bg: '#EDE9FE' },
+      '保留': { label: '保留', color: '#6B7280', bg: '#F3F4F6' },
+      '販売準備': { label: '販売準備', color: '#0EA5E9', bg: '#E0F2FE' },
       '販売中': { label: '販売中', color: '#059669', bg: '#D1FAE5' },
       '商談中': { label: '商談中', color: '#D97706', bg: '#FEF3C7' },
       '成約済み': { label: '成約済み', color: '#DC2626', bg: '#FEE2E2' },
       '販売終了': { label: '販売終了', color: '#374151', bg: '#E5E7EB' },
+      '取り下げ': { label: '取り下げ', color: '#64748B', bg: '#F1F5F9' },
+      '他決': { label: '他決', color: '#475569', bg: '#E2E8F0' },
     };
 
     // 公開状態の色マップ
@@ -1251,18 +1255,18 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
       '公開': { label: '公開', color: '#059669', bg: '#D1FAE5' },
     };
 
-    const currentSalesStatus = formData.sales_status || '準備中';
+    const currentSalesStatus = formData.sales_status || '査定中';
     const currentPublicationStatus = formData.publication_status || '非公開';
 
-    // 販売状況に応じて公開状態の選択肢を制限
+    // 案件ステータスに応じて公開状態の選択肢を制限（販売中・商談中のみ公開可能）
     const isPublicationEditable = ['販売中', '商談中'].includes(currentSalesStatus);
 
     // ステータス変更ハンドラー
     const handleSalesStatusChange = (newStatus: string) => {
       form.setValue('sales_status', newStatus, { shouldDirty: true });
 
-      // 連動ロジック: 準備中/成約済み/販売終了は強制的に非公開
-      if (['準備中', '成約済み', '販売終了'].includes(newStatus)) {
+      // 連動ロジック: 販売中・商談中以外は強制的に非公開
+      if (!['販売中', '商談中'].includes(newStatus)) {
         form.setValue('publication_status', '非公開', { shouldDirty: true });
       }
       // 販売中に変更した場合、デフォルトで公開に
@@ -1325,7 +1329,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
               }}>
                 {/* 左：販売状況 */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '12px', color: '#6B7280', fontWeight: 500 }}>販売:</span>
+                  <span style={{ fontSize: '12px', color: '#6B7280', fontWeight: 500 }}>案件:</span>
                   <div style={{ display: 'flex', gap: '4px' }}>
                     {Object.entries(salesStatusConfig).map(([status, config]) => (
                       <button
