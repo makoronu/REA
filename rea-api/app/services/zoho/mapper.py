@@ -24,6 +24,12 @@ TRANSACTION_TYPE_MAP = {
     "一般媒介": "4:一般媒介",
     "専属専任": "5:専属専任",
     "専属専任媒介": "5:専属専任",
+    # ZOHOの短縮形
+    "仲介": "4:一般媒介",  # 一般的な仲介
+    "専任": "3:専任媒介",
+    "一般": "4:一般媒介",
+    "買取": "6:買取",
+    # 賃貸は売買物件に不適合のためスキップ（マップに含めない）
 }
 
 CURRENT_STATUS_MAP = {
@@ -85,6 +91,11 @@ PARKING_AVAILABILITY_MAP = {
     "あり（有料）": "3:有(有料)",
     "近隣(無料)": "4:近隣(無料)",
     "近隣(有料)": "5:近隣(有料)",
+    # ZOHOの台数表記（料金情報なしのため有(無料)にマップ）
+    "有": "2:有(無料)",
+    "有(1台)": "2:有(無料)",
+    "有(2台)": "2:有(無料)",
+    "有(3台以上)": "2:有(無料)",
 }
 
 ROOM_TYPE_MAP = {
@@ -136,8 +147,9 @@ PROPERTIES_MAPPING = {
     "field88": "postal_code",  # 郵便番号
     "field5": "prefecture",  # 都道府県
     "field4": "city",  # 市町村
-    "field16": "address",  # 住居表示
-    "field14": "address_detail",  # 町名
+    # field16 (住居表示) と field14 (町名) は下記で結合処理
+    # "field16": "address",  # 住居表示 → 結合処理へ
+    # "field14": "address_detail",  # 町名 → 結合処理へ
     "field18": "latitude",  # 緯度
     "field15": "longitude",  # 経度
     "field46": "elementary_school",  # 小学校区
@@ -146,6 +158,9 @@ PROPERTIES_MAPPING = {
     "field49": "catch_copy2",  # キャッチコピー2
     "field52": "catch_copy3",  # キャッチコピー3
     "field51": "remarks",  # 備考
+    # 追加マッピング
+    "field89": "contractor_phone",  # 元請電話番号
+    "field91": "contractor_email",  # 元請メール
 }
 
 # land_infoテーブル用
@@ -222,6 +237,31 @@ class ZohoMapper:
                 if value is not None:
                     result["properties"][rea_column] = value
 
+        # 住所の整形（町名 + 住居表示 or 地番）
+        # field14 = 町名（錦町、美山町東など）
+        # field16 = 住居表示（番地: 178-32、３丁目70番地108など）
+        # field13 = 地番（法務局: 178番32など）※住居表示がない地域用
+        town = zoho_record.get("field14", "") or ""
+        street_address = zoho_record.get("field16", "") or ""
+        chiban = zoho_record.get("field13", "") or ""
+
+        # 住居表示がなければ地番を使用
+        address_number = street_address if street_address else chiban
+
+        if town and address_number:
+            # 町名に丁目が含まれていて、番地にも丁目がある場合は重複を避ける
+            if "丁目" in town and "丁目" in address_number:
+                result["properties"]["address"] = address_number if address_number[0].isdigit() else f"{town}{address_number}"
+            else:
+                result["properties"]["address"] = f"{town}{address_number}"
+        elif address_number:
+            result["properties"]["address"] = address_number
+        elif town:
+            result["properties"]["address"] = town
+
+        # address_detail は建物名等に使用（ZOHOには該当フィールドなし）
+        # result["properties"]["address_detail"] = None
+
         # land_infoテーブル
         for zoho_field, rea_column in LAND_INFO_MAPPING.items():
             if zoho_field in zoho_record:
@@ -254,6 +294,11 @@ class ZohoMapper:
                 result["building_info"]["construction_date"] = f"{y}-{m:02d}-01"
             except (ValueError, TypeError):
                 pass
+
+        # 担当者（オブジェクト形式）
+        manager = zoho_record.get("field56")
+        if manager and isinstance(manager, dict):
+            result["properties"]["property_manager_name"] = manager.get("name", "")
 
         # 販売状態の推測（ZOHOに直接対応フィールドがないため）
         publication = zoho_record.get("field7", "")  # 公開状態

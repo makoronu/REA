@@ -62,6 +62,11 @@ export interface Property {
   created_at?: string;
   updated_at?: string;
 
+  // 住所情報
+  prefecture?: string;
+  city?: string;
+  address_detail?: string;
+
   // 互換性のための追加フィールド
   latitude?: number;
   longitude?: number;
@@ -80,6 +85,8 @@ export interface PropertySearchParams {
   publication_status?: string;
   price_min?: number;
   price_max?: number;
+  sale_price_min?: number;
+  sale_price_max?: number;
   sort_by?: string;
   sort_order?: 'asc' | 'desc';
   skip?: number;

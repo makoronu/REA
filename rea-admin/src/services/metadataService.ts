@@ -242,6 +242,24 @@ class MetadataService {
       groupedColumns
     };
   }
+
+  /**
+   * フィルター用のオプション一覧を取得（メタデータ駆動）
+   */
+  async getFilterOptions(): Promise<{
+    sales_status?: { value: string; label: string }[];
+    publication_status?: { value: string; label: string }[];
+    property_type?: { value: string; label: string }[];
+    property_type_simple?: { value: string; label: string; group?: string }[];
+  }> {
+    try {
+      const response = await axios.get(`${this.baseURL}/filter-options`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching filter options:', error);
+      throw error;
+    }
+  }
 }
 
 // シングルトンインスタンスをエクスポート

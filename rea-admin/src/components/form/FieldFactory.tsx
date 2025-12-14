@@ -71,8 +71,13 @@ const parseEnumValues = (options: any): { value: string; label: string; group?: 
   if (typeof options === 'string') {
     const items = options.split(',').map(item => item.trim());
     return items.map(option => {
-      const [value, label] = option.split(':').map(s => s.trim());
-      return { value: value || option, label: label || option };
+      // "1:売主" 形式の場合、valueは全体（"1:売主"）、labelはコロン以降（"売主"）
+      const colonIndex = option.indexOf(':');
+      if (colonIndex > 0) {
+        const label = option.substring(colonIndex + 1).trim();
+        return { value: option, label: label || option };
+      }
+      return { value: option, label: option };
     });
   }
 

@@ -395,6 +395,64 @@ def get_enum_values(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/filter-options", response_model=Dict[str, Any])
+def get_filter_options(db: Session = Depends(dependencies.get_db)) -> Dict[str, Any]:
+    """
+    フィルター用のオプション一覧を取得（メタデータ駆動）
+    column_labelsテーブルから動的に取得
+    """
+    try:
+        # column_labelsからフィルター用フィールドの選択肢を取得
+        query = text("""
+            SELECT column_name, enum_values
+            FROM column_labels
+            WHERE table_name = 'properties'
+            AND column_name IN ('sales_status', 'publication_status', 'property_type')
+            AND enum_values IS NOT NULL
+        """)
+        result = db.execute(query)
+
+        filter_options: Dict[str, List[Dict[str, Any]]] = {}
+
+        for row in result:
+            column_name = row.column_name
+            enum_values = row.enum_values
+
+            if enum_values:
+                options = []
+                for item in enum_values.split(","):
+                    if ":" in item:
+                        parts = item.split(":", 1)
+                        options.append({"value": parts[1], "label": parts[1]})
+                    else:
+                        options.append({"value": item, "label": item})
+                filter_options[column_name] = options
+
+        # property_typesテーブルからも取得（簡易版）
+        pt_query = text("""
+            SELECT id, label, group_name
+            FROM property_types
+            ORDER BY
+                CASE group_name
+                    WHEN '居住用' THEN 1
+                    WHEN '事業用' THEN 2
+                    WHEN '投資用' THEN 3
+                    ELSE 4
+                END,
+                label
+        """)
+        pt_result = db.execute(pt_query)
+        filter_options["property_type_simple"] = [
+            {"value": row.label, "label": row.label, "group": row.group_name}
+            for row in pt_result
+        ]
+
+        return filter_options
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/validation/rules", response_model=Dict[str, Any])
 def get_validation_rules() -> Dict[str, Any]:
     """

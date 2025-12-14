@@ -4,6 +4,7 @@ import { useSaveStatusDisplay, SaveStatus } from '../../hooks/useAutoSave';
 
 interface LayoutProps {
   children: React.ReactNode;
+  onOpenCommandPalette?: () => void;
 }
 
 // 保存ステータス表示コンポーネント
@@ -18,31 +19,31 @@ const SaveStatusIndicator: React.FC = () => {
   const getStatusDisplay = (status: SaveStatus) => {
     switch (status) {
       case 'idle':
-        return null; // 何も表示しない
+        return null;
       case 'unsaved':
         return {
           icon: '●',
           text: '変更あり',
-          color: '#F59E0B', // オレンジ
+          color: '#F59E0B',
         };
       case 'saving':
         return {
           icon: '↻',
           text: '保存中...',
-          color: '#3B82F6', // 青
+          color: '#3B82F6',
           animate: true,
         };
       case 'saved':
         return {
           icon: '✓',
           text: `保存済み ${formatTime(lastSaved)}`,
-          color: '#9CA3AF', // 薄いグレー
+          color: '#9CA3AF',
         };
       case 'error':
         return {
           icon: '✗',
           text: '保存失敗',
-          color: '#EF4444', // 赤
+          color: '#EF4444',
         };
     }
   };
@@ -79,7 +80,7 @@ const SaveStatusIndicator: React.FC = () => {
   );
 };
 
-const Layout: React.FC<LayoutProps> = ({ children }) => {
+const Layout: React.FC<LayoutProps> = ({ children, onOpenCommandPalette }) => {
   const location = useLocation();
 
   const isActive = (path: string) => {
@@ -114,6 +115,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
+        gap: '16px',
       }}>
         <Link to="/properties" style={{ textDecoration: 'none' }}>
           <h1 style={{
@@ -125,6 +127,44 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             REA
           </h1>
         </Link>
+
+        {/* 検索バー（クリックでコマンドパレットを開く） */}
+        <button
+          onClick={onOpenCommandPalette}
+          className="search-trigger"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '8px 16px',
+            backgroundColor: '#F3F4F6',
+            border: '1px solid #E5E7EB',
+            borderRadius: '10px',
+            cursor: 'pointer',
+            transition: 'all 200ms',
+            minWidth: '240px',
+            maxWidth: '400px',
+            flex: 1,
+          }}
+        >
+          <svg style={{ width: '16px', height: '16px', color: '#9CA3AF' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <span style={{ color: '#9CA3AF', fontSize: '14px', flex: 1, textAlign: 'left' }}>
+            検索...
+          </span>
+          <kbd style={{
+            padding: '2px 6px',
+            fontSize: '11px',
+            color: '#6B7280',
+            backgroundColor: 'white',
+            border: '1px solid #D1D5DB',
+            borderRadius: '4px',
+            fontFamily: 'system-ui',
+          }}>
+            ⌘K
+          </kbd>
+        </button>
 
         {/* 中央: デスクトップナビ */}
         <nav style={{
@@ -143,6 +183,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 padding: '8px 0',
                 borderBottom: isActive(item.path) ? '2px solid var(--color-accent)' : '2px solid transparent',
                 transition: 'color 150ms, border-color 150ms',
+                whiteSpace: 'nowrap',
               }}
             >
               {item.label}
@@ -150,7 +191,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           ))}
         </nav>
 
-        {/* 右側: 保存ステータス（常時表示） */}
+        {/* 右側: 保存ステータス */}
         <SaveStatusIndicator />
       </header>
 
@@ -217,6 +258,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           to { transform: rotate(360deg); }
         }
 
+        .search-trigger:hover {
+          background-color: #E5E7EB !important;
+          border-color: #D1D5DB !important;
+        }
+
+        .search-trigger:focus {
+          outline: none;
+          box-shadow: 0 0 0 2px #3B82F6;
+        }
+
         @media (min-width: 768px) {
           .mobile-nav {
             display: none !important;
@@ -231,6 +282,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             display: flex !important;
           }
           .desktop-nav {
+            display: none !important;
+          }
+          .search-trigger {
+            min-width: 44px !important;
+            max-width: 44px !important;
+            padding: 8px !important;
+          }
+          .search-trigger span,
+          .search-trigger kbd {
             display: none !important;
           }
         }

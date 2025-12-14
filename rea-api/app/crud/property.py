@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional
 
 from app.models.property import Property
 from app.schemas.property import PropertyCreate, PropertySearchParams, PropertyUpdate
-from sqlalchemy import func, asc, desc, or_
+from sqlalchemy import func, asc, desc, or_, cast, Integer, case
 from sqlalchemy.orm import Session
 
 
@@ -10,13 +10,17 @@ class PropertyCRUD:
     # ソート可能なカラム
     SORTABLE_COLUMNS = {
         "id": Property.id,
-        "company_property_number": Property.company_property_number,
         "property_name": Property.property_name,
-        "sale_price": Property.sale_price,
         "property_type": Property.property_type,
         "sales_status": Property.sales_status,
+        "sale_price": Property.sale_price,  # 既にNUMERIC型
         "created_at": Property.created_at,
         "updated_at": Property.updated_at,
+    }
+
+    # テキスト型だが数値としてソートするカラム
+    TEXT_TO_NUMERIC_SORT_COLUMNS = {
+        "company_property_number": Property.company_property_number,
     }
 
     def get_properties(
@@ -83,11 +87,28 @@ class PropertyCRUD:
                 )
 
             # ソート
-            sort_column = self.SORTABLE_COLUMNS.get(search_params.sort_by, Property.id)
-            if search_params.sort_order == "asc":
-                query = query.order_by(asc(sort_column))
+            sort_by = search_params.sort_by or "id"
+
+            # テキスト型を数値ソートするカラムの場合
+            if sort_by in self.TEXT_TO_NUMERIC_SORT_COLUMNS:
+                col = self.TEXT_TO_NUMERIC_SORT_COLUMNS[sort_by]
+                # 数値に変換してソート（NULL や非数値は末尾に）
+                numeric_col = func.nullif(
+                    func.regexp_replace(col, '[^0-9]', '', 'g'),
+                    ''
+                ).cast(Integer)
+
+                if search_params.sort_order == "asc":
+                    query = query.order_by(asc(numeric_col).nullslast())
+                else:
+                    query = query.order_by(desc(numeric_col).nullsfirst())
             else:
-                query = query.order_by(desc(sort_column))
+                # 通常のソート
+                sort_column = self.SORTABLE_COLUMNS.get(sort_by, Property.id)
+                if search_params.sort_order == "asc":
+                    query = query.order_by(asc(sort_column))
+                else:
+                    query = query.order_by(desc(sort_column))
         else:
             # デフォルトソート
             query = query.order_by(desc(Property.id))
