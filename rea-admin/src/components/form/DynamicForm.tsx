@@ -1293,7 +1293,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
               paddingLeft: '16px',
               paddingRight: '16px',
             }}>
-              {/* 最終更新日時（編集時のみ） */}
+              {/* 最終更新日時（編集時のみ・日本時間） */}
               {formData.updated_at && (
                 <div style={{
                   fontSize: '11px',
@@ -1302,6 +1302,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                   textAlign: 'right',
                 }}>
                   最終更新: {new Date(formData.updated_at).toLocaleString('ja-JP', {
+                    timeZone: 'Asia/Tokyo',
                     year: 'numeric',
                     month: '2-digit',
                     day: '2-digit',
