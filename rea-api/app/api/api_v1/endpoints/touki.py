@@ -90,7 +90,7 @@ async def upload_touki_pdf(file: UploadFile = File(...)):
     """
     登記事項証明書PDFをアップロードしてテキスト抽出
     """
-    if not file.filename.endswith('.pdf'):
+    if not file.filename.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="PDFファイルのみ対応しています")
 
     if pdfplumber is None:

@@ -51,12 +51,45 @@ const ROAD_STATUS = [
 ];
 
 export const RoadInfoEditor: React.FC<JsonEditorProps<RoadInfo>> = ({
-  value = [],
+  value,
   onChange,
   disabled
 }) => {
+  // valueが配列でない場合（オブジェクト形式のroad_info）を配列に変換
+  const normalizeValue = (v: any): RoadInfo[] => {
+    if (!v) return [];
+    if (Array.isArray(v)) return v;
+    // オブジェクト形式の場合（road1_type, road1_width, road1_direction, road1_frontage...）
+    if (typeof v === 'object') {
+      const roads: RoadInfo[] = [];
+      // road1, road2 の形式で複数の道路情報がある可能性
+      for (let i = 1; i <= 2; i++) {
+        const prefix = `road${i}_`;
+        const direction = v[`${prefix}direction`] || v['road_access'] || '';
+        const roadType = v[`${prefix}type`] || '';
+        const width = v[`${prefix}width`] || 0;
+        const frontage = v[`${prefix}frontage`] || 0;
+
+        // 値があれば追加
+        if (direction || roadType || width || frontage) {
+          roads.push({
+            direction: String(direction).replace(/^\d+:/, ''), // "4:南東" -> "南東"
+            road_type: String(roadType).replace(/^\d+:/, ''), // "1:公道" -> "公道"
+            road_width: Number(width) || 0,
+            frontage: Number(frontage) || 0,
+            road_status: ''
+          });
+        }
+      }
+      return roads;
+    }
+    return [];
+  };
+
+  const normalizedValue = normalizeValue(value);
+
   const addItem = () => {
-    onChange([...value, {
+    onChange([...normalizedValue, {
       direction: '',
       road_type: '',
       road_width: 0,
@@ -66,18 +99,18 @@ export const RoadInfoEditor: React.FC<JsonEditorProps<RoadInfo>> = ({
   };
 
   const removeItem = (index: number) => {
-    onChange(value.filter((_, i) => i !== index));
+    onChange(normalizedValue.filter((_, i) => i !== index));
   };
 
   const updateItem = (index: number, field: keyof RoadInfo, fieldValue: string | number) => {
-    const newValue = [...value];
+    const newValue = [...normalizedValue];
     newValue[index] = { ...newValue[index], [field]: fieldValue };
     onChange(newValue);
   };
 
   return (
     <div className="space-y-3">
-      {value.map((item, index) => (
+      {normalizedValue.map((item, index) => (
         <div
           key={index}
           className="p-4 border border-gray-200 rounded-lg bg-white"

@@ -7,7 +7,7 @@
  * - 登記レコード一覧表示
  * - 物件登録
  */
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8005';
 
@@ -40,7 +40,7 @@ interface ToukiRecord {
 
 interface ToukiImport {
   id: number;
-  filename: string;
+  file_name: string;
   status: string;
   parsed_at?: string;
   created_at: string;
@@ -56,6 +56,7 @@ export default function ToukiImportPage() {
   const [creating, setCreatingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 初回読み込み
@@ -86,17 +87,20 @@ export default function ToukiImportPage() {
     }
   };
 
-  // PDFアップロード
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+  // PDFアップロード（共通処理）
+  const uploadFiles = useCallback(async (files: File[]) => {
+    const pdfFiles = files.filter(f => f.name.toLowerCase().endsWith('.pdf'));
+    if (pdfFiles.length === 0) {
+      setError('PDFファイルを選択してください');
+      return;
+    }
 
     setUploading(true);
     setError(null);
     setSuccess(null);
 
     try {
-      for (const file of Array.from(files)) {
+      for (const file of pdfFiles) {
         const formData = new FormData();
         formData.append('file', file);
 
@@ -110,7 +114,7 @@ export default function ToukiImportPage() {
           throw new Error(err.detail || 'アップロードに失敗しました');
         }
       }
-      setSuccess(`${files.length}件のPDFをアップロードしました`);
+      setSuccess(`${pdfFiles.length}件のPDFをアップロードしました`);
       await loadData();
     } catch (e: any) {
       setError(e.message);
@@ -120,7 +124,39 @@ export default function ToukiImportPage() {
         fileInputRef.current.value = '';
       }
     }
+  }, []);
+
+  // ファイル選択
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      uploadFiles(Array.from(files));
+    }
   };
+
+  // ドラッグ&ドロップ
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      uploadFiles(files);
+    }
+  }, [uploadFiles]);
 
   // PDFパース
   const handleParse = async (importId: number) => {
@@ -241,43 +277,64 @@ export default function ToukiImportPage() {
         </div>
       )}
 
-      {/* PDFアップロード */}
-      <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+      {/* PDFアップロード（ドラッグ&ドロップ対応） */}
+      <div className="mb-6">
         <h2 className="text-lg font-medium mb-3">PDFアップロード</h2>
-        <div className="flex items-center gap-4">
-          <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition cursor-pointer">
-            <span>📄 PDFを選択</span>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf"
-              multiple
-              onChange={handleUpload}
-              disabled={uploading}
-              className="hidden"
-            />
-          </label>
-          {uploading && (
-            <span className="text-gray-500 flex items-center gap-2">
-              <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
-              アップロード中...
-            </span>
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`
+            border-2 border-dashed rounded-lg p-8 text-center transition-colors
+            ${isDragging
+              ? 'border-blue-500 bg-blue-50'
+              : 'border-gray-300 bg-gray-50 hover:border-gray-400'
+            }
+            ${uploading ? 'opacity-50 pointer-events-none' : 'cursor-pointer'}
+          `}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf"
+            multiple
+            onChange={handleFileSelect}
+            disabled={uploading}
+            className="hidden"
+          />
+
+          {uploading ? (
+            <div className="flex flex-col items-center gap-2">
+              <div className="animate-spin h-8 w-8 border-3 border-blue-500 border-t-transparent rounded-full"></div>
+              <span className="text-gray-600">アップロード中...</span>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2">
+              <div className="text-4xl">📄</div>
+              <div className="text-gray-700 font-medium">
+                PDFファイルをドラッグ&ドロップ
+              </div>
+              <div className="text-gray-500 text-sm">
+                または<span className="text-blue-600 underline">クリックして選択</span>
+              </div>
+              <div className="text-gray-400 text-xs mt-2">
+                複数ファイル対応
+              </div>
+            </div>
           )}
         </div>
-        <p className="mt-2 text-sm text-gray-500">
-          登記事項証明書のPDFファイルをアップロードしてください。複数ファイル可。
-        </p>
       </div>
 
       {/* 未パースのインポート */}
-      {imports.filter(i => i.status === 'pending').length > 0 && (
+      {imports.filter(i => i.status === 'uploaded').length > 0 && (
         <div className="mb-6">
           <h2 className="text-lg font-medium mb-3">未解析のPDF</h2>
           <div className="border rounded-lg divide-y">
-            {imports.filter(i => i.status === 'pending').map(imp => (
+            {imports.filter(i => i.status === 'uploaded').map(imp => (
               <div key={imp.id} className="p-3 flex items-center justify-between">
                 <div>
-                  <span className="font-medium">{imp.filename}</span>
+                  <span className="font-medium">{imp.file_name}</span>
                   <span className="ml-2 text-xs text-gray-500">
                     {new Date(imp.created_at).toLocaleString('ja-JP')}
                   </span>
@@ -361,12 +418,12 @@ export default function ToukiImportPage() {
                       {/* 所有者 */}
                       {record.owners && record.owners.length > 0 && (
                         <div className="mt-2 pt-2 border-t">
-                          所有者:
+                          <div className="font-medium text-gray-700 mb-1">所有者情報</div>
                           {record.owners.map((owner, i) => (
-                            <span key={i} className="ml-2">
-                              {owner.name}
-                              {owner.share && ` (${owner.share})`}
-                            </span>
+                            <div key={i} className="ml-2 mb-1">
+                              <div>氏名: {owner.name}{owner.share && ` (持分: ${owner.share})`}</div>
+                              {owner.address && <div className="text-gray-500">住所: {owner.address}</div>}
+                            </div>
                           ))}
                         </div>
                       )}
