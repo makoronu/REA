@@ -47,6 +47,22 @@
 - `import_value_mappings`: 値変換（例: "木造" → "1:木造"）
 - `master_options`: REA側の選択肢定義
 
+### 外部連携管理API
+- `GET /api/v1/integrations/` - 連携先一覧
+- `PATCH /api/v1/integrations/{code}` - 連携先の有効/無効切替
+- `GET /api/v1/integrations/sync-status` - 物件の同期状態一覧
+- `GET /api/v1/integrations/sync-summary` - 同期サマリー
+- `POST /api/v1/integrations/bulk-sync` - 一括同期
+
+**連携先マスター（m_integrations）**
+| code | name | 状態 |
+|------|------|------|
+| zoho | ZOHO CRM | 実装済み |
+| homes | ホームズ | 未実装 |
+| reins | レインズ | 未実装 |
+| suumo | SUUMO | 未実装 |
+| athome | at home | 未実装 |
+
 ## 📚 API文書
 - **Swagger UI**: http://localhost:8005/docs
 - **ReDoc**: http://localhost:8005/redoc
