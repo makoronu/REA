@@ -24,19 +24,19 @@
   <text x="180" y="120" class="label" fill="#fff" text-anchor="middle">売戸建</text>
 
   <!-- 物件名 -->
-  <text x="80" y="220" class="title">{{property_name}}</text>
+  <text x="80" y="220" class="title">155 【売戸建】中古戸建 北見市田端町 1300万円</text>
 
   <!-- 価格セクション -->
   <rect x="80" y="260" width="2817" height="160" fill="#f0fdf4" rx="8"/>
   <text x="120" y="320" class="label">販売価格</text>
-  <text x="120" y="390" class="price">{{price}}</text>
+  <text x="120" y="390" class="price">1,300万円</text>
 
   <!-- 所在地セクション -->
   <rect x="80" y="460" width="2817" height="2" fill="#e5e7eb"/>
   <text x="80" y="520" class="section-title">所在地・交通</text>
-  <text x="80" y="570" class="address">{{address}}</text>
+  <text x="80" y="570" class="address">北海道北見市田端町７１番地</text>
   <text x="80" y="620" class="label">交通</text>
-  <text x="200" y="620" class="value">{{access}}</text>
+  <text x="200" y="620" class="value"></text>
 
   <!-- 建物情報セクション -->
   <rect x="80" y="680" width="2817" height="2" fill="#e5e7eb"/>
@@ -55,9 +55,9 @@
     <rect x="680" y="50" width="680" height="60" fill="#fff" stroke="#e5e7eb"/>
     <rect x="1360" y="50" width="680" height="60" fill="#fff" stroke="#e5e7eb"/>
 
-    <text x="20" y="95" class="value">{{building_area}}</text>
-    <text x="700" y="95" class="value">{{floor_plan}}</text>
-    <text x="1380" y="95" class="value">{{building_structure}}</text>
+    <text x="20" y="95" class="value">111.37㎡（33.69坪）</text>
+    <text x="700" y="95" class="value"></text>
+    <text x="1380" y="95" class="value">1</text>
   </g>
 
   <g transform="translate(80, 900)">
@@ -70,8 +70,8 @@
     <rect x="0" y="50" width="680" height="60" fill="#fff" stroke="#e5e7eb"/>
     <rect x="680" y="50" width="680" height="60" fill="#fff" stroke="#e5e7eb"/>
 
-    <text x="20" y="95" class="value">{{construction_date}}</text>
-    <text x="700" y="95" class="value">{{total_floors}}階建</text>
+    <text x="20" y="95" class="value">築23年（平成14年築）</text>
+    <text x="700" y="95" class="value">階建</text>
   </g>
 
   <!-- 土地情報セクション -->
@@ -92,9 +92,9 @@
     <rect x="680" y="50" width="680" height="60" fill="#fff" stroke="#e5e7eb"/>
     <rect x="1360" y="50" width="680" height="60" fill="#fff" stroke="#e5e7eb"/>
 
-    <text x="20" y="95" class="value">{{land_area}}</text>
-    <text x="700" y="95" class="value">{{use_district}}</text>
-    <text x="1380" y="95" class="value">{{building_coverage}} / {{floor_area_ratio}}</text>
+    <text x="20" y="95" class="value">885.06㎡（267.73坪）</text>
+    <text x="700" y="95" class="value">5</text>
+    <text x="1380" y="95" class="value">60.0% / 200.0%</text>
 
     <!-- 2行目：地目、権利、都市計画 -->
     <rect x="0" y="120" width="680" height="50" fill="#f3f4f6"/>
@@ -109,9 +109,9 @@
     <rect x="680" y="170" width="680" height="60" fill="#fff" stroke="#e5e7eb"/>
     <rect x="1360" y="170" width="680" height="60" fill="#fff" stroke="#e5e7eb"/>
 
-    <text x="20" y="215" class="value">{{land_category}}</text>
-    <text x="700" y="215" class="value">{{land_rights}}</text>
-    <text x="1380" y="215" class="value">{{city_planning}}</text>
+    <text x="20" y="215" class="value">1</text>
+    <text x="700" y="215" class="value">0</text>
+    <text x="1380" y="215" class="value">1</text>
 
     <!-- 3行目：接道状況、私道負担、セットバック -->
     <rect x="0" y="240" width="680" height="50" fill="#f3f4f6"/>
@@ -126,37 +126,37 @@
     <rect x="680" y="290" width="680" height="60" fill="#fff" stroke="#e5e7eb"/>
     <rect x="1360" y="290" width="680" height="60" fill="#fff" stroke="#e5e7eb"/>
 
-    <text x="20" y="335" class="value">{{road_access}}</text>
-    <text x="700" y="335" class="value">{{private_road}}</text>
-    <text x="1380" y="335" class="value">{{setback}}</text>
+    <text x="20" y="335" class="value">角地 南東 22.0m</text>
+    <text x="700" y="335" class="value">なし</text>
+    <text x="1380" y="335" class="value">なし</text>
   </g>
 
   <!-- 写真エリア -->
   <!-- メイン画像（外観） -->
   <rect x="80" y="1540" width="1350" height="700" fill="#f9fafb" stroke="#e5e7eb" rx="8"/>
-  <image x="80" y="1540" width="1350" height="700" href="{{main_image}}" preserveAspectRatio="xMidYMid slice" clip-path="inset(0 round 8px)"/>
+  <image x="80" y="1540" width="1350" height="700" href="" preserveAspectRatio="xMidYMid slice" clip-path="inset(0 round 8px)"/>
 
   <!-- サブ画像1（内観1） -->
   <rect x="1500" y="1540" width="650" height="330" fill="#f9fafb" stroke="#e5e7eb" rx="8"/>
-  <image x="1500" y="1540" width="650" height="330" href="{{sub_image_1}}" preserveAspectRatio="xMidYMid slice" clip-path="inset(0 round 8px)"/>
+  <image x="1500" y="1540" width="650" height="330" href="" preserveAspectRatio="xMidYMid slice" clip-path="inset(0 round 8px)"/>
 
   <!-- サブ画像2（内観2） -->
   <rect x="2200" y="1540" width="650" height="330" fill="#f9fafb" stroke="#e5e7eb" rx="8"/>
-  <image x="2200" y="1540" width="650" height="330" href="{{sub_image_2}}" preserveAspectRatio="xMidYMid slice" clip-path="inset(0 round 8px)"/>
+  <image x="2200" y="1540" width="650" height="330" href="" preserveAspectRatio="xMidYMid slice" clip-path="inset(0 round 8px)"/>
 
   <!-- サブ画像3（間取り図） -->
   <rect x="1500" y="1910" width="650" height="330" fill="#f9fafb" stroke="#e5e7eb" rx="8"/>
-  <image x="1500" y="1910" width="650" height="330" href="{{sub_image_3}}" preserveAspectRatio="xMidYMid slice" clip-path="inset(0 round 8px)"/>
+  <image x="1500" y="1910" width="650" height="330" href="" preserveAspectRatio="xMidYMid slice" clip-path="inset(0 round 8px)"/>
 
   <!-- サブ画像4（周辺地図） -->
   <rect x="2200" y="1910" width="650" height="330" fill="#f9fafb" stroke="#e5e7eb" rx="8"/>
-  <image x="2200" y="1910" width="650" height="330" href="{{sub_image_4}}" preserveAspectRatio="xMidYMid slice" clip-path="inset(0 round 8px)"/>
+  <image x="2200" y="1910" width="650" height="330" href="" preserveAspectRatio="xMidYMid slice" clip-path="inset(0 round 8px)"/>
 
   <!-- 設備・特徴 -->
   <rect x="80" y="2300" width="2817" height="2" fill="#e5e7eb"/>
   <text x="80" y="2360" class="section-title">設備・特徴</text>
   <rect x="80" y="2390" width="2817" height="150" fill="#fff" stroke="#e5e7eb" rx="8"/>
-  <text x="100" y="2440" class="value">{{amenities}}</text>
+  <text x="100" y="2440" class="value"></text>
 
   <!-- 取引条件 -->
   <rect x="80" y="2580" width="2817" height="2" fill="#e5e7eb"/>
@@ -172,20 +172,20 @@
     <rect x="0" y="50" width="680" height="60" fill="#fff" stroke="#e5e7eb"/>
     <rect x="680" y="50" width="680" height="60" fill="#fff" stroke="#e5e7eb"/>
 
-    <text x="20" y="95" class="value">{{transaction_type}}</text>
-    <text x="700" y="95" class="value">{{delivery_timing}}</text>
+    <text x="20" y="95" class="value">4</text>
+    <text x="700" y="95" class="value">1</text>
   </g>
 
   <!-- 備考 -->
   <rect x="80" y="2860" width="2817" height="2" fill="#e5e7eb"/>
   <text x="80" y="2920" class="section-title">備考</text>
   <rect x="80" y="2950" width="2817" height="150" fill="#fff" stroke="#e5e7eb" rx="8"/>
-  <text x="100" y="3000" class="small">{{remarks}}</text>
+  <text x="100" y="3000" class="small"></text>
 
   <!-- フッター -->
   <rect x="0" y="3900" width="2977" height="281" fill="#1e3a5f"/>
-  <text x="120" y="4000" class="value" fill="#fff">{{company_name}}</text>
-  <text x="120" y="4060" class="label" fill="#ccc">TEL: {{company_phone}} | 免許番号: {{license_number}}</text>
-  <text x="120" y="4110" class="small" fill="#999">{{company_address}}</text>
+  <text x="120" y="4000" class="value" fill="#fff"></text>
+  <text x="120" y="4060" class="label" fill="#ccc">TEL:  | 免許番号: </text>
+  <text x="120" y="4110" class="small" fill="#999"></text>
 
 </svg>

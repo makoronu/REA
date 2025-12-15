@@ -31,7 +31,7 @@ class BaseGenerator(ABC):
     CONFIG_DIR = Path(__file__).parent.parent / "config"
     TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 
-    # フォーマット関数マッピング（メタデータ駆動）
+    # フォーマット関数マッピング（メタデータ駆動）- 基本関数のみ
     FORMAT_FUNCTIONS = {
         "price_man": format_price_man,
         "area_with_tsubo": format_area_with_tsubo,
@@ -40,7 +40,7 @@ class BaseGenerator(ABC):
         "percentage": format_percentage,
         "floor_display": format_floor_display,
         "wareki_year": format_wareki_year,
-        # 計算系は別途処理
+        # 以下は_format_valueで個別処理
     }
 
     def __init__(self):
@@ -82,11 +82,64 @@ class BaseGenerator(ABC):
         if format_type is None:
             return str(value)
 
+        # 基本フォーマット関数
         format_func = self.FORMAT_FUNCTIONS.get(format_type)
         if format_func:
             return format_func(value)
 
+        # 個別フォーマット処理
+        if format_type == "master_option":
+            return self._format_master_option(value)
+        elif format_type == "area_or_none":
+            return f"{value}㎡" if value else "なし"
+        elif format_type == "setback_display":
+            return self._format_setback(value)
+        elif format_type == "road_access_display":
+            return self._format_road_access(value)
+
         # 未知のフォーマットタイプはそのまま返す
+        return str(value)
+
+    def _format_master_option(self, value) -> str:
+        """マスターオプション値をフォーマット
+
+        注: flyer.pyで既にラベルに変換済みなので、そのまま返す
+        """
+        if value is None:
+            return ""
+        return str(value)
+
+    def _format_setback(self, value) -> str:
+        """セットバック表示"""
+        if value is None:
+            return ""
+        if isinstance(value, str) and ":" in value:
+            return value.split(":", 1)[1]
+        return str(value) if value else "なし"
+
+    def _format_road_access(self, value) -> str:
+        """接道状況表示（JSON/dict/文字列対応）"""
+        if value is None:
+            return ""
+        if isinstance(value, dict):
+            parts = []
+            if value.get("road_access"):
+                access = value["road_access"]
+                if ":" in str(access):
+                    parts.append(access.split(":", 1)[1])
+                else:
+                    parts.append(str(access))
+            if value.get("road1_direction"):
+                direction = value["road1_direction"]
+                if ":" in str(direction):
+                    parts.append(direction.split(":", 1)[1])
+                else:
+                    parts.append(str(direction))
+            if value.get("road1_width"):
+                parts.append(f"{value['road1_width']}m")
+            return " ".join(parts) if parts else ""
+        if isinstance(value, str) and ":" in value:
+            return value.split(":", 1)[1]
         return str(value)
 
     def _get_field_value(
@@ -123,6 +176,11 @@ class BaseGenerator(ABC):
             value = property_data.get(column)
         else:
             value = property_data.get(source)
+
+        # json_keyが指定されている場合、JSONBフィールドからキーを抽出
+        json_key = field_config.get("json_key")
+        if json_key and isinstance(value, dict):
+            value = value.get(json_key, "")
 
         # フォーマット適用
         format_type = field_config.get("format")

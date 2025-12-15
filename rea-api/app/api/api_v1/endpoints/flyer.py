@@ -22,7 +22,72 @@ from generators import MaisokuGenerator, ChirashiGenerator
 from utils import ImageHandler
 from shared.database import READatabase
 from pydantic import BaseModel
-from typing import List
+from typing import List, Dict, Any
+
+
+# フィールド名とmaster_category_codeのマッピング
+MASTER_OPTION_FIELDS = {
+    "use_district": "zoning_district",
+    "land_category": "land_category",
+    "land_rights": "land_rights",
+    "city_planning": "city_planning",
+    "setback": "setback",
+    "transaction_type": "transaction_type",
+    "delivery_timing": "delivery_timing",
+    "building_structure": "building_structure",
+}
+
+
+def load_master_options_cache(conn) -> Dict[str, Dict[str, str]]:
+    """
+    master_optionsをキャッシュとして読み込む
+
+    Returns:
+        dict: {category_code: {option_code: option_value}}
+    """
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT mc.category_code, mo.option_code, mo.option_value
+        FROM master_options mo
+        JOIN master_categories mc ON mo.category_id = mc.id
+        WHERE mc.category_code IN %s
+    """, (tuple(MASTER_OPTION_FIELDS.values()),))
+
+    cache = {}
+    for row in cur.fetchall():
+        category_code, option_code, option_value = row
+        if category_code not in cache:
+            cache[category_code] = {}
+        cache[category_code][str(option_code)] = option_value
+    cur.close()
+    return cache
+
+
+def convert_master_options_to_labels(
+    property_data: Dict[str, Any],
+    cache: Dict[str, Dict[str, str]]
+) -> Dict[str, Any]:
+    """
+    物件データ内のmaster_option値をラベルに変換
+
+    Args:
+        property_data: 物件データ
+        cache: master_optionsキャッシュ
+
+    Returns:
+        dict: ラベル変換済み物件データ
+    """
+    for field_name, category_code in MASTER_OPTION_FIELDS.items():
+        if field_name in property_data:
+            value = property_data[field_name]
+            if value is not None and category_code in cache:
+                str_value = str(value)
+                if str_value in cache[category_code]:
+                    property_data[field_name] = cache[category_code][str_value]
+                elif str_value == "0":
+                    # 0は「未設定」として空文字に
+                    property_data[field_name] = ""
+    return property_data
 
 
 class ChirashiRequest(BaseModel):
@@ -114,6 +179,10 @@ def get_property_full_data(property_id: int) -> dict:
             property_data["_main_image"] = images_data["main_image"]
         else:
             property_data["_main_image"] = image_handler.get_image_for_svg(property_id, conn)
+
+        # master_option値をラベルに変換
+        master_cache = load_master_options_cache(conn)
+        property_data = convert_master_options_to_labels(property_data, master_cache)
 
         return property_data
 

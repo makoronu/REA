@@ -56,6 +56,36 @@ fields:
     label_source: column_labels
     format: percentage
 
+  land_category:
+    source: land_info.land_category
+    label_source: column_labels
+    format: master_option
+
+  land_rights:
+    source: land_info.land_rights
+    label_source: column_labels
+    format: master_option
+
+  city_planning:
+    source: land_info.city_planning
+    label_source: column_labels
+    format: master_option
+
+  road_access:
+    source: land_info.road_info
+    label_source: column_labels
+    format: road_access_display
+
+  private_road:
+    source: land_info.private_road_area
+    label_source: column_labels
+    format: area_or_none
+
+  setback:
+    source: land_info.setback
+    label_source: column_labels
+    format: setback_display
+
   # 建物情報
   building_area:
     source: building_info.building_area
@@ -121,3 +151,26 @@ fields:
     order: display_order ASC
     limit: 1
     format: image_url
+
+  # 会社情報（マイソクフッター用）
+  # TODO: companiesテーブル作成後に対応
+  company_name:
+    source: properties.contractor_company_name
+    format: null
+
+  company_phone:
+    source: null  # companiesテーブル未作成
+    format: null
+
+  license_number:
+    source: null  # companiesテーブル未作成
+    format: null
+
+  company_address:
+    source: null  # companiesテーブル未作成
+    format: null
+
+  # 備考
+  remarks:
+    source: properties.remarks
+    format: null
