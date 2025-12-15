@@ -976,12 +976,183 @@ ogr2ogr -f "PostgreSQL" PG:"host=localhost port=5433 dbname=real_estate_db user=
 
 ---
 
+## データ設計正規化（2025-12-15発足） 🔥 最優先
+
+**目的**: メタデータ駆動アーキテクチャの完全実現
+
+**背景（なぜ必要か）**:
+- ENUM型に「3:RC造」のようにコード+ラベルを格納していた → 検索・フィルタが正常動作しない
+- column_labels.enum_values と master_options の二重管理 → どちらが正か不明
+- マスターテーブル乱立 → 統一感なし
+- FK制約なし → データ整合性が担保されない
+
+---
+
+### Phase 1: ENUM廃止 ✅ 完了（2025-12-15）
+
+| # | 項目 | 状態 |
+|---|------|------|
+| 1-1 | 全ENUM型をINTEGER型に変換（17カラム） | [x] |
+| 1-2 | VARCHAR code:label形式をINTEGERに変換（land_category, terrain） | [x] |
+| 1-3 | ラベルのみENUMをINTEGERに変換（publication_status, sales_status, tax_type） | [x] |
+| 1-4 | フロントエンドのvalue送信をコードのみに修正（FieldFactory.tsx） | [x] |
+| 1-5 | m_city_planningマスターテーブル作成 | [x] |
+
+**変換済みカラム一覧**:
+- building_info: building_structure, direction, room_type, parking_availability, parking_type, area_measurement_type, building_manager, management_type, management_association
+- properties: current_status, transaction_type, delivery_timing, price_status, publication_status, sales_status, tax_type
+- land_info: use_district, city_planning, land_rights, setback, land_area_measurement, land_transaction_notice, terrain, land_category
+- property_images: image_type
+
+---
+
+### Phase 2: マスターテーブル統合 🔜 次回着手
+
+**目標**: 選択肢系データを `master_options` に統一
+
+| # | 項目 | 状態 |
+|---|------|------|
+| 2-1 | 現状のマスターテーブル棚卸し | [ ] |
+| 2-2 | 統合対象の特定（重複・類似テーブル） | [ ] |
+| 2-3 | master_categoriesにカテゴリ追加 | [ ] |
+| 2-4 | 既存データをmaster_optionsに移行 | [ ] |
+| 2-5 | 旧マスターテーブル参照を切り替え | [ ] |
+| 2-6 | 旧マスターテーブル削除 | [ ] |
+
+**統合対象候補**:
+| 旧テーブル | 件数 | 移行先 |
+|-----------|------|--------|
+| building_structure | ? | master_options (category=building_structure) |
+| current_status | ? | master_options (category=current_status) |
+| land_rights | ? | master_options (category=land_rights) |
+| property_types | 63 | master_options (category=property_type) |
+| floor_plan_room_types | ? | master_options (category=room_type) |
+| image_types | ? | master_options (category=image_type) |
+
+**維持するテーブル（地理系）**:
+- m_stations（駅）
+- m_facilities（施設）
+- m_schools（学校）
+- m_zoning（用途地域）
+- m_urban_planning（都市計画）
+- m_school_districts（学区）
+- m_postal_codes（郵便番号）
+
+---
+
+### Phase 3: column_labels.enum_values 自動生成化
+
+**目標**: enum_valuesをmaster_optionsから自動生成、手動編集禁止
+
+| # | 項目 | 状態 |
+|---|------|------|
+| 3-1 | column_labelsに `master_category_code` カラム追加 | [ ] |
+| 3-2 | enum_valuesカラムを廃止（またはVIEW化） | [ ] |
+| 3-3 | メタデータAPI修正（master_optionsからoptions生成） | [ ] |
+| 3-4 | 管理画面で選択肢を編集する場合はmaster_optionsを編集 | [ ] |
+
+**Before/After**:
+```
+Before:
+column_labels.enum_values = "1:木造,2:鉄骨造,..." ← 手動管理
+
+After:
+column_labels.master_category_code = "building_structure"
+→ APIがmaster_optionsからoptionsを動的生成
+```
+
+---
+
+### Phase 4: FK制約追加
+
+**目標**: データ整合性の担保
+
+| # | 項目 | 状態 |
+|---|------|------|
+| 4-1 | building_info.building_structure → master_options(code) | [ ] |
+| 4-2 | properties.current_status → master_options(code) | [ ] |
+| 4-3 | land_info.use_district → m_zoning(zone_code) | [ ] |
+| 4-4 | land_info.city_planning → m_city_planning(code) | [ ] |
+| 4-5 | 全INTEGER選択肢カラムにFK制約追加 | [ ] |
+
+**注意**: FK追加前に孤立データ（参照先のないコード）をクリーンアップ必要
+
+---
+
+### Phase 5: property_type 統一
+
+**目標**: property_typeもINTEGER + master_options参照に統一
+
+| # | 項目 | 状態 |
+|---|------|------|
+| 5-1 | property_typesテーブルの構造確認 | [ ] |
+| 5-2 | master_optionsにproperty_typeカテゴリ統合 | [ ] |
+| 5-3 | properties.property_typeをINTEGERに変換 | [ ] |
+| 5-4 | 既存データ移行（"detached" → 1 等） | [ ] |
+| 5-5 | フロントエンド修正（property_type選択） | [ ] |
+
+**現状**:
+```
+properties.property_type = "detached" ← VARCHAR、英語ID
+property_types.id = "detached", label = "一戸建て"
+```
+
+**After**:
+```
+properties.property_type = 1 ← INTEGER
+master_options: category=property_type, code=1, value="一戸建て"
+```
+
+---
+
+### データ設計ルール（今後の開発で必ず守る）
+
+```markdown
+## 選択肢カラムの設計ルール
+
+1. **型は必ずINTEGER**
+   - ENUM禁止（ALTER必要、マイグレーション面倒）
+   - VARCHAR禁止（typo危険、検索効率悪い）
+
+2. **マスターテーブルは2種類のみ**
+   - 選択肢系 → master_options（category + code + value）
+   - 地理系 → m_* テーブル（GeoJSON/PostGIS）
+
+3. **表示ラベルはDBに保存しない**
+   - DBにはコードのみ格納
+   - ラベルはmaster_optionsから取得
+   - 多言語対応の余地を残す
+
+4. **FK制約は必須**
+   - 孤立データ防止
+   - 参照整合性担保
+
+5. **column_labels.enum_valuesは廃止方向**
+   - master_category_codeを使ってmaster_optionsを参照
+   - 二重管理を排除
+```
+
+---
+
+### マイルストーン
+
+| フェーズ | 目標 | 効果 |
+|---------|------|------|
+| Phase 1 | ENUM廃止 | 検索・フィルタ正常動作 |
+| Phase 2 | マスター統合 | 管理コスト削減 |
+| Phase 3 | enum_values自動生成 | 二重管理解消 |
+| Phase 4 | FK制約 | データ整合性担保 |
+| Phase 5 | property_type統一 | 完全なメタデータ駆動 |
+
+---
+
 ## 技術的負債・メモ
 
 - Tailwindのレスポンシブが効かない箇所あり → インラインstyleで対応中
 - 実データ未投入（マスターデータのみ）
 - テストコード未整備
 - エラーハンドリング未整備
+- ~~ENUM型の乱用~~ → Phase 1で解決（2025-12-15）
 
 ---
 
