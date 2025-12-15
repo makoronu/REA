@@ -822,34 +822,35 @@ async def apply_touki_to_property(request: ApplyToukiRequest):
                 (new_remarks, request.property_id)
             )
 
-        # land_info更新
+        # land_info更新（登記情報のみ。住所は上書きしない）
         if land_records:
             chiban_list = ', '.join(r['lot_number'] or '' for r in land_records if r['lot_number'])
             total_land_area = sum(r['land_area_m2'] or 0 for r in land_records)
             land_category = land_records[0]['land_category']
-            location = land_records[0]['location']
+            # 注意: 登記の所在（location）は地番であり、住所（address）ではない
+            # addressフィールドには触らない
 
             # 既存レコードがあるか確認
-            cur.execute("SELECT id FROM land_info WHERE property_id = %s", (request.property_id,))
-            if cur.fetchone():
-                # 更新
+            cur.execute("SELECT id, chiban, land_category, land_area FROM land_info WHERE property_id = %s", (request.property_id,))
+            existing = cur.fetchone()
+            if existing:
+                # 更新（既存値がある場合は上書きしない）
                 cur.execute("""
                     UPDATE land_info SET
-                        chiban = COALESCE(%s, chiban),
-                        land_category = COALESCE(%s, land_category),
-                        land_area = COALESCE(%s, land_area),
-                        address = COALESCE(%s, address),
+                        chiban = CASE WHEN chiban IS NULL OR chiban = '' THEN %s ELSE chiban END,
+                        land_category = CASE WHEN land_category IS NULL OR land_category = '' THEN %s ELSE land_category END,
+                        land_area = CASE WHEN land_area IS NULL THEN %s ELSE land_area END,
                         updated_at = NOW()
                     WHERE property_id = %s
-                """, (chiban_list, land_category, total_land_area, location, request.property_id))
+                """, (chiban_list, land_category, total_land_area, request.property_id))
             else:
-                # 新規作成
+                # 新規作成（addressは空のまま）
                 cur.execute("""
-                    INSERT INTO land_info (property_id, chiban, land_category, land_area, address)
-                    VALUES (%s, %s, %s, %s, %s)
-                """, (request.property_id, chiban_list, land_category, total_land_area, location))
+                    INSERT INTO land_info (property_id, chiban, land_category, land_area)
+                    VALUES (%s, %s, %s, %s)
+                """, (request.property_id, chiban_list, land_category, total_land_area))
 
-        # building_info更新
+        # building_info更新（既存値は上書きしない）
         if building_records:
             br = building_records[0]
             floors_above = None
@@ -863,13 +864,13 @@ async def apply_touki_to_property(request: ApplyToukiRequest):
             # 既存レコードがあるか確認
             cur.execute("SELECT id FROM building_info WHERE property_id = %s", (request.property_id,))
             if cur.fetchone():
-                # 更新
+                # 更新（既存値がある場合は上書きしない）
                 cur.execute("""
                     UPDATE building_info SET
-                        building_structure = COALESCE(%s, building_structure),
-                        total_floor_area = COALESCE(%s, total_floor_area),
-                        construction_date = COALESCE(%s, construction_date),
-                        building_floors_above = COALESCE(%s, building_floors_above),
+                        building_structure = CASE WHEN building_structure IS NULL OR building_structure = '' THEN %s ELSE building_structure END,
+                        total_floor_area = CASE WHEN total_floor_area IS NULL THEN %s ELSE total_floor_area END,
+                        construction_date = CASE WHEN construction_date IS NULL THEN %s ELSE construction_date END,
+                        building_floors_above = CASE WHEN building_floors_above IS NULL THEN %s ELSE building_floors_above END,
                         updated_at = NOW()
                     WHERE property_id = %s
                 """, (structure_enum, br['floor_area_m2'], br['construction_date'], floors_above, request.property_id))
