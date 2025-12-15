@@ -747,9 +747,154 @@ async def create_property_from_touki(request: CreatePropertyFromToukiRequest):
         }
 
 
+class ApplyToukiRequest(BaseModel):
+    property_id: int
+    touki_record_ids: List[int]
+
+
+@router.post("/records/apply-to-property")
+async def apply_touki_to_property(request: ApplyToukiRequest):
+    """登記情報を既存物件に反映（土地・建物情報を上書き更新）"""
+    if not request.touki_record_ids:
+        raise ValidationError("touki_record_ids", "登記レコードIDが必要です")
+
+    with READatabase.cursor(commit=True) as (cur, conn):
+        # 物件存在確認
+        cur.execute("SELECT id FROM properties WHERE id = %s", (request.property_id,))
+        if not cur.fetchone():
+            raise ResourceNotFound("物件", request.property_id)
+
+        land_records = []
+        building_records = []
+
+        # 登記レコード取得
+        for rid in request.touki_record_ids:
+            cur.execute("""
+                SELECT id, real_estate_number, document_type, location,
+                       lot_number, land_category, land_area_m2,
+                       building_number, building_type, structure,
+                       floor_area_m2, floor_areas, construction_date, owners
+                FROM touki_records WHERE id = %s
+            """, (rid,))
+            row = cur.fetchone()
+            if not row:
+                raise ResourceNotFound("登記レコード", rid)
+
+            rec = {
+                'id': row[0], 'real_estate_number': row[1], 'document_type': row[2],
+                'location': row[3], 'lot_number': row[4], 'land_category': row[5],
+                'land_area_m2': row[6], 'building_number': row[7], 'building_type': row[8],
+                'structure': row[9], 'floor_area_m2': row[10], 'floor_areas': row[11],
+                'construction_date': row[12], 'owners': row[13] or []
+            }
+
+            if rec['document_type'] == 'land':
+                land_records.append(rec)
+            else:
+                building_records.append(rec)
+
+        # 所有者情報をremarksに追加
+        owners = []
+        if building_records and building_records[0]['owners']:
+            owners = building_records[0]['owners']
+        elif land_records and land_records[0]['owners']:
+            owners = land_records[0]['owners']
+
+        remarks_parts = []
+        if owners:
+            owner_name = owners[0].get('name', '')
+            owner_address = owners[0].get('address', '')
+            if owner_name:
+                remarks_parts.append(f"【登記情報】所有者: {owner_name}")
+            if owner_address:
+                remarks_parts.append(f"住所: {owner_address}")
+
+        # propertiesのremarksを更新（追記）
+        if remarks_parts:
+            cur.execute("SELECT remarks FROM properties WHERE id = %s", (request.property_id,))
+            current_remarks = cur.fetchone()[0] or ''
+            new_remarks = current_remarks
+            if new_remarks and not new_remarks.endswith('\n'):
+                new_remarks += '\n'
+            new_remarks += '\n'.join(remarks_parts)
+            cur.execute(
+                "UPDATE properties SET remarks = %s, updated_at = NOW() WHERE id = %s",
+                (new_remarks, request.property_id)
+            )
+
+        # land_info更新
+        if land_records:
+            chiban_list = ', '.join(r['lot_number'] or '' for r in land_records if r['lot_number'])
+            total_land_area = sum(r['land_area_m2'] or 0 for r in land_records)
+            land_category = land_records[0]['land_category']
+            location = land_records[0]['location']
+
+            # 既存レコードがあるか確認
+            cur.execute("SELECT id FROM land_info WHERE property_id = %s", (request.property_id,))
+            if cur.fetchone():
+                # 更新
+                cur.execute("""
+                    UPDATE land_info SET
+                        chiban = COALESCE(%s, chiban),
+                        land_category = COALESCE(%s, land_category),
+                        land_area = COALESCE(%s, land_area),
+                        address = COALESCE(%s, address),
+                        updated_at = NOW()
+                    WHERE property_id = %s
+                """, (chiban_list, land_category, total_land_area, location, request.property_id))
+            else:
+                # 新規作成
+                cur.execute("""
+                    INSERT INTO land_info (property_id, chiban, land_category, land_area, address)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (request.property_id, chiban_list, land_category, total_land_area, location))
+
+        # building_info更新
+        if building_records:
+            br = building_records[0]
+            floors_above = None
+            if br['structure']:
+                floor_match = re.search(r'(\d+)階', br['structure'])
+                if floor_match:
+                    floors_above = int(floor_match.group(1))
+
+            structure_enum = map_structure_to_enum(br['structure'])
+
+            # 既存レコードがあるか確認
+            cur.execute("SELECT id FROM building_info WHERE property_id = %s", (request.property_id,))
+            if cur.fetchone():
+                # 更新
+                cur.execute("""
+                    UPDATE building_info SET
+                        building_structure = COALESCE(%s, building_structure),
+                        total_floor_area = COALESCE(%s, total_floor_area),
+                        construction_date = COALESCE(%s, construction_date),
+                        building_floors_above = COALESCE(%s, building_floors_above),
+                        updated_at = NOW()
+                    WHERE property_id = %s
+                """, (structure_enum, br['floor_area_m2'], br['construction_date'], floors_above, request.property_id))
+            else:
+                # 新規作成
+                cur.execute("""
+                    INSERT INTO building_info (property_id, building_structure, total_floor_area, construction_date, building_floors_above)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (request.property_id, structure_enum, br['floor_area_m2'], br['construction_date'], floors_above))
+
+        # 登記レコード削除
+        for rid in request.touki_record_ids:
+            cur.execute("DELETE FROM touki_records WHERE id = %s", (rid,))
+
+        return {
+            "status": "success",
+            "property_id": request.property_id,
+            "message": f"物件ID {request.property_id} に登記情報を反映しました（土地{len(land_records)}筆、建物{len(building_records)}棟）",
+            "applied_records": len(request.touki_record_ids)
+        }
+
+
 @router.post("/records/link")
 async def link_touki_to_property(request: LinkToukiRequest):
-    """既存物件に登記レコードを紐付け"""
+    """既存物件に登記レコードを紐付け（リンクのみ、データ更新なし）"""
     with READatabase.cursor(commit=True) as (cur, conn):
         cur.execute("SELECT id FROM properties WHERE id = %s", (request.property_id,))
         if not cur.fetchone():

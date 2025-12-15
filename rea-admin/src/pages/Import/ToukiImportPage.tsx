@@ -57,10 +57,11 @@ export default function ToukiImportPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [linkingRecordId, setLinkingRecordId] = useState<number | null>(null);
-  const [linkPropertyId, setLinkPropertyId] = useState<string>('');
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [registering, setRegistering] = useState(false);
+  const [showApplyModal, setShowApplyModal] = useState(false);
+  const [applyPropertyId, setApplyPropertyId] = useState<string>('');
+  const [applying, setApplying] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 初回読み込み
@@ -253,26 +254,29 @@ export default function ToukiImportPage() {
   };
 
   // 既存物件に反映（反映後、登記レコードは削除）
-  const handleLinkToProperty = async (record: ToukiRecord) => {
-    const propertyId = parseInt(linkPropertyId);
+  const handleApplyToProperty = async () => {
+    const propertyId = parseInt(applyPropertyId);
     if (!propertyId || isNaN(propertyId)) {
       setError('物件IDを入力してください');
       return;
     }
 
+    if (selectedIds.size === 0) {
+      setError('登記を選択してください');
+      return;
+    }
+
+    setApplying(true);
     setError(null);
     setSuccess(null);
 
     try {
-      const linkType = record.document_type === 'land' ? 'main_land' : 'main_building';
-
-      const res = await fetch(`${API_URL}/api/v1/touki/records/link`, {
+      const res = await fetch(`${API_URL}/api/v1/touki/records/apply-to-property`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           property_id: propertyId,
-          touki_record_id: record.id,
-          link_type: linkType
+          touki_record_ids: Array.from(selectedIds)
         }),
       });
 
@@ -281,20 +285,20 @@ export default function ToukiImportPage() {
         throw new Error(err.detail || '反映に失敗しました');
       }
 
-      // 登記レコードを削除（一時データなので）
-      await fetch(`${API_URL}/api/v1/touki/records/${record.id}`, {
-        method: 'DELETE',
-      });
+      const result = await res.json();
 
-      setSuccess(`物件ID ${propertyId} に登記情報を反映しました`);
-      setLinkingRecordId(null);
-      setLinkPropertyId('');
+      setSuccess(result.message);
+      setShowApplyModal(false);
+      setApplyPropertyId('');
+      setSelectedIds(new Set());
       await loadData();
 
       // 物件編集ページを開く
       window.open(`/properties/${propertyId}/edit`, '_blank');
     } catch (e: any) {
       setError(e.message);
+    } finally {
+      setApplying(false);
     }
   };
 
@@ -503,10 +507,10 @@ export default function ToukiImportPage() {
           </button>
         </div>
 
-        {/* まとめて物件登録ボタン */}
+        {/* アクションバー */}
         {selectedIds.size > 0 && (
           <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-3">
               <div>
                 <span className="font-medium text-blue-800">
                   {selectedIds.size}件の登記を選択中
@@ -516,13 +520,65 @@ export default function ToukiImportPage() {
                   建物{records.filter(r => selectedIds.has(r.id) && r.document_type !== 'land').length}棟）
                 </span>
               </div>
-              <button
-                onClick={handleBulkRegister}
-                disabled={registering}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 font-medium"
-              >
-                {registering ? '登録中...' : 'まとめて物件登録'}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowApplyModal(true)}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium"
+                >
+                  既存物件へ反映
+                </button>
+                <button
+                  onClick={handleBulkRegister}
+                  disabled={registering}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 font-medium"
+                >
+                  {registering ? '登録中...' : '新規物件登録'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 既存物件へ反映モーダル */}
+        {showApplyModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-96 max-w-[90vw]">
+              <h3 className="text-lg font-bold mb-4">既存物件へ登記情報を反映</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                選択した{selectedIds.size}件の登記情報を既存物件に反映します。
+                土地情報・建物情報が更新されます。
+              </p>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  物件ID
+                </label>
+                <input
+                  type="number"
+                  value={applyPropertyId}
+                  onChange={(e) => setApplyPropertyId(e.target.value)}
+                  placeholder="例: 2480"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  autoFocus
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => {
+                    setShowApplyModal(false);
+                    setApplyPropertyId('');
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                >
+                  キャンセル
+                </button>
+                <button
+                  onClick={handleApplyToProperty}
+                  disabled={applying || !applyPropertyId}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50"
+                >
+                  {applying ? '反映中...' : '反映する'}
+                </button>
+              </div>
             </div>
           </div>
         )}
