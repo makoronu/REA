@@ -489,9 +489,14 @@ export const PropertyEditDynamicPage: React.FC = () => {
           <div className="bg-white rounded-lg shadow-xl max-w-4xl max-h-[90vh] w-full mx-4 flex flex-col">
             {/* ヘッダー */}
             <div className="flex items-center justify-between px-6 py-4 border-b">
-              <h3 className="text-lg font-semibold text-gray-900">
-                {previewType === 'maisoku' ? 'マイソク' : 'チラシ'}プレビュー
-              </h3>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {previewType === 'maisoku' ? 'マイソク' : 'チラシ'}プレビュー
+                </h3>
+                <p className="text-sm text-gray-500">
+                  テンプレート: {previewType === 'maisoku' ? '物件種別から自動選択' : 'single（A4全面）'}
+                </p>
+              </div>
               <button
                 onClick={() => setShowPreviewModal(false)}
                 className="text-gray-400 hover:text-gray-600"
