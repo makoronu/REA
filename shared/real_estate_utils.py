@@ -254,3 +254,192 @@ def normalize_property_type(property_type: str) -> str:
         return "事業用"
     else:
         return property_type  # そのまま返す
+
+
+# ==================================================
+# チラシ・マイソク用フォーマット関数
+# ==================================================
+
+SQM_TO_TSUBO = 0.3025  # 1㎡ = 0.3025坪
+
+
+def format_area_with_tsubo(sqm: Optional[float]) -> str:
+    """
+    面積を㎡（坪）形式で表示
+
+    Args:
+        sqm: 面積（㎡）
+
+    Returns:
+        str: フォーマットされた面積文字列
+
+    Examples:
+        >>> format_area_with_tsubo(100.5)
+        '100.50㎡（30.40坪）'
+    """
+    if sqm is None:
+        return "面積未定"
+    tsubo = sqm * SQM_TO_TSUBO
+    return f"{sqm:.2f}㎡（{tsubo:.2f}坪）"
+
+
+def format_area_tsubo_only(sqm: Optional[float]) -> str:
+    """
+    面積を坪のみで表示
+
+    Args:
+        sqm: 面積（㎡）
+
+    Returns:
+        str: 坪数文字列
+
+    Examples:
+        >>> format_area_tsubo_only(100.0)
+        '30.25坪'
+    """
+    if sqm is None:
+        return "未定"
+    tsubo = sqm * SQM_TO_TSUBO
+    return f"{tsubo:.2f}坪"
+
+
+def format_price_man(price: Optional[float]) -> str:
+    """
+    価格を万円表示（1億以上は億円併記）
+    format_price_displayのエイリアス（設計ドキュメント準拠）
+
+    Args:
+        price: 価格（円単位）
+
+    Returns:
+        str: フォーマットされた価格文字列
+    """
+    return format_price_display(price)
+
+
+def format_price_per_tsubo(price: Optional[float], sqm: Optional[float]) -> str:
+    """
+    坪単価を表示
+
+    Args:
+        price: 価格（円単位）
+        sqm: 面積（㎡）
+
+    Returns:
+        str: 坪単価文字列
+
+    Examples:
+        >>> format_price_per_tsubo(30000000, 100.0)
+        '約99万円/坪'
+    """
+    if price is None or sqm is None or sqm <= 0:
+        return "坪単価未定"
+    tsubo = sqm * SQM_TO_TSUBO
+    price_per_tsubo = price / tsubo
+    man = int(price_per_tsubo // 10000)
+    return f"約{man:,}万円/坪"
+
+
+def format_building_age(construction_date) -> str:
+    """
+    築年数を表示
+
+    Args:
+        construction_date: 建築年月日（date, datetime, or str）
+
+    Returns:
+        str: 築年数文字列
+
+    Examples:
+        >>> from datetime import date
+        >>> format_building_age(date(2010, 3, 1))
+        '築15年（平成22年築）'  # 2025年の場合
+    """
+    if construction_date is None:
+        return "築年数不詳"
+
+    # 文字列の場合はパース
+    if isinstance(construction_date, str):
+        year = parse_construction_year(construction_date)
+        if year is None:
+            return "築年数不詳"
+    else:
+        # date or datetime
+        year = construction_date.year
+
+    current_year = datetime.now().year
+    age = current_year - year
+    wareki = format_wareki_year(year)
+    return f"築{age}年（{wareki}築）"
+
+
+def format_wareki_year(year: int) -> str:
+    """
+    西暦を和暦に変換
+
+    Args:
+        year: 西暦年
+
+    Returns:
+        str: 和暦文字列
+
+    Examples:
+        >>> format_wareki_year(2020)
+        '令和2年'
+        >>> format_wareki_year(2000)
+        '平成12年'
+        >>> format_wareki_year(1980)
+        '昭和55年'
+    """
+    if year >= 2019:
+        return f"令和{year - 2018}年"
+    elif year >= 1989:
+        return f"平成{year - 1988}年"
+    elif year >= 1926:
+        return f"昭和{year - 1925}年"
+    elif year >= 1912:
+        return f"大正{year - 1911}年"
+    else:
+        return f"明治{year - 1867}年"
+
+
+def format_percentage(value: Optional[float]) -> str:
+    """
+    パーセンテージ表示
+
+    Args:
+        value: 数値（既にパーセント値の場合）
+
+    Returns:
+        str: パーセンテージ文字列
+
+    Examples:
+        >>> format_percentage(60.5)
+        '60.5%'
+    """
+    if value is None:
+        return "未定"
+    return f"{value}%"
+
+
+def format_floor_display(floor: Optional[int]) -> str:
+    """
+    階数表示
+
+    Args:
+        floor: 階数
+
+    Returns:
+        str: 階数文字列
+
+    Examples:
+        >>> format_floor_display(3)
+        '3階'
+        >>> format_floor_display(-1)
+        '地下1階'
+    """
+    if floor is None:
+        return "階数未定"
+    if floor < 0:
+        return f"地下{abs(floor)}階"
+    return f"{floor}階"
