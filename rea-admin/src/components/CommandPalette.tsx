@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { propertyService } from '../services/propertyService';
 import { metadataService } from '../services/metadataService';
 import { Property } from '../types/property';
+import { parseJapanesePrice, formatPrice } from '../constants';
 
 // フィルターオプションの型
 interface FilterOption {
@@ -17,15 +18,8 @@ interface SearchHistory {
   timestamp: number;
 }
 
-// 価格パース（1000万 → 10000000）
-const parsePrice = (input: string): number | null => {
-  const match = input.match(/(\d+(?:\.\d+)?)\s*(万|億)?/);
-  if (!match) return null;
-  let value = parseFloat(match[1]);
-  if (match[2] === '万') value *= 10000;
-  if (match[2] === '億') value *= 100000000;
-  return value;
-};
+// 価格パース（constants.tsから）
+const parsePrice = parseJapanesePrice;
 
 // 検索クエリをパース（メタデータ駆動）
 const parseSearchQuery = (
@@ -216,12 +210,10 @@ export const CommandPalette = ({ open, onOpenChange }: CommandPaletteProps) => {
     };
   }, [search, executeSearch]);
 
-  // 価格フォーマット
-  const formatPrice = (price?: number) => {
+  // 価格フォーマット（constants.tsのformatPriceを使用）
+  const formatPriceDisplay = (price?: number) => {
     if (!price) return '-';
-    if (price >= 100000000) return (price / 100000000).toFixed(1) + '億円';
-    if (price >= 10000) return Math.round(price / 10000) + '万円';
-    return price.toLocaleString() + '円';
+    return formatPrice(price);
   };
 
   // 物件を選択
@@ -350,7 +342,7 @@ export const CommandPalette = ({ open, onOpenChange }: CommandPaletteProps) => {
                         {property.property_name || '(名称なし)'}
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <span className="font-semibold text-gray-700">{formatPrice(property.sale_price)}</span>
+                        <span className="font-semibold text-gray-700">{formatPriceDisplay(property.sale_price)}</span>
                         <span>·</span>
                         <span>{property.property_type?.replace(/【.*?】/, '') || '-'}</span>
                         {property.sales_status && (

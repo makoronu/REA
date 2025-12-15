@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { propertyService } from '../../services/propertyService';
 import { metadataService } from '../../services/metadataService';
 import { Property, PropertySearchParams } from '../../types/property';
+import { formatPrice } from '../../constants';
 
 // フィルターオプションの型
 interface FilterOption {
@@ -250,11 +251,10 @@ const PropertiesPage = () => {
     setCurrentPage(1);
   };
 
-  const formatPrice = (price?: number) => {
+  // formatPriceはconstants.tsから import済み
+  const formatPriceDisplay = (price?: number) => {
     if (!price) return '-';
-    if (price >= 100000000) return (price / 100000000).toFixed(1) + '億円';
-    if (price >= 10000) return Math.round(price / 10000) + '万円';
-    return price.toLocaleString() + '円';
+    return formatPrice(price);
   };
 
   const formatDate = (date?: string) => {
@@ -267,7 +267,7 @@ const PropertiesPage = () => {
       case 'id': return property.id;
       case 'company_property_number': return property.company_property_number || '-';
       case 'property_name': return property.property_name || '-';
-      case 'sale_price': return formatPrice(property.sale_price);
+      case 'sale_price': return formatPriceDisplay(property.sale_price);
       case 'property_type': {
         // 英語ID（detached等）→日本語ラベル（一戸建て等）に変換
         const typeId = property.property_type?.replace(/【.*?】/, '');

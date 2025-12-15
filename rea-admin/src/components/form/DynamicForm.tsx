@@ -6,6 +6,7 @@ import { useAutoSave } from '../../hooks/useAutoSave';
 import { ColumnWithLabel, metadataService } from '../../services/metadataService';
 import { SelectableListModal, SelectableItem, Category } from '../common/SelectableListModal';
 import { API_URL } from '../../config';
+import { AUTO_SAVE_DELAY_MS } from '../../constants';
 
 // 学校候補の型
 interface SchoolCandidate {
@@ -970,7 +971,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
   isLoading: externalLoading = false,
   showDebug = false,
   autoSave = false,
-  autoSaveDelay = 2000,
+  autoSaveDelay = AUTO_SAVE_DELAY_MS,
 }) => {
   const [activeTab, setActiveTab] = useState(0);
   // 公開バリデーションエラー状態（全モードで必要なため、早期リターン前に定義）

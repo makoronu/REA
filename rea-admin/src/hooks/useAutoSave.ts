@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
+import { AUTO_SAVE_DELAY_MS } from '../constants';
 
 // 保存状態
 export type SaveStatus = 'idle' | 'unsaved' | 'saving' | 'saved' | 'error';
@@ -67,7 +68,7 @@ const debounce = <T extends (...args: any[]) => any>(fn: T, delay: number) => {
 };
 
 export const useAutoSave = (data: any, options: UseAutoSaveOptions) => {
-  const { delay = 2000, onSave, enabled = true } = options;
+  const { delay = AUTO_SAVE_DELAY_MS, onSave, enabled = true } = options;
 
   const [state, setState] = useState<AutoSaveState>({
     isSaving: false,

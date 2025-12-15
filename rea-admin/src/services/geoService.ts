@@ -1,5 +1,6 @@
 // 地理情報API
 import { api } from './api';
+import { DEFAULT_SEARCH_RADIUS_M } from '../constants';
 
 // 郵便番号検索結果
 export interface PostalCodeResult {
@@ -75,7 +76,7 @@ export const geoService = {
   async getNearestStations(
     lat: number,
     lng: number,
-    radius: number = 2000,
+    radius: number = DEFAULT_SEARCH_RADIUS_M,
     limit: number = 10
   ): Promise<NearestStationsResponse> {
     const response = await api.get('/geo/nearest-stations', {

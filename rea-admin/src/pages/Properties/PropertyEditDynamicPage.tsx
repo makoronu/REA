@@ -17,6 +17,9 @@ export const PropertyEditDynamicPage: React.FC = () => {
   const [isSettingSchoolDistricts, setIsSettingSchoolDistricts] = useState(false);
   const [isSettingZoning, setIsSettingZoning] = useState(false);
   const [isGeneratingFlyer, setIsGeneratingFlyer] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewSvg, setPreviewSvg] = useState<string | null>(null);
+  const [previewType, setPreviewType] = useState<'maisoku' | 'chirashi'>('maisoku');
 
   // 既存データの取得（関連テーブル含む）
   useEffect(() => {
@@ -147,6 +150,50 @@ export const PropertyEditDynamicPage: React.FC = () => {
     } finally {
       setIsGeneratingFlyer(false);
     }
+  };
+
+  // プレビュー表示
+  const handlePreview = async (type: 'maisoku' | 'chirashi') => {
+    if (!id || isNew) return;
+
+    setIsGeneratingFlyer(true);
+    setPreviewType(type);
+    try {
+      let response;
+      if (type === 'maisoku') {
+        response = await fetch(`${API_URL}/api/v1/flyer/maisoku/${id}?format=svg`, {
+          method: 'POST',
+        });
+      } else {
+        response = await fetch(`${API_URL}/api/v1/flyer/chirashi?format=svg`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ property_ids: [parseInt(id)], layout: 'single' }),
+        });
+      }
+
+      if (!response.ok) {
+        throw new Error('プレビュー生成に失敗しました');
+      }
+
+      const svgText = await response.text();
+      setPreviewSvg(svgText);
+      setShowPreviewModal(true);
+    } catch (err: any) {
+      setError(err.message || 'プレビュー生成に失敗しました');
+    } finally {
+      setIsGeneratingFlyer(false);
+    }
+  };
+
+  // プレビューからダウンロード
+  const handleDownloadFromPreview = (format: 'svg' | 'png') => {
+    if (previewType === 'maisoku') {
+      handleGenerateMaisoku(format);
+    } else {
+      handleGenerateChirashi(format);
+    }
+    setShowPreviewModal(false);
   };
 
   // 用途地域自動設定
@@ -320,15 +367,15 @@ export const PropertyEditDynamicPage: React.FC = () => {
                 )}
               </button>
             )}
-            {/* マイソク生成ボタン */}
+            {/* マイソク生成ボタン（プレビュー付き） */}
             {!isNew && (
               <div className="relative group">
                 <button
-                  onClick={() => handleGenerateMaisoku('svg')}
+                  onClick={() => handlePreview('maisoku')}
                   disabled={isGeneratingFlyer}
-                  className="px-4 py-2 text-sm font-medium text-white bg-orange-600 border border-orange-600 rounded-md hover:bg-orange-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-4 py-2 text-sm font-medium text-white bg-orange-600 border border-orange-600 rounded-l-md hover:bg-orange-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  {isGeneratingFlyer ? (
+                  {isGeneratingFlyer && previewType === 'maisoku' ? (
                     <>
                       <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
@@ -345,32 +392,54 @@ export const PropertyEditDynamicPage: React.FC = () => {
                     </>
                   )}
                 </button>
+                <button
+                  onClick={() => handleGenerateMaisoku('svg')}
+                  disabled={isGeneratingFlyer}
+                  className="px-2 py-2 text-sm font-medium text-white bg-orange-600 border-l border-orange-500 rounded-r-md hover:bg-orange-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  title="SVGダウンロード"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                </button>
               </div>
             )}
-            {/* チラシ生成ボタン */}
+            {/* チラシ生成ボタン（プレビュー付き） */}
             {!isNew && (
-              <button
-                onClick={() => handleGenerateChirashi('svg')}
-                disabled={isGeneratingFlyer}
-                className="px-4 py-2 text-sm font-medium text-white bg-pink-600 border border-pink-600 rounded-md hover:bg-pink-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {isGeneratingFlyer ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    生成中...
-                  </>
-                ) : (
-                  <>
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                    </svg>
-                    チラシ
-                  </>
-                )}
-              </button>
+              <div className="relative group">
+                <button
+                  onClick={() => handlePreview('chirashi')}
+                  disabled={isGeneratingFlyer}
+                  className="px-4 py-2 text-sm font-medium text-white bg-pink-600 border border-pink-600 rounded-l-md hover:bg-pink-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isGeneratingFlyer && previewType === 'chirashi' ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      生成中...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                      </svg>
+                      チラシ
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => handleGenerateChirashi('svg')}
+                  disabled={isGeneratingFlyer}
+                  className="px-2 py-2 text-sm font-medium text-white bg-pink-600 border-l border-pink-500 rounded-r-md hover:bg-pink-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  title="SVGダウンロード"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                </button>
+              </div>
             )}
             {/* 戻るボタン */}
             <button
@@ -413,6 +482,73 @@ export const PropertyEditDynamicPage: React.FC = () => {
 
       {/* 保存状態の表示 */}
       {renderSaveStatus()}
+
+      {/* プレビューモーダル */}
+      {showPreviewModal && previewSvg && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl max-h-[90vh] w-full mx-4 flex flex-col">
+            {/* ヘッダー */}
+            <div className="flex items-center justify-between px-6 py-4 border-b">
+              <h3 className="text-lg font-semibold text-gray-900">
+                {previewType === 'maisoku' ? 'マイソク' : 'チラシ'}プレビュー
+              </h3>
+              <button
+                onClick={() => setShowPreviewModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* プレビュー表示エリア */}
+            <div className="flex-1 overflow-auto p-4 bg-gray-100">
+              <div
+                className="bg-white shadow-lg mx-auto"
+                style={{
+                  maxWidth: '500px',
+                  transform: 'scale(1)',
+                  transformOrigin: 'top center'
+                }}
+              >
+                <div
+                  style={{
+                    width: '100%',
+                    height: 'auto',
+                    aspectRatio: '210 / 297'
+                  }}
+                  dangerouslySetInnerHTML={{
+                    __html: previewSvg.replace(
+                      /width="[^"]*"\s*height="[^"]*"/,
+                      'width="100%" height="100%" preserveAspectRatio="xMidYMid meet"'
+                    )
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* フッター：ダウンロードボタン */}
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t bg-gray-50">
+              <button
+                onClick={() => setShowPreviewModal(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                閉じる
+              </button>
+              <button
+                onClick={() => handleDownloadFromPreview('svg')}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 flex items-center gap-2"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                SVGダウンロード
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
