@@ -7,6 +7,7 @@ import FieldVisibilityPage from './pages/admin/FieldVisibilityPage';
 import ZoningMapPage from './pages/ZoningMap/ZoningMapPage';
 import ZohoImportPage from './pages/Import/ZohoImportPage';
 import ToukiImportPage from './pages/Import/ToukiImportPage';
+import IntegrationsPage from './pages/Settings/IntegrationsPage';
 import CommandPalette from './components/CommandPalette';
 import './styles/globals.css';
 
@@ -38,6 +39,7 @@ function App() {
           <Route path="/map/zoning" element={<ZoningMapPage />} />
           <Route path="/import/zoho" element={<ZohoImportPage />} />
           <Route path="/import/touki" element={<ToukiImportPage />} />
+          <Route path="/settings/integrations" element={<IntegrationsPage />} />
         </Routes>
       </Layout>
       <CommandPalette open={commandPaletteOpen} onOpenChange={setCommandPaletteOpen} />

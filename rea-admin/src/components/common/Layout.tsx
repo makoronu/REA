@@ -94,6 +94,7 @@ const Layout: React.FC<LayoutProps> = ({ children, onOpenCommandPalette }) => {
     { path: '/properties', label: '物件一覧', icon: '🏠' },
     { path: '/properties/new', label: '新規登録', icon: '➕' },
     { path: '/import/touki', label: '登記取込', icon: '📄' },
+    { path: '/settings/integrations', label: '外部連携', icon: '🔄' },
     { path: '/admin/field-visibility', label: '管理', icon: '⚙️' },
   ];
 
