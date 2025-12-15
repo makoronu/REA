@@ -1,0 +1,18 @@
+# 出力設定（ハードコーディング禁止）
+output:
+  format: svg
+  color_mode: cmyk
+  bleed_mm: 3
+  dpi: 350
+  font_family: "Noto Sans JP"
+
+paper_sizes:
+  a4:
+    width_mm: 210
+    height_mm: 297
+  b4:
+    width_mm: 257
+    height_mm: 364
+
+# mm → px変換用（350dpi）
+mm_to_px_ratio: 13.78  # 350 / 25.4

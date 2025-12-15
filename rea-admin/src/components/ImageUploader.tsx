@@ -20,7 +20,7 @@ interface ImageUploaderProps {
 }
 
 const ImageUploader: React.FC<ImageUploaderProps> = ({
-  propertyId,
+  propertyId: _propertyId,
   images = [],
   onImageUpload,
   onImageDelete,
@@ -142,7 +142,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
   };
 
   // ドラッグ&ドロップによる並び替え
-  const handleDragStart = (e: React.DragEvent, index: number) => {
+  const handleDragStart = (_e: React.DragEvent, index: number) => {
     setDraggedIndex(index);
   };
 

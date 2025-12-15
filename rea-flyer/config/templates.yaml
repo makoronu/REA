@@ -1,0 +1,74 @@
+# テンプレート定義（メタデータ駆動の核心）
+maisoku:
+  land:
+    template: maisoku/land.svg
+    property_types: [land]
+    paper_size: a4
+    sections:
+      - name: header
+        fields: [property_name, price, price_per_tsubo]
+      - name: location
+        fields: [address, access]
+      - name: land_info
+        fields: [land_area, land_area_tsubo, use_district, building_coverage, floor_area_ratio]
+      - name: transaction
+        fields: [transaction_type, delivery_timing]
+
+  detached:
+    template: maisoku/detached.svg
+    property_types: [detached]
+    paper_size: a4
+    sections:
+      - name: header
+        fields: [property_name, price]
+      - name: location
+        fields: [address, access]
+      - name: building_info
+        fields: [building_area, floor_plan, building_structure, construction_date]
+      - name: land_info
+        fields: [land_area, use_district]
+
+  apartment:
+    template: maisoku/apartment.svg
+    property_types: [apartment]
+    paper_size: a4
+    sections:
+      - name: header
+        fields: [property_name, price]
+      - name: location
+        fields: [address, access]
+      - name: building_info
+        fields: [building_area, floor_plan, floor, total_floors, construction_date]
+
+  investment:
+    template: maisoku/investment.svg
+    property_types: [investment]
+    paper_size: a4
+    sections:
+      - name: header
+        fields: [property_name, price, yield_rate]
+      - name: location
+        fields: [address, access]
+      - name: building_info
+        fields: [building_area, building_structure, construction_date]
+      - name: income
+        fields: [monthly_rent, annual_income]
+
+chirashi:
+  single:
+    template: chirashi/single.svg
+    max_properties: 1
+    paper_size: a4
+    layout: full_page
+
+  dual:
+    template: chirashi/dual.svg
+    max_properties: 2
+    paper_size: a4
+    layout: split_horizontal
+
+  grid:
+    template: chirashi/grid.svg
+    max_properties: 4
+    paper_size: a4
+    layout: grid_2x2

@@ -130,11 +130,11 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
     onChange(newImages);
   };
 
-  const getImageTypeLabel = (typeValue: string) => {
+  const _getImageTypeLabel = (typeValue: string) => {
     return IMAGE_TYPES.find(t => t.value === typeValue)?.label || '未分類';
   };
 
-  const getImageTypeIcon = (typeValue: string) => {
+  const _getImageTypeIcon = (typeValue: string) => {
     return IMAGE_TYPES.find(t => t.value === typeValue)?.icon || '📁';
   };
 

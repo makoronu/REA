@@ -1,0 +1,122 @@
+# DB列 → 出力フィールドマッピング
+# format: shared/format_utils.py の関数名
+
+fields:
+  # 基本情報
+  property_name:
+    source: properties.property_name
+    label_source: column_labels
+    format: null  # そのまま出力
+
+  price:
+    source: properties.sale_price
+    label_source: column_labels
+    format: price_man
+
+  price_per_tsubo:
+    source: null  # 計算フィールド
+    calculate: sale_price / (land_area * 0.3025)
+    format: price_man_per_tsubo
+
+  # 所在地
+  address:
+    source: properties.full_address
+    label_source: column_labels
+    format: null
+
+  access:
+    source: properties.access
+    label_source: column_labels
+    format: null
+
+  # 土地情報
+  land_area:
+    source: land_info.land_area
+    label_source: column_labels
+    format: area_with_tsubo
+
+  land_area_tsubo:
+    source: land_info.land_area
+    label_source: column_labels
+    format: area_tsubo_only
+
+  use_district:
+    source: land_info.use_district
+    label_source: column_labels
+    format: master_option  # master_optionsからラベル取得
+
+  building_coverage:
+    source: land_info.building_coverage_ratio
+    label_source: column_labels
+    format: percentage
+
+  floor_area_ratio:
+    source: land_info.floor_area_ratio
+    label_source: column_labels
+    format: percentage
+
+  # 建物情報
+  building_area:
+    source: building_info.building_area
+    label_source: column_labels
+    format: area_with_tsubo
+
+  floor_plan:
+    source: building_info.floor_plan
+    label_source: column_labels
+    format: null
+
+  building_structure:
+    source: building_info.building_structure
+    label_source: column_labels
+    format: master_option
+
+  construction_date:
+    source: building_info.construction_date
+    label_source: column_labels
+    format: building_age
+
+  floor:
+    source: building_info.floor
+    label_source: column_labels
+    format: floor_display
+
+  total_floors:
+    source: building_info.total_floors
+    label_source: column_labels
+    format: null
+
+  # 取引情報
+  transaction_type:
+    source: properties.transaction_type
+    label_source: column_labels
+    format: master_option
+
+  delivery_timing:
+    source: properties.delivery_timing
+    label_source: column_labels
+    format: null
+
+  # 収益物件用
+  yield_rate:
+    source: properties.yield_rate
+    label_source: column_labels
+    format: percentage
+
+  monthly_rent:
+    source: properties.monthly_rent
+    label_source: column_labels
+    format: price_man
+
+  annual_income:
+    source: null  # 計算フィールド
+    calculate: monthly_rent * 12
+    format: price_man
+
+  # 画像
+  main_photo:
+    source: property_images.image_url
+    filter: image_type = 'exterior'
+    order: display_order ASC
+    limit: 1
+    format: image_url

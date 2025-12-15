@@ -131,7 +131,7 @@ export const CommandPalette = ({ open, onOpenChange }: CommandPaletteProps) => {
   const [search, setSearch] = useState('');
   const [results, setResults] = useState<Property[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [_selectedIndex, _setSelectedIndex] = useState(0);
   const [history, setHistory] = useState<SearchHistory[]>([]);
   const searchTimeout = useRef<NodeJS.Timeout>();
 

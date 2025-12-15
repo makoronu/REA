@@ -53,7 +53,7 @@ export default function ToukiImportPage() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [parsing, setParsingId] = useState<number | null>(null);
-  const [creating, setCreatingId] = useState<number | null>(null);
+  const [_creating, setCreatingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -191,8 +191,8 @@ export default function ToukiImportPage() {
     }
   };
 
-  // 物件登録（登録後、登記レコードは削除）
-  const handleCreateProperty = async (record: ToukiRecord) => {
+  // 物件登録（登録後、登記レコードは削除）- 将来使用予定
+  const _handleCreateProperty = async (record: ToukiRecord) => {
     setCreatingId(record.id);
     setError(null);
     setSuccess(null);
