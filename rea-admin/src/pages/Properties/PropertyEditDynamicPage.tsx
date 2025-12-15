@@ -3,8 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { PropertyFullForm } from '../../components/form/DynamicForm';
 import { propertyService } from '../../services/propertyService';
 import { Property } from '../../types/property';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8005';
+import { API_URL } from '../../config';
 
 export const PropertyEditDynamicPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -17,6 +16,7 @@ export const PropertyEditDynamicPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSettingSchoolDistricts, setIsSettingSchoolDistricts] = useState(false);
   const [isSettingZoning, setIsSettingZoning] = useState(false);
+  const [isGeneratingFlyer, setIsGeneratingFlyer] = useState(false);
 
   // 既存データの取得（関連テーブル含む）
   useEffect(() => {
@@ -75,6 +75,77 @@ export const PropertyEditDynamicPage: React.FC = () => {
       setSaveStatus('error');
     } finally {
       setIsSettingSchoolDistricts(false);
+    }
+  };
+
+  // マイソク生成
+  const handleGenerateMaisoku = async (format: 'svg' | 'png' = 'svg') => {
+    if (!id || isNew) return;
+
+    setIsGeneratingFlyer(true);
+    try {
+      const response = await fetch(`${API_URL}/api/v1/flyer/maisoku/${id}?format=${format}`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error('マイソク生成に失敗しました');
+      }
+
+      // ファイルをダウンロード
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `maisoku_${id}.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    } catch (err: any) {
+      setError(err.message || 'マイソク生成に失敗しました');
+      setSaveStatus('error');
+    } finally {
+      setIsGeneratingFlyer(false);
+    }
+  };
+
+  // チラシ生成
+  const handleGenerateChirashi = async (format: 'svg' | 'png' = 'svg') => {
+    if (!id || isNew) return;
+
+    setIsGeneratingFlyer(true);
+    try {
+      const response = await fetch(`${API_URL}/api/v1/flyer/chirashi?format=${format}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ property_ids: [parseInt(id)], layout: 'single' }),
+      });
+
+      if (!response.ok) {
+        throw new Error('チラシ生成に失敗しました');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `chirashi_${id}.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    } catch (err: any) {
+      setError(err.message || 'チラシ生成に失敗しました');
+      setSaveStatus('error');
+    } finally {
+      setIsGeneratingFlyer(false);
     }
   };
 
@@ -246,6 +317,58 @@ export const PropertyEditDynamicPage: React.FC = () => {
                   </>
                 ) : (
                   '学区を自動取得'
+                )}
+              </button>
+            )}
+            {/* マイソク生成ボタン */}
+            {!isNew && (
+              <div className="relative group">
+                <button
+                  onClick={() => handleGenerateMaisoku('svg')}
+                  disabled={isGeneratingFlyer}
+                  className="px-4 py-2 text-sm font-medium text-white bg-orange-600 border border-orange-600 rounded-md hover:bg-orange-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isGeneratingFlyer ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      生成中...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      マイソク
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+            {/* チラシ生成ボタン */}
+            {!isNew && (
+              <button
+                onClick={() => handleGenerateChirashi('svg')}
+                disabled={isGeneratingFlyer}
+                className="px-4 py-2 text-sm font-medium text-white bg-pink-600 border border-pink-600 rounded-md hover:bg-pink-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isGeneratingFlyer ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    生成中...
+                  </>
+                ) : (
+                  <>
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                    チラシ
+                  </>
                 )}
               </button>
             )}

@@ -440,21 +440,27 @@ def get_filter_options(db: Session = Depends(dependencies.get_db)) -> Dict[str, 
             column_name = row.column_name
             master_category_code = row.master_category_code
 
-            # master_optionsから選択肢を取得
+            # master_optionsから選択肢を取得（metadataも含む）
             options_query = text("""
-                SELECT mo.option_value
+                SELECT mo.option_value, mo.metadata
                 FROM master_options mo
                 JOIN master_categories mc ON mo.category_id = mc.id
                 WHERE mc.category_code = :category_code
-                AND mo.source = 'rea'
                 AND mo.is_active = true
                 ORDER BY mo.display_order
             """)
             options_result = db.execute(options_query, {"category_code": master_category_code})
-            options = [
-                {"value": opt_row.option_value, "label": opt_row.option_value}
-                for opt_row in options_result
-            ]
+            import json
+            options = []
+            for opt_row in options_result:
+                opt = {"value": opt_row.option_value, "label": opt_row.option_value}
+                if opt_row.metadata:
+                    meta = json.loads(opt_row.metadata) if isinstance(opt_row.metadata, str) else opt_row.metadata
+                    if 'color' in meta:
+                        opt['color'] = meta['color']
+                    if 'bg' in meta:
+                        opt['bg'] = meta['bg']
+                options.append(opt)
             if options:
                 filter_options[column_name] = options
 

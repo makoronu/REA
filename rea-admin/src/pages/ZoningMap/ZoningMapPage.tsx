@@ -1,8 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8005';
+import { API_URL } from '../../config';
 
 // 用途地域の色マッピング
 const ZONE_COLORS: Record<number, string> = {

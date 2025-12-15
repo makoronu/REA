@@ -168,7 +168,7 @@ def calculate_property_age(construction_year: Optional[int]) -> Optional[int]:
     return max(0, age)  # 負の値にはならない
 
 
-def format_price_display(price: Optional[float]) -> str:
+def format_price_display(price) -> str:
     """
     価格を表示用にフォーマット
 
@@ -184,6 +184,7 @@ def format_price_display(price: Optional[float]) -> str:
         >>> format_price_display(120000000)
         "1億2,000万円"
     """
+    price = to_float(price)
     if price is None:
         return "価格未定"
 
@@ -201,9 +202,7 @@ def format_price_display(price: Optional[float]) -> str:
         return f"{int(price):,}円"
 
 
-def calculate_yield(
-    price: Optional[float], monthly_rent: Optional[float]
-) -> Optional[float]:
+def calculate_yield(price, monthly_rent) -> Optional[float]:
     """
     表面利回りを計算
 
@@ -219,6 +218,8 @@ def calculate_yield(
         >>> calculate_yield(12000000, 80000)
         8.0
     """
+    price = to_float(price)
+    monthly_rent = to_float(monthly_rent)
     if price is None or monthly_rent is None or price <= 0:
         return None
 
@@ -260,10 +261,21 @@ def normalize_property_type(property_type: str) -> str:
 # チラシ・マイソク用フォーマット関数
 # ==================================================
 
+from decimal import Decimal
+
 SQM_TO_TSUBO = 0.3025  # 1㎡ = 0.3025坪
 
 
-def format_area_with_tsubo(sqm: Optional[float]) -> str:
+def to_float(value) -> Optional[float]:
+    """値をfloatに変換（Decimal対応）"""
+    if value is None:
+        return None
+    if isinstance(value, Decimal):
+        return float(value)
+    return float(value)
+
+
+def format_area_with_tsubo(sqm) -> str:
     """
     面積を㎡（坪）形式で表示
 
@@ -277,13 +289,14 @@ def format_area_with_tsubo(sqm: Optional[float]) -> str:
         >>> format_area_with_tsubo(100.5)
         '100.50㎡（30.40坪）'
     """
+    sqm = to_float(sqm)
     if sqm is None:
         return "面積未定"
     tsubo = sqm * SQM_TO_TSUBO
     return f"{sqm:.2f}㎡（{tsubo:.2f}坪）"
 
 
-def format_area_tsubo_only(sqm: Optional[float]) -> str:
+def format_area_tsubo_only(sqm) -> str:
     """
     面積を坪のみで表示
 
@@ -297,6 +310,7 @@ def format_area_tsubo_only(sqm: Optional[float]) -> str:
         >>> format_area_tsubo_only(100.0)
         '30.25坪'
     """
+    sqm = to_float(sqm)
     if sqm is None:
         return "未定"
     tsubo = sqm * SQM_TO_TSUBO
@@ -317,7 +331,7 @@ def format_price_man(price: Optional[float]) -> str:
     return format_price_display(price)
 
 
-def format_price_per_tsubo(price: Optional[float], sqm: Optional[float]) -> str:
+def format_price_per_tsubo(price, sqm) -> str:
     """
     坪単価を表示
 
@@ -332,6 +346,8 @@ def format_price_per_tsubo(price: Optional[float], sqm: Optional[float]) -> str:
         >>> format_price_per_tsubo(30000000, 100.0)
         '約99万円/坪'
     """
+    price = to_float(price)
+    sqm = to_float(sqm)
     if price is None or sqm is None or sqm <= 0:
         return "坪単価未定"
     tsubo = sqm * SQM_TO_TSUBO
@@ -403,7 +419,7 @@ def format_wareki_year(year: int) -> str:
         return f"明治{year - 1867}年"
 
 
-def format_percentage(value: Optional[float]) -> str:
+def format_percentage(value) -> str:
     """
     パーセンテージ表示
 
@@ -417,6 +433,7 @@ def format_percentage(value: Optional[float]) -> str:
         >>> format_percentage(60.5)
         '60.5%'
     """
+    value = to_float(value)
     if value is None:
         return "未定"
     return f"{value}%"

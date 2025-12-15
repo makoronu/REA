@@ -20,6 +20,7 @@ from shared.real_estate_utils import (
     format_price_man,
     format_price_per_tsubo,
     format_wareki_year,
+    to_float,
 )
 
 
@@ -171,7 +172,7 @@ class BaseGenerator(ABC):
 
         # 年間収入の場合
         if "monthly_rent" in calculate and "12" in calculate:
-            monthly = property_data.get("monthly_rent")
+            monthly = to_float(property_data.get("monthly_rent"))
             if monthly:
                 return format_price_man(monthly * 12)
             return "収入未定"

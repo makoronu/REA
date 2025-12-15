@@ -5,8 +5,7 @@
  * レイアウト: 物件種別が行、フィールドが列（横スクロール不要）
  */
 import React, { useState, useEffect } from 'react';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8005';
+import { API_URL } from '../../config';
 
 // 型定義
 interface PropertyType {

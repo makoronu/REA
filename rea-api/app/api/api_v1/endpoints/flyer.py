@@ -18,8 +18,16 @@ sys.path.insert(0, str(REA_ROOT))
 FLYER_PATH = REA_ROOT / "rea-flyer"
 sys.path.insert(0, str(FLYER_PATH))
 
-from generators import MaisokuGenerator
+from generators import MaisokuGenerator, ChirashiGenerator
 from shared.database import READatabase
+from pydantic import BaseModel
+from typing import List
+
+
+class ChirashiRequest(BaseModel):
+    """チラシ生成リクエスト"""
+    property_ids: List[int]
+    layout: str = "single"  # single, dual, grid
 
 router = APIRouter()
 
@@ -164,6 +172,83 @@ async def preview_maisoku(property_id: int):
         PNG画像
     """
     return await generate_maisoku(property_id, format="png")
+
+
+@router.post("/chirashi")
+async def generate_chirashi(
+    request: ChirashiRequest,
+    format: str = Query(default="svg", description="出力形式（svg/png）"),
+):
+    """
+    チラシを生成（複数物件対応）
+
+    Args:
+        request: チラシ生成リクエスト（property_ids, layout）
+        format: 出力形式（svg/png）
+
+    Returns:
+        SVGまたはPNG
+    """
+    try:
+        # 物件データ取得
+        properties = []
+        for pid in request.property_ids:
+            try:
+                prop_data = get_property_full_data(pid)
+                properties.append(prop_data)
+            except HTTPException:
+                continue  # 存在しない物件はスキップ
+
+        if not properties:
+            raise HTTPException(status_code=404, detail="有効な物件が見つかりません")
+
+        # チラシ生成
+        generator = ChirashiGenerator()
+        svg_content = generator.generate_multi(properties, layout=request.layout)
+
+        ids_str = "_".join(str(pid) for pid in request.property_ids[:4])
+
+        if format == "svg":
+            return Response(
+                content=svg_content,
+                media_type="image/svg+xml",
+                headers={
+                    "Content-Disposition": f"attachment; filename=chirashi_{ids_str}.svg"
+                },
+            )
+        elif format == "png":
+            import cairosvg
+
+            png_content = cairosvg.svg2png(bytestring=svg_content.encode("utf-8"))
+            return Response(
+                content=png_content,
+                media_type="image/png",
+                headers={
+                    "Content-Disposition": f"attachment; filename=chirashi_{ids_str}.png"
+                },
+            )
+        else:
+            raise HTTPException(status_code=400, detail=f"未対応の形式: {format}")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"チラシ生成エラー: {str(e)}")
+
+
+@router.get("/chirashi/{property_id}/preview")
+async def preview_chirashi(property_id: int):
+    """
+    チラシプレビュー（単一物件、PNG形式）
+
+    Args:
+        property_id: 物件ID
+
+    Returns:
+        PNG画像
+    """
+    request = ChirashiRequest(property_ids=[property_id], layout="single")
+    return await generate_chirashi(request, format="png")
 
 
 @router.get("/templates")

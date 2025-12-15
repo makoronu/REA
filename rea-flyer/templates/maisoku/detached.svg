@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 戸建用マイソクテンプレート（A4 + 塗り足し3mm） -->
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="2977" height="4181"
+     viewBox="0 0 2977 4181">
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&amp;display=swap');
+    .title { font-family: "Noto Sans JP", sans-serif; font-size: 48px; font-weight: bold; fill: #1a1a1a; }
+    .section-title { font-family: "Noto Sans JP", sans-serif; font-size: 28px; font-weight: bold; fill: #333; }
+    .label { font-family: "Noto Sans JP", sans-serif; font-size: 20px; fill: #666; }
+    .value { font-family: "Noto Sans JP", sans-serif; font-size: 24px; fill: #1a1a1a; }
+    .price { font-family: "Noto Sans JP", sans-serif; font-size: 64px; font-weight: bold; fill: #c41e3a; }
+    .address { font-family: "Noto Sans JP", sans-serif; font-size: 28px; fill: #1a1a1a; }
+    .small { font-family: "Noto Sans JP", sans-serif; font-size: 16px; fill: #888; }
+    .highlight { fill: #2563eb; }
+  </style>
+
+  <!-- 背景 -->
+  <rect width="100%" height="100%" fill="#ffffff"/>
+
+  <!-- ヘッダー：物件種別 -->
+  <rect x="80" y="80" width="200" height="60" rx="4" fill="#16a34a"/>
+  <text x="180" y="120" class="label" fill="#fff" text-anchor="middle">売戸建</text>
+
+  <!-- 物件名 -->
+  <text x="80" y="220" class="title">{{property_name}}</text>
+
+  <!-- 価格セクション -->
+  <rect x="80" y="260" width="2817" height="160" fill="#f0fdf4" rx="8"/>
+  <text x="120" y="320" class="label">販売価格</text>
+  <text x="120" y="390" class="price">{{price}}</text>
+
+  <!-- 所在地セクション -->
+  <rect x="80" y="460" width="2817" height="2" fill="#e5e7eb"/>
+  <text x="80" y="520" class="section-title">所在地・交通</text>
+  <text x="80" y="570" class="address">{{address}}</text>
+  <text x="80" y="620" class="label">交通</text>
+  <text x="200" y="620" class="value">{{access}}</text>
+
+  <!-- 建物情報セクション -->
+  <rect x="80" y="680" width="2817" height="2" fill="#e5e7eb"/>
+  <text x="80" y="740" class="section-title">建物情報</text>
+
+  <g transform="translate(80, 780)">
+    <rect x="0" y="0" width="680" height="50" fill="#f3f4f6"/>
+    <rect x="680" y="0" width="680" height="50" fill="#f3f4f6"/>
+    <rect x="1360" y="0" width="680" height="50" fill="#f3f4f6"/>
+
+    <text x="20" y="35" class="label">建物面積</text>
+    <text x="700" y="35" class="label">間取り</text>
+    <text x="1380" y="35" class="label">構造</text>
+
+    <rect x="0" y="50" width="680" height="60" fill="#fff" stroke="#e5e7eb"/>
+    <rect x="680" y="50" width="680" height="60" fill="#fff" stroke="#e5e7eb"/>
+    <rect x="1360" y="50" width="680" height="60" fill="#fff" stroke="#e5e7eb"/>
+
+    <text x="20" y="95" class="value">{{building_area}}</text>
+    <text x="700" y="95" class="value">{{floor_plan}}</text>
+    <text x="1380" y="95" class="value">{{building_structure}}</text>
+  </g>
+
+  <g transform="translate(80, 900)">
+    <rect x="0" y="0" width="680" height="50" fill="#f3f4f6"/>
+    <rect x="680" y="0" width="680" height="50" fill="#f3f4f6"/>
+
+    <text x="20" y="35" class="label">築年月</text>
+    <text x="700" y="35" class="label">階数</text>
+
+    <rect x="0" y="50" width="680" height="60" fill="#fff" stroke="#e5e7eb"/>
+    <rect x="680" y="50" width="680" height="60" fill="#fff" stroke="#e5e7eb"/>
+
+    <text x="20" y="95" class="value">{{construction_date}}</text>
+    <text x="700" y="95" class="value">{{total_floors}}階建</text>
+  </g>
+
+  <!-- 土地情報セクション -->
+  <rect x="80" y="1040" width="2817" height="2" fill="#e5e7eb"/>
+  <text x="80" y="1100" class="section-title">土地情報</text>
+
+  <g transform="translate(80, 1140)">
+    <rect x="0" y="0" width="680" height="50" fill="#f3f4f6"/>
+    <rect x="680" y="0" width="680" height="50" fill="#f3f4f6"/>
+    <rect x="1360" y="0" width="680" height="50" fill="#f3f4f6"/>
+
+    <text x="20" y="35" class="label">土地面積</text>
+    <text x="700" y="35" class="label">用途地域</text>
+    <text x="1380" y="35" class="label">建ぺい率/容積率</text>
+
+    <rect x="0" y="50" width="680" height="60" fill="#fff" stroke="#e5e7eb"/>
+    <rect x="680" y="50" width="680" height="60" fill="#fff" stroke="#e5e7eb"/>
+    <rect x="1360" y="50" width="680" height="60" fill="#fff" stroke="#e5e7eb"/>
+
+    <text x="20" y="95" class="value">{{land_area}}</text>
+    <text x="700" y="95" class="value">{{use_district}}</text>
+    <text x="1380" y="95" class="value">{{building_coverage}} / {{floor_area_ratio}}</text>
+  </g>
+
+  <!-- 写真エリア -->
+  <rect x="80" y="1300" width="1350" height="900" fill="#f9fafb" stroke="#e5e7eb" rx="8"/>
+  <text x="755" y="1750" class="label" text-anchor="middle">外観写真</text>
+
+  <rect x="1500" y="1300" width="650" height="430" fill="#f9fafb" stroke="#e5e7eb" rx="8"/>
+  <text x="1825" y="1520" class="label" text-anchor="middle">内観1</text>
+
+  <rect x="2200" y="1300" width="650" height="430" fill="#f9fafb" stroke="#e5e7eb" rx="8"/>
+  <text x="2525" y="1520" class="label" text-anchor="middle">内観2</text>
+
+  <rect x="1500" y="1770" width="650" height="430" fill="#f9fafb" stroke="#e5e7eb" rx="8"/>
+  <text x="1825" y="1990" class="label" text-anchor="middle">間取り図</text>
+
+  <rect x="2200" y="1770" width="650" height="430" fill="#f9fafb" stroke="#e5e7eb" rx="8"/>
+  <text x="2525" y="1990" class="label" text-anchor="middle">周辺地図</text>
+
+  <!-- 設備・特徴 -->
+  <rect x="80" y="2260" width="2817" height="2" fill="#e5e7eb"/>
+  <text x="80" y="2320" class="section-title">設備・特徴</text>
+  <rect x="80" y="2350" width="2817" height="200" fill="#fff" stroke="#e5e7eb" rx="8"/>
+  <text x="100" y="2400" class="value">{{amenities}}</text>
+
+  <!-- 取引条件 -->
+  <rect x="80" y="2600" width="2817" height="2" fill="#e5e7eb"/>
+  <text x="80" y="2660" class="section-title">取引条件</text>
+
+  <g transform="translate(80, 2700)">
+    <rect x="0" y="0" width="680" height="50" fill="#f3f4f6"/>
+    <rect x="680" y="0" width="680" height="50" fill="#f3f4f6"/>
+
+    <text x="20" y="35" class="label">取引態様</text>
+    <text x="700" y="35" class="label">引渡時期</text>
+
+    <rect x="0" y="50" width="680" height="60" fill="#fff" stroke="#e5e7eb"/>
+    <rect x="680" y="50" width="680" height="60" fill="#fff" stroke="#e5e7eb"/>
+
+    <text x="20" y="95" class="value">{{transaction_type}}</text>
+    <text x="700" y="95" class="value">{{delivery_timing}}</text>
+  </g>
+
+  <!-- 備考 -->
+  <rect x="80" y="2880" width="2817" height="2" fill="#e5e7eb"/>
+  <text x="80" y="2940" class="section-title">備考</text>
+  <rect x="80" y="2970" width="2817" height="200" fill="#fff" stroke="#e5e7eb" rx="8"/>
+  <text x="100" y="3020" class="small">{{remarks}}</text>
+
+  <!-- フッター -->
+  <rect x="0" y="3900" width="2977" height="281" fill="#1e3a5f"/>
+  <text x="120" y="4000" class="value" fill="#fff">{{company_name}}</text>
+  <text x="120" y="4060" class="label" fill="#ccc">TEL: {{company_phone}} | 免許番号: {{license_number}}</text>
+  <text x="120" y="4110" class="small" fill="#999">{{company_address}}</text>
+
+</svg>

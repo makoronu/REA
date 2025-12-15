@@ -8,8 +8,7 @@
  * - 物件登録
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8005';
+import { API_URL } from '../../config';
 
 // 型定義
 interface Owner {

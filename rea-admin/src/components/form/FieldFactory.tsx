@@ -15,8 +15,7 @@ import { TransportationField } from './TransportationField';
 import { BusStopsField } from './BusStopsField';
 import { NearbyFacilitiesField } from './NearbyFacilitiesField';
 import { ZoningMapField } from './ZoningMapField';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8005';
+import { API_URL } from '../../config';
 
 interface FieldFactoryProps {
   column: ColumnWithLabel;

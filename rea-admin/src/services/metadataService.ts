@@ -1,6 +1,5 @@
 import axios from 'axios';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8005';
+import { API_URL } from '../config';
 
 // 型定義
 export interface TableInfo {
@@ -61,7 +60,7 @@ class MetadataService {
   private baseURL: string;
 
   constructor() {
-    this.baseURL = `${API_BASE_URL}/api/v1/metadata`;
+    this.baseURL = `${API_URL}/api/v1/metadata`;
   }
 
   /**
@@ -245,10 +244,11 @@ class MetadataService {
 
   /**
    * フィルター用のオプション一覧を取得（メタデータ駆動）
+   * color/bgはmaster_options.metadataから取得される
    */
   async getFilterOptions(): Promise<{
-    sales_status?: { value: string; label: string }[];
-    publication_status?: { value: string; label: string }[];
+    sales_status?: { value: string; label: string; color?: string; bg?: string }[];
+    publication_status?: { value: string; label: string; color?: string; bg?: string }[];
     property_type?: { value: string; label: string }[];
     property_type_simple?: { value: string; label: string; group?: string }[];
   }> {

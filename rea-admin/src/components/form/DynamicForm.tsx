@@ -1,12 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FormProvider, useFormContext } from 'react-hook-form';
 import { FieldGroup } from './FieldFactory';
 import { useMetadataForm } from '../../hooks/useMetadataForm';
 import { useAutoSave } from '../../hooks/useAutoSave';
-import { ColumnWithLabel } from '../../services/metadataService';
+import { ColumnWithLabel, metadataService } from '../../services/metadataService';
 import { SelectableListModal, SelectableItem, Category } from '../common/SelectableListModal';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8005';
+import { API_URL } from '../../config';
 
 // 学校候補の型
 interface SchoolCandidate {
@@ -977,6 +976,49 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
   // 公開バリデーションエラー状態（全モードで必要なため、早期リターン前に定義）
   const [publicationValidationError, setPublicationValidationError] = useState<string | null>(null);
 
+  // ステータス色設定（メタデータ駆動）
+  const [salesStatusConfig, setSalesStatusConfig] = useState<Record<string, { label: string; color: string; bg: string }>>({});
+  const [publicationStatusConfig, setPublicationStatusConfig] = useState<Record<string, { label: string; color: string; bg: string }>>({});
+
+  // フィルターオプション（ステータス色含む）をAPIから取得
+  useEffect(() => {
+    const fetchStatusConfigs = async () => {
+      try {
+        const options = await metadataService.getFilterOptions();
+
+        // sales_status の色設定を構築
+        if (options.sales_status) {
+          const config: Record<string, { label: string; color: string; bg: string }> = {};
+          for (const opt of options.sales_status) {
+            config[opt.value] = {
+              label: opt.label,
+              color: opt.color || '#6B7280',
+              bg: opt.bg || '#F3F4F6',
+            };
+          }
+          setSalesStatusConfig(config);
+        }
+
+        // publication_status の色設定を構築
+        if (options.publication_status) {
+          const config: Record<string, { label: string; color: string; bg: string }> = {};
+          for (const opt of options.publication_status) {
+            config[opt.value] = {
+              label: opt.label,
+              color: opt.color || '#6B7280',
+              bg: opt.bg || '#F3F4F6',
+            };
+          }
+          setPublicationStatusConfig(config);
+        }
+      } catch (error) {
+        console.error('Failed to fetch status configs:', error);
+      }
+    };
+
+    fetchStatusConfigs();
+  }, []);
+
   const {
     form,
     submitForm,
@@ -1246,26 +1288,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
       }
     });
 
-    // ステータス表示用
-    // 案件ステータスの色マップ
-    const salesStatusConfig: Record<string, { label: string; color: string; bg: string }> = {
-      '査定中': { label: '査定中', color: '#8B5CF6', bg: '#EDE9FE' },
-      '保留': { label: '保留', color: '#6B7280', bg: '#F3F4F6' },
-      '販売準備': { label: '販売準備', color: '#0EA5E9', bg: '#E0F2FE' },
-      '販売中': { label: '販売中', color: '#059669', bg: '#D1FAE5' },
-      '商談中': { label: '商談中', color: '#D97706', bg: '#FEF3C7' },
-      '成約済み': { label: '成約済み', color: '#DC2626', bg: '#FEE2E2' },
-      '販売終了': { label: '販売終了', color: '#374151', bg: '#E5E7EB' },
-      '取り下げ': { label: '取り下げ', color: '#64748B', bg: '#F1F5F9' },
-      '他決': { label: '他決', color: '#475569', bg: '#E2E8F0' },
-    };
-
-    // 公開状態の色マップ
-    const publicationStatusConfig: Record<string, { label: string; color: string; bg: string }> = {
-      '非公開': { label: '非公開', color: '#6B7280', bg: '#F3F4F6' },
-      '会員公開': { label: '会員公開', color: '#3B82F6', bg: '#DBEAFE' },
-      '公開': { label: '公開', color: '#059669', bg: '#D1FAE5' },
-    };
+    // ステータス表示用（色設定はAPIから取得済み: salesStatusConfig, publicationStatusConfig）
 
     const currentSalesStatus = formData.sales_status || '査定中';
     const currentPublicationStatus = formData.publication_status || '非公開';

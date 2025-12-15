@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8005';
+import { API_URL } from '../../config';
 
 // =================================================================
 // 共通インターフェース
@@ -352,7 +351,7 @@ export const FacilitiesEditor: React.FC<JsonEditorProps<Facility>> = ({
   useEffect(() => {
     const fetchEquipment = async () => {
       try {
-        const response = await axios.get(`${API_BASE_URL}/api/v1/equipment/grouped`);
+        const response = await axios.get(`${API_URL}/api/v1/equipment/grouped`);
         setCategories(response.data);
         setLoading(false);
       } catch (err) {
