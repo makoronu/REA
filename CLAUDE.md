@@ -18,28 +18,49 @@
 | 項目 | 内容 |
 |------|------|
 | 作業中 | なし |
-| 完了 | チラシ・マイソク関連コード完全削除（rea-flyer, flyer.py, UI） |
+| 完了 | ZOHOインポートデータのメタデータ駆動準拠チェック完了、マッピング修正 |
 | 残り | ZOHO画像同期、定期同期 |
 | 最終更新 | 2025-12-16 |
-| 備考 | チラシ・マイソク自動生成は白紙撤回。デザインはCanva等プロツール活用へ。 |
+| 備考 | import_value_mappings/master_optionsの整合性修正済。スクレイピング用にも汎用利用可能（source_type変更のみ） |
 
 ### メタ駆動マッピングシステム
 
-**作成日**: 2025-12-14
-**概要**: DBテーブルから変換ルールを読み込む汎用マッパー
+**作成日**: 2025-12-14 / **更新日**: 2025-12-16
+**概要**: DBテーブルから変換ルールを読み込む汎用マッパー（ZOHO/スクレイピング共通）
 
 **テーブル**:
-- `import_field_mappings`: フィールドマッピング（50件）
-- `import_value_mappings`: 値変換マッピング（192件）
+| テーブル | 役割 | 件数 |
+|---------|------|------|
+| `import_field_mappings` | ソースフィールド → REAカラム | 50件 |
+| `import_value_mappings` | 値変換ルール（"木造"→"1:木造"） | 200件+ |
+| `master_options` | REA選択肢定義（code→label） | 267件 |
 
 **対応フィールド**: property_type, publication_status, sales_status, current_status, use_district, building_structure, direction, room_type, land_rights, setback, terrain, land_category, city_planning, road_access, road_type, parking_availability, transaction_type, delivery_timing
 
-**使い方**:
+**使い方（source_typeを変えるだけで汎用利用可能）**:
 ```python
 from app.services.zoho.mapper import MetaDrivenMapper
-mapper = MetaDrivenMapper(source_type="zoho")  # 他のソースは source_type変更
+
+# ZOHO
+mapper = MetaDrivenMapper(source_type="zoho")
+
+# スクレイピング（SUUMO, homes, athome等）
+mapper = MetaDrivenMapper(source_type="suumo")
+
 result = mapper.map_record(raw_data)
+# → {"properties": {...}, "land_info": {...}, "building_info": {...}, "amenities": {...}}
 ```
+
+**新しいソース追加手順**:
+1. `import_value_mappings`にマッピング追加（空文字→0:未設定も必須）
+2. `import_field_mappings`にフィールド対応追加
+3. `master_options`に存在しないcodeは追加
+4. 詳細: `docs/03_scraper/README.md`
+
+**重要ルール**:
+- 空文字/NULLは必ず`0:未設定`にマッピング登録
+- target_valueのcodeは`master_options`に存在すること
+- ハードコーディング禁止（変換ルールは全てDBで管理）
 
 ### セッション運用ルール
 

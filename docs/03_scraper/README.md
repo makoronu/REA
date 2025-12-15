@@ -83,3 +83,71 @@ source venv/bin/activate
 # バックグラウンド実行
 nohup ./scripts/monitor_scraper.sh > logs/monitor.log 2>&1 &
 ```
+
+---
+
+## 📦 メタデータ駆動インポートシステム
+
+### 概要
+
+スクレイピングしたデータをREAにインポートする際、**メタデータ駆動マッピング**を使用する。
+コードにハードコーディングせず、DBテーブルでマッピングルールを管理する。
+
+### テーブル構造
+
+| テーブル | 役割 |
+|---------|------|
+| `import_field_mappings` | ソースフィールド → REAカラムの対応 |
+| `import_value_mappings` | 値の変換ルール（例: "木造" → "1:木造"） |
+| `master_options` | REAの選択肢定義（code → label） |
+
+### 使い方
+
+```python
+from app.services.zoho.mapper import MetaDrivenMapper
+
+# source_type を変えるだけで他サイトに対応
+mapper = MetaDrivenMapper(source_type="suumo")  # or "homes", "athome"
+result = mapper.map_record(scraped_data)
+
+# 結果
+# {
+#   "properties": {"property_type": "1", "price": 1500, ...},
+#   "land_info": {"land_area": 200.5, "use_district": "5", ...},
+#   "building_info": {"building_structure": "1", ...},
+#   "amenities": {...}
+# }
+```
+
+### 新しいサイト対応手順
+
+1. **import_value_mappingsにマッピング追加**
+   ```sql
+   INSERT INTO import_value_mappings (source_type, field_name, source_value, target_value)
+   VALUES
+     ('suumo', 'building_structure', '木造', '1:木造'),
+     ('suumo', 'building_structure', '鉄骨', '3:鉄骨造'),
+     ('suumo', 'building_structure', '', '0:未設定');
+   ```
+
+2. **import_field_mappingsにフィールド対応追加**
+   ```sql
+   INSERT INTO import_field_mappings (source_type, source_field, target_table, target_column, transform_type)
+   VALUES
+     ('suumo', 'tatemono_kouzou', 'building_info', 'building_structure', 'value_map'),
+     ('suumo', 'kakaku', 'properties', 'price', 'numeric');
+   ```
+
+3. **Mapperを使ってインポート**
+   ```python
+   mapper = MetaDrivenMapper(source_type="suumo")
+   for item in scraped_items:
+       result = mapper.map_record(item)
+       # DBに保存
+   ```
+
+### 重要なルール
+
+- **空文字/NULLの処理**: `import_value_mappings`に空文字→0:未設定のマッピングを必ず登録
+- **master_optionsとの整合性**: target_valueのcodeはmaster_optionsに存在すること
+- **ハードコーディング禁止**: 変換ルールは全てDBで管理

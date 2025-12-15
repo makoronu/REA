@@ -169,10 +169,8 @@ class MetaDrivenMapper:
 
     def _transform_value_map(self, field_name: str, value: Any) -> Tuple[Any, Dict]:
         """値マッピングを適用"""
-        if value is None or value == "":
-            return None, {}
-
-        str_value = str(value).strip()
+        # 空文字・NULLもマッピング対象（import_value_mappingsに登録されていれば変換）
+        str_value = str(value).strip() if value is not None else ""
 
         if field_name in self._value_mappings:
             mapping = self._value_mappings[field_name]
