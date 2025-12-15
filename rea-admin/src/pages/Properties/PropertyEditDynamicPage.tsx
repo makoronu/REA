@@ -296,7 +296,7 @@ export const PropertyEditDynamicPage: React.FC = () => {
             is_investment: false,
           }}
           showDebug={false}
-          autoSave={!isNew}
+          autoSave={false}
         />
       </div>
 
