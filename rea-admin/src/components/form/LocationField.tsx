@@ -73,13 +73,31 @@ export const LocationField: React.FC<LocationFieldProps> = ({ disabled = false }
   const city = watch('city') || '';
   const address = watch('address') || '';
   const addressDetail = watch('address_detail') || '';
-  const latitude = watch('latitude');
-  const longitude = watch('longitude');
+  const formLatitude = watch('latitude');
+  const formLongitude = watch('longitude');
+
+  // ローカル状態（setValueの更新がwatchに即座に反映されない問題の回避）
+  const [localLatitude, setLocalLatitude] = useState<number | null>(null);
+  const [localLongitude, setLocalLongitude] = useState<number | null>(null);
+
+  // フォームの値を優先、ローカルがあればローカルを使用
+  const latitude = localLatitude !== null ? localLatitude : formLatitude;
+  const longitude = localLongitude !== null ? localLongitude : formLongitude;
 
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [geocodeStatus, setGeocodeStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [geocodeMessage, setGeocodeMessage] = useState('');
   const [showMap, setShowMap] = useState(false);
+
+  // フォームの値が変わったらローカル状態をクリア
+  useEffect(() => {
+    if (formLatitude !== null && formLatitude !== undefined) {
+      setLocalLatitude(null);
+    }
+    if (formLongitude !== null && formLongitude !== undefined) {
+      setLocalLongitude(null);
+    }
+  }, [formLatitude, formLongitude]);
 
   // 有効な座標があるか
   const hasValidCoords = latitude && longitude && !isNaN(latitude) && !isNaN(longitude);
@@ -92,6 +110,7 @@ export const LocationField: React.FC<LocationFieldProps> = ({ disabled = false }
   // 住所から座標を取得
   const handleGeocode = async () => {
     const fullAddress = [prefecture, city, address, addressDetail].filter(Boolean).join('');
+
     if (!fullAddress) {
       setGeocodeStatus('error');
       setGeocodeMessage('住所を入力してください');
@@ -103,15 +122,22 @@ export const LocationField: React.FC<LocationFieldProps> = ({ disabled = false }
 
     try {
       const result = await geoService.geocode(fullAddress);
+
+      // ローカル状態を更新（即座にUIに反映）
+      setLocalLatitude(result.latitude);
+      setLocalLongitude(result.longitude);
+
+      // フォームの値も更新（保存時に使用）
       setValue('latitude', result.latitude, { shouldDirty: true });
       setValue('longitude', result.longitude, { shouldDirty: true });
+
       setGeocodeStatus('success');
       setGeocodeMessage('座標を取得しました');
       setShowMap(true);
     } catch (err) {
       setGeocodeStatus('error');
       setGeocodeMessage('座標の取得に失敗しました');
-      console.error(err);
+      console.error('Geocode error:', err);
     } finally {
       setIsGeocoding(false);
       setTimeout(() => setGeocodeStatus('idle'), 3000);

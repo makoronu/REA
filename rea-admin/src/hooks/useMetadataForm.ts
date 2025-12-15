@@ -137,6 +137,7 @@ export const useMetadataForm = ({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [schema, setSchema] = useState<z.ZodObject<any>>(z.object({}));
+  const [isInitialized, setIsInitialized] = useState(false);
   
   // React Hook Form
   const form = useForm({
@@ -163,9 +164,13 @@ export const useMetadataForm = ({
         setSchema(newSchema);
 
         // メタデータからのデフォルト値とユーザー指定のデフォルト値をマージ
-        const metadataDefaults = createDefaultValues(columnsData);
-        const defaultValues = { ...metadataDefaults, ...userDefaultValues };
-        form.reset(defaultValues);
+        // 注意: form.resetは初回のみ実行（setValueで設定した値を上書きしないため）
+        if (!isInitialized) {
+          const metadataDefaults = createDefaultValues(columnsData);
+          const defaultValues = { ...metadataDefaults, ...userDefaultValues };
+          form.reset(defaultValues);
+          setIsInitialized(true);
+        }
         
       } else if (tableNames && tableNames.length > 0) {
         // 複数テーブルモード
@@ -197,9 +202,13 @@ export const useMetadataForm = ({
         setSchema(newSchema);
 
         // メタデータからのデフォルト値とユーザー指定のデフォルト値をマージ
-        const metadataDefaults = createDefaultValues(allColumnsFlat);
-        const defaultValues = { ...metadataDefaults, ...userDefaultValues };
-        form.reset(defaultValues);
+        // 注意: form.resetは初回のみ実行（setValueで設定した値を上書きしないため）
+        if (!isInitialized) {
+          const metadataDefaults = createDefaultValues(allColumnsFlat);
+          const defaultValues = { ...metadataDefaults, ...userDefaultValues };
+          form.reset(defaultValues);
+          setIsInitialized(true);
+        }
       }
     } catch (err) {
       setError(err as Error);
