@@ -979,6 +979,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
 
   const {
     form,
+    submitForm,
     groupedColumns,
     tables,
     allColumns,
@@ -1436,9 +1437,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                     type="button"
                     onClick={() => {
                       console.log('Save button clicked');
-                      console.log('form.handleSubmit type:', typeof form.handleSubmit);
-                      const result = form.handleSubmit();
-                      console.log('handleSubmit result:', result);
+                      submitForm();
                     }}
                     style={{
                       backgroundColor: '#10B981',

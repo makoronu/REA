@@ -971,11 +971,9 @@ async def set_property_zoning(property_id: int):
 
             # 主たる用途地域（面積最大）の値を設定
             primary = rows[0]
-            zone_code, zone_name = primary[0], primary[1]
-            # DBのENUMは「コード:名前」形式（「地域」なし）
-            # m_zoningのzone_nameは「第一種低層住居専用地域」だが、ENUMは「第一種低層住居専用」
-            zone_name_short = zone_name.strip().replace('地域', '')
-            result['use_district'] = f"{zone_code}:{zone_name_short}"
+            # メタデータ駆動: zone_code（INTEGER）を直接保存
+            # 表示時にm_zoningとJOINしてzone_nameを取得
+            result['use_district'] = int(primary[0])  # zone_code
             result['building_coverage_ratio'] = primary[2]
             result['floor_area_ratio'] = primary[3]
 

@@ -57,6 +57,8 @@ interface UseMetadataFormOptions {
 
 interface UseMetadataFormReturn {
   form: UseFormReturn<FieldValues>;
+  // handleSubmitは引数なしで呼び出せる形式（コールバックはhook内で設定済み）
+  submitForm: () => Promise<void>;
   columns: ColumnWithLabel[];
   groupedColumns: Record<string, ColumnWithLabel[]>;
   tables?: TableInfo[];
@@ -184,10 +186,8 @@ export const useMetadataForm = ({
   );
   
   return {
-    form: {
-      ...form,
-      handleSubmit: handleSubmit as unknown as UseFormReturn<FieldValues>['handleSubmit']
-    },
+    form,
+    submitForm: handleSubmit,
     columns,
     groupedColumns,
     tables,

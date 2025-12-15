@@ -71,11 +71,13 @@ const parseEnumValues = (options: any): { value: string; label: string; group?: 
   if (typeof options === 'string') {
     const items = options.split(',').map(item => item.trim());
     return items.map(option => {
-      // "1:売主" 形式の場合、valueは全体（"1:売主"）、labelはコロン以降（"売主"）
+      // "1:売主" 形式の場合、valueはコード部分（"1"）、labelはコロン以降（"売主"）
+      // これにより、DBはINTEGER型でコードのみを格納できる
       const colonIndex = option.indexOf(':');
       if (colonIndex > 0) {
+        const code = option.substring(0, colonIndex).trim();
         const label = option.substring(colonIndex + 1).trim();
-        return { value: option, label: label || option };
+        return { value: code, label: label || option };
       }
       return { value: option, label: option };
     });
@@ -259,7 +261,8 @@ export const FieldFactory: React.FC<FieldFactoryProps> = ({ column, disabled = f
           render={({ field }) => (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', padding: '8px 0' }}>
               {radioOptions.map(option => {
-                const isSelected = field.value === option.value;
+                // DBから数値で返ってくる場合も文字列と比較できるように
+                const isSelected = String(field.value) === String(option.value);
                 return (
                   <label
                     key={option.value}
@@ -528,9 +531,10 @@ export const FieldFactory: React.FC<FieldFactoryProps> = ({ column, disabled = f
             render={({ field }) => (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', padding: '8px 0' }}>
                 {radioOptionsWithEmpty.map(option => {
+                  // DBから数値で返ってくる場合も文字列と比較できるように
                   const isSelected = option.value === ''
                     ? (!field.value || field.value === '')
-                    : field.value === option.value;
+                    : String(field.value) === String(option.value);
                   return (
                     <label
                       key={option.value || '_empty'}
