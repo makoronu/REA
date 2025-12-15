@@ -1164,7 +1164,7 @@ GET /api/v1/flyer/preview/{property_id}
 | 6-1 | property_imagesからメイン画像取得 | [x] ImageHandler実装 |
 | 6-2 | 画像Base64埋め込み | [x] 実装済み |
 | 6-3 | 画像リサイズ・最適化 | [x] Pillow使用、設定ファイル化 |
-| 6-4 | 複数画像対応 | [ ] 将来対応 |
+| 6-4 | 複数画像対応 | [x] main_image + sub_image_1〜4 |
 
 **備考**: 画像データがない場合はプレースホルダー表示。画像投入後に自動で埋め込み可能。
 
