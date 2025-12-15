@@ -277,6 +277,32 @@ CREATE TABLE property_nearby (
 5. ✅ land_infoから住所カラム削除（8カラム）
 6. ✅ ON DELETE CASCADE違反修正
 
+### Phase 1.5: dev-protocol-prompt.md遵守 ✅ 完了（2025-12-15）
+
+#### NOT NULL制約追加
+| テーブル | カラム | 対応 |
+|---------|--------|------|
+| building_info | property_id | ✅ NOT NULL追加 |
+| land_info | property_id | ✅ NOT NULL追加 |
+| property_images | property_id | ✅ NOT NULL追加 |
+| property_registries | property_id | ✅ NOT NULL追加 |
+| properties | property_type | ✅ NOT NULL + DEFAULT 'other' |
+| 全テーブル | created_at, updated_at | ✅ NOT NULL + DEFAULT NOW() |
+
+#### データクリーンアップ
+- building_info孤児レコード14件削除（property_id IS NULL）
+- properties.property_type NULL 31件 → 'other' に更新
+- property_types に 'other' 追加
+
+#### JSONB型分析
+| カラム | 充填率 | 判断 |
+|--------|--------|------|
+| land_info.road_info | 96.2% | 現状維持（構造固定、接道情報は1レコード1セット） |
+| properties.transportation | 0.0% | 将来使用時に正規化検討 |
+| properties.bus_stops | 0.0% | 将来使用時に正規化検討 |
+| properties.nearby_facilities | 0% | 未使用（動的計算に移行予定） |
+| building_info.floor_plans | 0% | 未使用 |
+
 ### Phase 2: land_info住所削除
 1. property_locationsにデータ統合済み確認
 2. land_infoから住所カラム削除
