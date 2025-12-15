@@ -5,6 +5,7 @@
 column_labelsテーブルをベースに動的に処理する。
 ハードコードなし。
 """
+import logging
 from typing import Any, Dict, List, Optional
 
 from app.core.database import get_db
@@ -12,6 +13,9 @@ from app.crud.generic import GenericCRUD
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -114,7 +118,22 @@ def create_property(property_data: Dict[str, Any], db: Session = Depends(get_db)
         result = crud.create("properties", property_data)
         return result
     except ValueError as e:
+        logger.error(f"Validation error creating property: {e}")
         raise HTTPException(status_code=400, detail=str(e))
+    except SQLAlchemyError as e:
+        logger.error(f"Database error creating property: {e}")
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"データベースエラー: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error creating property: {e}")
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"予期せぬエラー: {str(e)}"
+        )
 
 
 @router.put("/{property_id}", response_model=Dict[str, Any])
@@ -138,7 +157,22 @@ def update_property(
         result = crud.update_full(property_id, property_data)
         return result
     except ValueError as e:
+        logger.error(f"Validation error updating property {property_id}: {e}")
         raise HTTPException(status_code=400, detail=str(e))
+    except SQLAlchemyError as e:
+        logger.error(f"Database error updating property {property_id}: {e}")
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"データベースエラー: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error updating property {property_id}: {e}")
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"予期せぬエラー: {str(e)}"
+        )
 
 
 @router.delete("/{property_id}")

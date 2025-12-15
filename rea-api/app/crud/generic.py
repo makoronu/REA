@@ -4,9 +4,21 @@
 column_labelsテーブルをベースに、全てのテーブルに対して
 動的にCRUD操作を行う。ハードコードなし。
 """
+import json
 from typing import Any, Dict, List, Optional, Set
 from sqlalchemy import text
 from sqlalchemy.orm import Session
+
+
+def _serialize_data(data: Dict[str, Any]) -> Dict[str, Any]:
+    """dict/listをJSON文字列に変換（JSONB型対応）"""
+    result = {}
+    for key, value in data.items():
+        if isinstance(value, (dict, list)):
+            result[key] = json.dumps(value, ensure_ascii=False)
+        else:
+            result[key] = value
+    return result
 
 
 class GenericCRUD:
@@ -222,7 +234,9 @@ class GenericCRUD:
         if not filtered_data:
             raise ValueError("No valid data to insert")
 
-        columns = list(filtered_data.keys())
+        # JSONB型対応
+        serialized_data = _serialize_data(filtered_data)
+        columns = list(serialized_data.keys())
         placeholders = [f":{col}" for col in columns]
 
         query = f"""
@@ -231,7 +245,7 @@ class GenericCRUD:
             RETURNING *
         """
 
-        result = self.db.execute(text(query), filtered_data).fetchone()
+        result = self.db.execute(text(query), serialized_data).fetchone()
         self.db.commit()
 
         return dict(result._mapping)
@@ -247,8 +261,10 @@ class GenericCRUD:
             # 更新データがない場合は現在のデータを返す
             return self.get(table_name, id)
 
-        set_clause = ", ".join([f"{col} = :{col}" for col in filtered_data.keys()])
-        filtered_data["id"] = id
+        # JSONB型対応
+        serialized_data = _serialize_data(filtered_data)
+        set_clause = ", ".join([f"{col} = :{col}" for col in serialized_data.keys()])
+        serialized_data["id"] = id
 
         query = f"""
             UPDATE {table_name}
@@ -257,7 +273,7 @@ class GenericCRUD:
             RETURNING *
         """
 
-        result = self.db.execute(text(query), filtered_data).fetchone()
+        result = self.db.execute(text(query), serialized_data).fetchone()
         self.db.commit()
 
         if result is None:
@@ -328,12 +344,13 @@ class GenericCRUD:
         if not data:
             return
 
-        set_clause = ", ".join([f"{col} = :{col}" for col in data.keys()])
-        data["id"] = id
+        processed_data = _serialize_data(data)
+        set_clause = ", ".join([f"{col} = :{col}" for col in processed_data.keys()])
+        processed_data["id"] = id
 
         self.db.execute(
             text(f"UPDATE {table_name} SET {set_clause}, updated_at = NOW() WHERE id = :id"),
-            data
+            processed_data
         )
 
     def _create_related(self, table_name: str, data: Dict[str, Any]) -> None:
@@ -341,12 +358,13 @@ class GenericCRUD:
         if not data:
             return
 
-        columns = list(data.keys())
+        processed_data = _serialize_data(data)
+        columns = list(processed_data.keys())
         placeholders = [f":{col}" for col in columns]
 
         self.db.execute(
             text(f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({', '.join(placeholders)})"),
-            data
+            processed_data
         )
 
     def delete(self, table_name: str, id: int) -> bool:

@@ -336,7 +336,8 @@ const StationAutoFetchButton: React.FC = () => {
   };
 
   const handleAdd = (item: SelectableItem) => {
-    const currentStations = getValues('transportation') || [];
+    const val = getValues('transportation');
+    const currentStations = Array.isArray(val) ? val : [];
     const rawData = (item as any)._raw;
 
     const newStation = {
@@ -349,14 +350,16 @@ const StationAutoFetchButton: React.FC = () => {
   };
 
   const handleRemove = (item: SelectableItem) => {
-    const currentStations = getValues('transportation') || [];
+    const val = getValues('transportation');
+    const currentStations = Array.isArray(val) ? val : [];
     const updated = currentStations.filter((s: any) =>
       `${s.station_name}_${s.line_name}` !== item.id
     );
     setValue('transportation', updated, { shouldDirty: true });
   };
 
-  const currentStations = getValues('transportation') || [];
+  const transportationVal = getValues('transportation');
+  const currentStations = Array.isArray(transportationVal) ? transportationVal : [];
 
   // 選択済みアイテムをSelectableItem形式に変換
   const selectedItems: SelectableItem[] = currentStations.map((s: any) => ({
@@ -555,7 +558,8 @@ const BusStopAutoFetchButton: React.FC = () => {
   };
 
   const handleAdd = (item: SelectableItem) => {
-    const currentBusStops = getValues('bus_stops') || [];
+    const val = getValues('bus_stops');
+    const currentBusStops = Array.isArray(val) ? val : [];
     const rawData = (item as any)._raw;
 
     const newBusStop = {
@@ -568,12 +572,14 @@ const BusStopAutoFetchButton: React.FC = () => {
   };
 
   const handleRemove = (item: SelectableItem) => {
-    const currentBusStops = getValues('bus_stops') || [];
+    const val = getValues('bus_stops');
+    const currentBusStops = Array.isArray(val) ? val : [];
     const updated = currentBusStops.filter((bs: any) => bs.name !== item.id);
     setValue('bus_stops', updated, { shouldDirty: true });
   };
 
-  const currentBusStops = getValues('bus_stops') || [];
+  const busStopsVal = getValues('bus_stops');
+  const currentBusStops = Array.isArray(busStopsVal) ? busStopsVal : [];
 
   // 選択済みアイテムをSelectableItem形式に変換
   const selectedItems: SelectableItem[] = currentBusStops.map((bs: any) => ({
@@ -770,7 +776,8 @@ const FacilityAutoFetchButton: React.FC = () => {
   };
 
   const handleAdd = (item: SelectableItem) => {
-    const currentFacilities = getValues('nearby_facilities') || [];
+    const val = getValues('nearby_facilities');
+    const currentFacilities = Array.isArray(val) ? val : [];
     const rawData = (item as any)._raw;
 
     const newFacility = {
@@ -786,12 +793,14 @@ const FacilityAutoFetchButton: React.FC = () => {
   };
 
   const handleRemove = (item: SelectableItem) => {
-    const currentFacilities = getValues('nearby_facilities') || [];
+    const val = getValues('nearby_facilities');
+    const currentFacilities = Array.isArray(val) ? val : [];
     const updated = currentFacilities.filter((f: any) => f.id !== item.id);
     setValue('nearby_facilities', updated, { shouldDirty: true });
   };
 
-  const currentFacilities = getValues('nearby_facilities') || [];
+  const facilitiesVal = getValues('nearby_facilities');
+  const currentFacilities = Array.isArray(facilitiesVal) ? facilitiesVal : [];
 
   // 選択済みアイテムをSelectableItem形式に変換
   const selectedItems: SelectableItem[] = currentFacilities.map((f: any) => ({
