@@ -88,6 +88,15 @@ export const LocationField: React.FC<LocationFieldProps> = ({ disabled = false }
   const [geocodeStatus, setGeocodeStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [geocodeMessage, setGeocodeMessage] = useState('');
   const [showMap, setShowMap] = useState(false);
+  const [initialMapShown, setInitialMapShown] = useState(false);
+
+  // 緯度経度が存在すれば自動で地図を表示（初回のみ）
+  useEffect(() => {
+    if (!initialMapShown && formLatitude && formLongitude && !isNaN(formLatitude) && !isNaN(formLongitude)) {
+      setShowMap(true);
+      setInitialMapShown(true);
+    }
+  }, [formLatitude, formLongitude, initialMapShown]);
 
   // フォームの値が変わったらローカル状態をクリア
   useEffect(() => {

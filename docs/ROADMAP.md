@@ -916,66 +916,293 @@ ogr2ogr -f "PostgreSQL" PG:"host=localhost port=5433 dbname=real_estate_db user=
 
 **目的**: REAの物件データからチラシとマイソクを自動生成し、印刷入稿可能な形式で出力
 
-**詳細ドキュメント**: `docs/temp_flyer_concept.md`
+**設計ドキュメント**: `docs/flyer/README.md`
 
-### チラシ vs マイソク
+---
 
-| 項目 | チラシ | マイソク |
-|------|--------|----------|
-| 目的 | 集客・訴求 | 詳細情報提供 |
-| 対象 | エンドユーザー | 不動産業者・購入検討者 |
-| デザイン | 写真大きめ、視覚重視 | 情報網羅、業界標準フォーマット |
-| 用途 | ポスティング、店頭 | 業者間共有、内見時配布 |
+### アーキテクチャ原則（dev-protocol準拠）
 
-### 処理フロー
+| 原則 | 実装方針 |
+|------|---------|
+| **メタデータ駆動** | テンプレート定義・フィールドマッピングはYAML設定ファイルで管理。SVGハードコード禁止 |
+| **設定の一元管理** | 出力仕様（塗り足し、DPI、色空間）は`.env`または`config/`で管理 |
+| **共通処理の集約** | フォーマット関数は`shared/format_utils.py`に集約。既存`shared/constants.py`と統合 |
+| **DRY原則** | 各Phase開始前に既存共通処理を確認。重複実装禁止 |
+
+---
+
+### ディレクトリ構造
 
 ```
-REA DB → Python → SVG → 印刷屋（イラレ調整）→ 入稿
+REA/
+├── rea-flyer/                    # チラシ・マイソク生成モジュール
+│   ├── README.md                 # モジュール説明（必須）
+│   ├── config/
+│   │   ├── output_settings.yaml  # 出力仕様（塗り足し、DPI等）
+│   │   ├── templates.yaml        # テンプレート定義（メタデータ駆動）
+│   │   └── field_mappings.yaml   # DB→出力フィールドマッピング
+│   ├── templates/
+│   │   ├── maisoku/              # マイソクSVGテンプレート
+│   │   │   ├── land.svg
+│   │   │   ├── detached.svg
+│   │   │   ├── apartment.svg
+│   │   │   └── investment.svg
+│   │   └── chirashi/             # チラシSVGテンプレート
+│   │       ├── single.svg
+│   │       ├── dual.svg
+│   │       └── grid.svg
+│   ├── generators/
+│   │   ├── __init__.py
+│   │   ├── base.py               # 基底クラス
+│   │   ├── maisoku.py            # マイソク生成
+│   │   └── chirashi.py           # チラシ生成
+│   ├── utils/
+│   │   ├── __init__.py
+│   │   └── svg_builder.py        # SVG操作ユーティリティ
+│   └── tests/
+│       ├── test_maisoku.py
+│       └── test_chirashi.py
+├── shared/
+│   ├── format_utils.py           # 新規: フォーマット関数集約
+│   └── constants.py              # 既存: 定数追加
+└── rea-api/app/api/v1/endpoints/
+    └── flyer.py                  # APIエンドポイント
 ```
+
+---
+
+### 設定ファイル設計（メタデータ駆動）
+
+**config/output_settings.yaml**
+```yaml
+output:
+  format: svg
+  color_mode: cmyk
+  bleed_mm: 3
+  dpi: 350
+  font_family: "Noto Sans JP"
+
+paper_sizes:
+  a4:
+    width_mm: 210
+    height_mm: 297
+  b4:
+    width_mm: 257
+    height_mm: 364
+```
+
+**config/templates.yaml**
+```yaml
+maisoku:
+  land:
+    template: maisoku/land.svg
+    property_types: [land]
+    sections:
+      - name: header
+        fields: [property_name, price, price_per_tsubo]
+      - name: location
+        fields: [address, access]
+      - name: land_info
+        fields: [land_area, land_area_tsubo, use_district, building_coverage, floor_area_ratio]
+      - name: road
+        fields: [road_direction, road_width, setback]
+
+  detached:
+    template: maisoku/detached.svg
+    property_types: [detached]
+    sections:
+      - name: header
+        fields: [property_name, price]
+      - name: building
+        fields: [building_structure, floors, construction_date, building_age]
+      # ...
+
+chirashi:
+  single:
+    template: chirashi/single.svg
+    max_properties: 1
+    layout: full_page
+
+  dual:
+    template: chirashi/dual.svg
+    max_properties: 2
+    layout: split_horizontal
+```
+
+**config/field_mappings.yaml**
+```yaml
+# DB列 → 出力フィールド のマッピング
+# label_source: column_labels（メタデータ駆動）
+
+fields:
+  property_name:
+    source: properties.property_name
+    label_source: column_labels
+    format: null
+
+  price:
+    source: properties.sale_price
+    label_source: column_labels
+    format: price_man  # shared/format_utils.py
+
+  land_area:
+    source: land_info.land_area
+    label_source: column_labels
+    format: area_with_tsubo  # ㎡（坪）形式
+
+  building_age:
+    source: building_info.construction_date
+    label_source: column_labels
+    format: building_age_wareki  # 築○年（令和○年築）
+```
+
+---
+
+### APIエンドポイント
+
+```
+POST /api/v1/flyer/maisoku/{property_id}
+  → マイソクSVG生成（property_typeで自動テンプレート選択）
+
+POST /api/v1/flyer/chirashi
+  Body: { property_ids: [1, 2, 3], layout: "grid" }
+  → チラシSVG生成
+
+GET /api/v1/flyer/templates
+  → 利用可能テンプレート一覧（templates.yamlから動的生成）
+
+GET /api/v1/flyer/preview/{property_id}
+  → プレビュー用PNG生成
+```
+
+---
+
+### Phase 0: 準備（dev-protocol必須）
+
+| # | 項目 | 状態 |
+|---|------|------|
+| 0-1 | DBバックアップ取得 | [ ] |
+| 0-2 | `rea-flyer/README.md` 作成 | [ ] |
+| 0-3 | 既存共通処理の棚卸し（`shared/constants.py`確認） | [ ] |
+| 0-4 | 依存ライブラリ調査（svgwrite, cairosvg, Pillow） | [ ] |
+
+---
 
 ### Phase 1: 基盤構築
-- [ ] データマッピング設計（properties/land_info/building_info→出力項目）
-- [ ] 設定ファイル構造設計
-- [ ] SVG生成基盤（svgwrite等）
-- [ ] ユーティリティ関数（面積変換、築年数計算、価格フォーマット）
 
-### Phase 2: マイソク
-- [ ] 土地用テンプレート
-- [ ] 戸建用テンプレート
-- [ ] マンション用テンプレート
-- [ ] 収益物件用テンプレート（利回り、レントロール）
+| # | 項目 | 状態 |
+|---|------|------|
+| 1-1 | ディレクトリ構造作成 | [ ] |
+| 1-2 | `config/output_settings.yaml` 作成 | [ ] |
+| 1-3 | `config/field_mappings.yaml` 作成（column_labels連携） | [ ] |
+| 1-4 | `shared/format_utils.py` 作成（面積変換、価格フォーマット、築年数計算） | [ ] |
+| 1-5 | `generators/base.py` 基底クラス作成 | [ ] |
+| 1-6 | 単体テスト環境構築 | [ ] |
+| 1-7 | **Selenium動作確認**（APIエンドポイント疎通） | [ ] |
 
-### Phase 3: チラシ（1件用）
-- [ ] A4全面テンプレート
-- [ ] 写真配置ロジック
-- [ ] キャッチコピー配置
+**Phase 1 完了条件**: `format_utils.py`の単体テストが全て通る
 
-### Phase 4: チラシ（複数件）
-- [ ] 2件レイアウト（上下/左右分割）
-- [ ] 4件グリッドレイアウト
-- [ ] 一覧形式レイアウト
+---
+
+### Phase 2: マイソク生成
+
+| # | 項目 | 状態 |
+|---|------|------|
+| 2-1 | `config/templates.yaml` マイソク定義 | [ ] |
+| 2-2 | `templates/maisoku/land.svg` 土地用テンプレート | [ ] |
+| 2-3 | `generators/maisoku.py` 土地用生成ロジック | [ ] |
+| 2-4 | **実務テスト**: 実物件で土地マイソク生成→印刷屋確認 | [ ] |
+| 2-5 | `templates/maisoku/detached.svg` 戸建用テンプレート | [ ] |
+| 2-6 | `templates/maisoku/apartment.svg` マンション用テンプレート | [ ] |
+| 2-7 | `templates/maisoku/investment.svg` 収益物件用テンプレート | [ ] |
+| 2-8 | **Selenium動作確認**（各テンプレート生成） | [ ] |
+
+**Phase 2 完了条件**: 4種類のマイソクが実務で使用可能
+
+---
+
+### Phase 3: チラシ生成（1件）
+
+| # | 項目 | 状態 |
+|---|------|------|
+| 3-1 | `config/templates.yaml` チラシ定義追加 | [ ] |
+| 3-2 | `templates/chirashi/single.svg` A4全面テンプレート | [ ] |
+| 3-3 | `generators/chirashi.py` 生成ロジック | [ ] |
+| 3-4 | 写真配置ロジック（property_imagesから自動選択） | [ ] |
+| 3-5 | **Selenium動作確認** | [ ] |
+
+---
+
+### Phase 4: チラシ生成（複数件）
+
+| # | 項目 | 状態 |
+|---|------|------|
+| 4-1 | `templates/chirashi/dual.svg` 2件用テンプレート | [ ] |
+| 4-2 | `templates/chirashi/grid.svg` 4件グリッド | [ ] |
+| 4-3 | 物件数→レイアウト自動選択ロジック | [ ] |
+| 4-4 | **Selenium動作確認** | [ ] |
+
+---
 
 ### Phase 5: UI連携
-- [ ] rea-adminに生成ボタン追加
-- [ ] プレビュー機能
-- [ ] テンプレート選択UI
 
-### 出力仕様
+| # | 項目 | 状態 |
+|---|------|------|
+| 5-1 | `rea-api/app/api/v1/endpoints/flyer.py` 作成 | [ ] |
+| 5-2 | rea-admin 物件詳細画面に「マイソク生成」ボタン追加 | [ ] |
+| 5-3 | rea-admin 物件一覧画面に「チラシ生成」ボタン追加（複数選択） | [ ] |
+| 5-4 | プレビューモーダル実装 | [ ] |
+| 5-5 | テンプレート選択UI | [ ] |
+| 5-6 | **Selenium E2Eテスト** | [ ] |
 
-| 項目 | 仕様 |
-|------|------|
-| 形式 | SVG（Illustrator編集可能） |
-| 色 | CMYK値指定 |
-| 塗り足し | 3mm |
-| 解像度 | 350dpi相当 |
-| フォント | Noto Sans JP |
+---
+
+### 出力仕様（config/output_settings.yaml管理）
+
+| 項目 | 値 | 設定ファイル |
+|------|-----|-------------|
+| 形式 | SVG | output.format |
+| 色空間 | CMYK | output.color_mode |
+| 塗り足し | 3mm | output.bleed_mm |
+| 解像度 | 350dpi | output.dpi |
+| フォント | Noto Sans JP | output.font_family |
+
+---
+
+### 共通処理集約（shared/format_utils.py）
+
+```python
+# 新規作成: shared/format_utils.py
+# 既存 shared/constants.py の calc_walk_minutes 等と同じ思想
+
+def format_price_man(price: int) -> str:
+    """価格を万円表示（1億以上は億円併記）"""
+
+def format_area_with_tsubo(sqm: float) -> str:
+    """面積を㎡（坪）形式で表示"""
+
+def format_building_age(construction_date: date) -> str:
+    """築年数を「築○年（令和○年築）」形式で表示"""
+
+def format_wareki(dt: date) -> str:
+    """西暦→和暦変換"""
+
+def format_road_access(direction: str, width: float) -> str:
+    """接道状況を「南側○m公道」形式で表示"""
+```
+
+---
 
 ### 拡張アイデア（将来）
-- AIキャッチコピー生成（Claude API）
-- QRコード埋め込み
-- PDF直接出力
-- バッチ生成（新着物件の夜間自動生成）
-- REINS/HOMES連携（ポータル用画像として直接アップロード）
+
+| 優先度 | 機能 | 備考 |
+|--------|------|------|
+| 高 | QRコード埋め込み | 物件詳細ページへのリンク |
+| 高 | PDF直接出力 | cairosvg使用 |
+| 中 | AIキャッチコピー | Claude API連携 |
+| 中 | バッチ生成 | 新着物件の夜間自動生成 |
+| 低 | テンプレートカスタマイズUI | 管理画面からレイアウト調整 |
+| 低 | REINS/HOMES連携 | ポータル用画像として直接アップロード |
 
 ---
 
