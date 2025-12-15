@@ -49,9 +49,9 @@ class GenericCRUD:
         "properties",
         "building_info",
         "land_info",
-        "amenities",
         "property_images",
         "property_locations",
+        "property_registries",
     }
 
     # システムカラム（更新不可）
@@ -161,7 +161,7 @@ class GenericCRUD:
                     result[key] = location_dict[key]
 
         # 関連テーブルを取得してマージ
-        related_tables = ["building_info", "land_info", "amenities"]
+        related_tables = ["building_info", "land_info"]
 
         for table_name in related_tables:
             related = self.db.execute(
@@ -308,7 +308,7 @@ class GenericCRUD:
 
         # 各テーブルのカラムを取得
         table_columns: Dict[str, Set[str]] = {}
-        for table_name in ["properties", "building_info", "land_info", "amenities"]:
+        for table_name in ["properties", "building_info", "land_info"]:
             table_columns[table_name] = set(self._get_db_columns(table_name))
 
         # データを各テーブルに振り分け
@@ -316,7 +316,6 @@ class GenericCRUD:
             "properties": {},
             "building_info": {},
             "land_info": {},
-            "amenities": {},
             "property_locations": {},
         }
 
@@ -337,8 +336,6 @@ class GenericCRUD:
                 table_data["building_info"][key] = value
             elif key in table_columns["land_info"]:
                 table_data["land_info"][key] = value
-            elif key in table_columns["amenities"]:
-                table_data["amenities"][key] = value
 
         # properties を更新
         if table_data["properties"]:
@@ -358,7 +355,7 @@ class GenericCRUD:
                 self._create_related("property_locations", table_data["property_locations"])
 
         # 関連テーブルを更新（存在しなければ作成）
-        for table_name in ["building_info", "land_info", "amenities"]:
+        for table_name in ["building_info", "land_info"]:
             if not table_data[table_name]:
                 continue
 
