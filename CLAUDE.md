@@ -18,10 +18,10 @@
 | 項目 | 内容 |
 |------|------|
 | 作業中 | なし |
-| 完了 | **Phase 2: マスターテーブル統合**（旧マスター6テーブル削除、master_options統一、メタデータAPI改修）、Phase 3一部（3-1, 3-3）|
-| 残り | Phase 3残り（enum_values廃止）、Phase 4（FK制約）、Phase 5（property_type統一）→ ZOHO画像同期 |
-| 最終更新 | 2025-12-15 17:10 |
-| 備考 | データ設計正規化Phase 2完了。選択肢データはmaster_options (source='rea') に統一。 |
+| 完了 | **Phase 2-3完了**: マスターテーブル統合、enum_valuesカラム廃止。Phase 4-5は保留（複雑性高い、優先度低い）|
+| 残り | ZOHO画像同期、定期同期 |
+| 最終更新 | 2025-12-15 17:30 |
+| 備考 | 選択肢データは全てmaster_options (source='rea') に統一。column_labelsからenum_valuesカラム削除済み。 |
 
 ### メタ駆動マッピングシステム
 
