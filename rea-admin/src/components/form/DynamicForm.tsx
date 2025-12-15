@@ -1434,7 +1434,12 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                 {!autoSave && (
                   <button
                     type="button"
-                    onClick={form.handleSubmit(onSubmit)}
+                    onClick={() => {
+                      console.log('Save button clicked');
+                      console.log('form.handleSubmit type:', typeof form.handleSubmit);
+                      const result = form.handleSubmit();
+                      console.log('handleSubmit result:', result);
+                    }}
                     style={{
                       backgroundColor: '#10B981',
                       color: '#fff',
