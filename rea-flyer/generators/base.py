@@ -210,32 +210,47 @@ class BaseGenerator(ABC):
         self, svg_content: str, property_data: Dict[str, Any]
     ) -> str:
         """
-        画像プレースホルダーを置換
+        画像プレースホルダーを置換（複数画像対応）
 
         Args:
             svg_content: SVG文字列
-            property_data: 物件データ（_main_imageキー含む）
+            property_data: 物件データ（_images, _main_imageキー含む）
 
         Returns:
             str: 画像置換済みSVG
         """
-        image_data = property_data.get("_main_image", {})
+        # 複数画像対応（_imagesディクショナリ）
+        images = property_data.get("_images", {})
 
-        if not image_data:
-            return svg_content
+        for image_key, image_data in images.items():
+            if not image_data:
+                continue
 
-        # Base64画像がある場合
-        if image_data.get("type") == "base64" and image_data.get("data"):
-            # <image>タグのhref属性を置換
-            # パターン: href="{{main_image}}" または xlink:href="{{main_image}}"
-            svg_content = svg_content.replace(
-                'href="{{main_image}}"',
-                f'href="{image_data["data"]}"'
-            )
-            svg_content = svg_content.replace(
-                'xlink:href="{{main_image}}"',
-                f'xlink:href="{image_data["data"]}"'
-            )
+            # Base64画像がある場合
+            if image_data.get("type") == "base64" and image_data.get("data"):
+                # <image>タグのhref属性を置換
+                placeholder = "{{" + image_key + "}}"
+                svg_content = svg_content.replace(
+                    f'href="{placeholder}"',
+                    f'href="{image_data["data"]}"'
+                )
+                svg_content = svg_content.replace(
+                    f'xlink:href="{placeholder}"',
+                    f'xlink:href="{image_data["data"]}"'
+                )
+
+        # 後方互換性: _main_image単独の場合も処理
+        if "_main_image" in property_data and "main_image" not in images:
+            main_image = property_data["_main_image"]
+            if main_image.get("type") == "base64" and main_image.get("data"):
+                svg_content = svg_content.replace(
+                    'href="{{main_image}}"',
+                    f'href="{main_image["data"]}"'
+                )
+                svg_content = svg_content.replace(
+                    'xlink:href="{{main_image}}"',
+                    f'xlink:href="{main_image["data"]}"'
+                )
 
         return svg_content
 

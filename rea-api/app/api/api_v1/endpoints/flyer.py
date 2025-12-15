@@ -104,8 +104,16 @@ def get_property_full_data(property_id: int) -> dict:
 
         # 画像データ取得（メタデータ駆動）
         image_handler = ImageHandler()
-        image_data = image_handler.get_image_for_svg(property_id, conn)
-        property_data["_main_image"] = image_data
+
+        # 複数画像対応（マイソク用に5枚まで取得）
+        images_data = image_handler.get_images_for_svg(property_id, conn, max_images=5)
+        property_data["_images"] = images_data
+
+        # 後方互換性のため_main_imageも維持
+        if "main_image" in images_data:
+            property_data["_main_image"] = images_data["main_image"]
+        else:
+            property_data["_main_image"] = image_handler.get_image_for_svg(property_id, conn)
 
         return property_data
 

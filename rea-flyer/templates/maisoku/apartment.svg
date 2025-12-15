@@ -112,20 +112,25 @@
   </g>
 
   <!-- 写真エリア -->
+  <!-- メイン画像（外観） -->
   <rect x="80" y="1420" width="1350" height="800" fill="#f9fafb" stroke="#e5e7eb" rx="8"/>
-  <text x="755" y="1820" class="label" text-anchor="middle">外観写真</text>
+  <image x="80" y="1420" width="1350" height="800" href="{{main_image}}" preserveAspectRatio="xMidYMid slice" clip-path="inset(0 round 8px)"/>
 
+  <!-- サブ画像1（リビング） -->
   <rect x="1500" y="1420" width="650" height="380" fill="#f9fafb" stroke="#e5e7eb" rx="8"/>
-  <text x="1825" y="1610" class="label" text-anchor="middle">リビング</text>
+  <image x="1500" y="1420" width="650" height="380" href="{{sub_image_1}}" preserveAspectRatio="xMidYMid slice" clip-path="inset(0 round 8px)"/>
 
+  <!-- サブ画像2（キッチン） -->
   <rect x="2200" y="1420" width="650" height="380" fill="#f9fafb" stroke="#e5e7eb" rx="8"/>
-  <text x="2525" y="1610" class="label" text-anchor="middle">キッチン</text>
+  <image x="2200" y="1420" width="650" height="380" href="{{sub_image_2}}" preserveAspectRatio="xMidYMid slice" clip-path="inset(0 round 8px)"/>
 
+  <!-- サブ画像3（間取り図） -->
   <rect x="1500" y="1840" width="650" height="380" fill="#f9fafb" stroke="#e5e7eb" rx="8"/>
-  <text x="1825" y="2030" class="label" text-anchor="middle">間取り図</text>
+  <image x="1500" y="1840" width="650" height="380" href="{{sub_image_3}}" preserveAspectRatio="xMidYMid slice" clip-path="inset(0 round 8px)"/>
 
+  <!-- サブ画像4（周辺地図） -->
   <rect x="2200" y="1840" width="650" height="380" fill="#f9fafb" stroke="#e5e7eb" rx="8"/>
-  <text x="2525" y="2030" class="label" text-anchor="middle">周辺地図</text>
+  <image x="2200" y="1840" width="650" height="380" href="{{sub_image_4}}" preserveAspectRatio="xMidYMid slice" clip-path="inset(0 round 8px)"/>
 
   <!-- 設備 -->
   <rect x="80" y="2280" width="2817" height="2" fill="#e5e7eb"/>

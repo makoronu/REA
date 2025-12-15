@@ -201,7 +201,7 @@ class ImageHandler:
         height: int = 600,
     ) -> Dict[str, Any]:
         """
-        SVG埋め込み用の画像データを取得
+        SVG埋め込み用の画像データを取得（メイン1枚）
 
         Args:
             property_id: 物件ID
@@ -236,3 +236,74 @@ class ImageHandler:
             "data": self.generate_placeholder_svg(width, height),
             "has_image": False,
         }
+
+    def get_images_for_svg(
+        self,
+        property_id: int,
+        db_connection,
+        max_images: int = 5,
+        image_configs: Optional[List[Dict[str, Any]]] = None,
+    ) -> Dict[str, Dict[str, Any]]:
+        """
+        SVG埋め込み用の複数画像データを取得
+
+        Args:
+            property_id: 物件ID
+            db_connection: DB接続
+            max_images: 最大取得枚数
+            image_configs: 画像設定リスト（各画像のサイズ指定用）
+                [{"key": "main_image", "width": 800, "height": 600, "label": "外観"}, ...]
+
+        Returns:
+            dict: {
+                "main_image": {"type": ..., "data": ..., "has_image": ...},
+                "sub_image_1": {"type": ..., "data": ..., "has_image": ...},
+                ...
+            }
+        """
+        # デフォルト設定
+        if image_configs is None:
+            image_configs = [
+                {"key": "main_image", "width": 800, "height": 600, "label": "外観写真"},
+                {"key": "sub_image_1", "width": 400, "height": 300, "label": "内観1"},
+                {"key": "sub_image_2", "width": 400, "height": 300, "label": "内観2"},
+                {"key": "sub_image_3", "width": 400, "height": 300, "label": "間取り図"},
+                {"key": "sub_image_4", "width": 400, "height": 300, "label": "周辺地図"},
+            ]
+
+        # 画像一覧取得
+        images = self.get_property_images(property_id, db_connection)
+
+        result = {}
+
+        for i, config in enumerate(image_configs[:max_images]):
+            key = config.get("key", f"image_{i}")
+            width = config.get("width", 400)
+            height = config.get("height", 300)
+            label = config.get("label", "写真")
+
+            # 対応する画像がある場合
+            if i < len(images):
+                img = images[i]
+                base64_data = self.image_to_base64(
+                    image_path=img.get("file_path"),
+                    image_url=img.get("file_url"),
+                )
+                if base64_data:
+                    result[key] = {
+                        "type": "base64",
+                        "data": base64_data,
+                        "has_image": True,
+                        "caption": img.get("caption") or label,
+                    }
+                    continue
+
+            # 画像がない場合はプレースホルダー
+            result[key] = {
+                "type": "placeholder",
+                "data": self.generate_placeholder_svg(width, height, label),
+                "has_image": False,
+                "caption": label,
+            }
+
+        return result
