@@ -1037,16 +1037,16 @@ ogr2ogr -f "PostgreSQL" PG:"host=localhost port=5433 dbname=real_estate_db user=
 
 ---
 
-### Phase 3: column_labels.enum_values 自動生成化 🔄 一部完了
+### Phase 3: column_labels.enum_values 廃止 ✅ 完了（2025-12-15）
 
-**目標**: enum_valuesをmaster_optionsから自動生成、手動編集禁止
+**目標**: enum_valuesをmaster_optionsから自動生成、enum_valuesカラム削除
 
 | # | 項目 | 状態 |
 |---|------|------|
 | 3-1 | column_labelsに `master_category_code` カラム追加 | [x] |
-| 3-2 | enum_valuesカラムを廃止（またはVIEW化） | [ ] |
+| 3-2 | enum_valuesカラムを廃止 | [x] |
 | 3-3 | メタデータAPI修正（master_optionsからoptions生成） | [x] |
-| 3-4 | 管理画面で選択肢を編集する場合はmaster_optionsを編集 | [ ] |
+| 3-4 | cache.py修正（master_optionsから取得） | [x] |
 
 **Before/After**:
 ```
@@ -1060,44 +1060,52 @@ column_labels.master_category_code = "building_structure"
 
 ---
 
-### Phase 4: FK制約追加
+### Phase 4: FK制約追加 ⏸️ 保留
 
 **目標**: データ整合性の担保
 
+**保留理由（2025-12-15）**:
+- master_optionsにHomesコード（source='homes'）とREAコード（source='rea'）が混在
+- 同一category_idで異なるsource間でoption_codeが衝突（例: homes:1=木造, homes:2=ブロック vs rea:1=木造, rea:2=鉄骨造）
+- FK制約追加には以下のいずれかが必要:
+  1. unique制約を(category_id, source, option_code)に変更
+  2. REA専用の選択肢テーブルを作成
+  3. CHECK制約で代替
+- 現状: API層で入力バリデーション済み、優先度低
+
 | # | 項目 | 状態 |
 |---|------|------|
-| 4-1 | building_info.building_structure → master_options(code) | [ ] |
-| 4-2 | properties.current_status → master_options(code) | [ ] |
-| 4-3 | land_info.use_district → m_zoning(zone_code) | [ ] |
-| 4-4 | land_info.city_planning → m_city_planning(code) | [ ] |
-| 4-5 | 全INTEGER選択肢カラムにFK制約追加 | [ ] |
-
-**注意**: FK追加前に孤立データ（参照先のないコード）をクリーンアップ必要
+| 4-1 | building_info.building_structure → master_options(code) | [ ] 保留 |
+| 4-2 | properties.current_status → master_options(code) | [ ] 保留 |
+| 4-3 | land_info.use_district → m_zoning(zone_code) | [ ] 保留 |
+| 4-4 | land_info.city_planning → m_city_planning(code) | [ ] 保留 |
+| 4-5 | 全INTEGER選択肢カラムにFK制約追加 | [ ] 保留 |
 
 ---
 
-### Phase 5: property_type 統一
+### Phase 5: property_type 統一 ⏸️ 保留
 
 **目標**: property_typeもINTEGER + master_options参照に統一
 
+**保留理由（2025-12-15）**:
+- 現在のVARCHARベース（"detached", "land"等）の設計が正常動作中
+- INTEGER化は30+ファイルに影響する大規模リファクタリング
+- property_typesテーブルによる参照整合性は担保済み
+- 可読性の観点では現在のVARCHARの方が優れる（"detached"は"1"より明確）
+- 優先度: 低（他の機能開発を優先）
+
 | # | 項目 | 状態 |
 |---|------|------|
-| 5-1 | property_typesテーブルの構造確認 | [ ] |
-| 5-2 | master_optionsにproperty_typeカテゴリ統合 | [ ] |
-| 5-3 | properties.property_typeをINTEGERに変換 | [ ] |
-| 5-4 | 既存データ移行（"detached" → 1 等） | [ ] |
-| 5-5 | フロントエンド修正（property_type選択） | [ ] |
+| 5-1 | property_typesテーブルの構造確認 | [x] 確認済み |
+| 5-2 | master_optionsにproperty_typeカテゴリ統合 | [ ] 保留 |
+| 5-3 | properties.property_typeをINTEGERに変換 | [ ] 保留 |
+| 5-4 | 既存データ移行（"detached" → 1 等） | [ ] 保留 |
+| 5-5 | フロントエンド修正（property_type選択） | [ ] 保留 |
 
-**現状**:
+**現状（維持）**:
 ```
-properties.property_type = "detached" ← VARCHAR、英語ID
+properties.property_type = "detached" ← VARCHAR、英語ID（可読性良好）
 property_types.id = "detached", label = "一戸建て"
-```
-
-**After**:
-```
-properties.property_type = 1 ← INTEGER
-master_options: category=property_type, code=1, value="一戸建て"
 ```
 
 ---

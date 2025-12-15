@@ -89,15 +89,19 @@ class MetadataCache:
         return result
 
     def get_enum_options(self, table_name: str, column_name: str) -> Optional[List[Dict[str, str]]]:
-        """column_labelsからENUM選択肢を取得（キャッシュ付き）"""
+        """master_optionsから選択肢を取得（キャッシュ付き）
+
+        master_category_code → master_options (source='rea') から取得
+        """
         cache_key = f'enum_{table_name}_{column_name}'
         cached = self.get(cache_key)
         if cached is not None:
             return cached
 
         with READatabase.cursor() as (cur, conn):
+            # master_category_codeを取得
             cur.execute("""
-                SELECT enum_values
+                SELECT master_category_code
                 FROM column_labels
                 WHERE table_name = %s AND column_name = %s
             """, (table_name, column_name))
@@ -106,20 +110,30 @@ class MetadataCache:
             if not row or not row[0]:
                 return None
 
-            enum_values = row[0]
+            master_category_code = row[0]
             options = []
-            for item in enum_values.split(","):
-                if ":" in item:
-                    parts = item.split(":", 1)
-                    options.append({"value": parts[1], "label": parts[1]})
-                else:
-                    options.append({"value": item, "label": item})
 
-        self.set(cache_key, options)
-        return options
+            # master_optionsから取得
+            cur.execute("""
+                SELECT mo.option_code, mo.option_value
+                FROM master_options mo
+                JOIN master_categories mc ON mo.category_id = mc.id
+                WHERE mc.category_code = %s AND mo.source = 'rea' AND mo.is_active = true
+                ORDER BY mo.display_order
+            """, (master_category_code,))
+            for opt_row in cur.fetchall():
+                code = opt_row[0].replace('rea_', '')  # rea_1 → 1
+                options.append({"value": code, "label": opt_row[1]})
+
+        if options:
+            self.set(cache_key, options)
+        return options if options else None
 
     def get_filter_options(self) -> Dict[str, List[Dict[str, Any]]]:
-        """フィルターオプションを取得（キャッシュ付き）"""
+        """フィルターオプションを取得（キャッシュ付き）
+
+        master_category_code → master_options (source='rea') から取得
+        """
         cache_key = 'filter_options'
         cached = self.get(cache_key)
         if cached is not None:
@@ -130,25 +144,30 @@ class MetadataCache:
         with READatabase.cursor() as (cur, conn):
             # column_labelsからフィルター用フィールドの選択肢を取得
             cur.execute("""
-                SELECT column_name, enum_values
+                SELECT column_name, master_category_code
                 FROM column_labels
                 WHERE table_name = 'properties'
-                AND column_name IN ('sales_status', 'publication_status', 'property_type')
-                AND enum_values IS NOT NULL
+                AND column_name IN ('sales_status', 'publication_status')
+                AND master_category_code IS NOT NULL
             """)
 
             for row in cur.fetchall():
                 column_name = row[0]
-                enum_values = row[1]
+                master_category_code = row[1]
 
-                if enum_values:
-                    options = []
-                    for item in enum_values.split(","):
-                        if ":" in item:
-                            parts = item.split(":", 1)
-                            options.append({"value": parts[1], "label": parts[1]})
-                        else:
-                            options.append({"value": item, "label": item})
+                # master_optionsから取得
+                cur.execute("""
+                    SELECT mo.option_value
+                    FROM master_options mo
+                    JOIN master_categories mc ON mo.category_id = mc.id
+                    WHERE mc.category_code = %s AND mo.source = 'rea' AND mo.is_active = true
+                    ORDER BY mo.display_order
+                """, (master_category_code,))
+                options = [
+                    {"value": opt_row[0], "label": opt_row[0]}
+                    for opt_row in cur.fetchall()
+                ]
+                if options:
                     filter_options[column_name] = options
 
         # property_typesも追加

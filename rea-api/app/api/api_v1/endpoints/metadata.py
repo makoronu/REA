@@ -1,6 +1,10 @@
 """
 データベースメタデータAPI
 テーブル構造、カラム情報、ラベル情報を提供
+
+選択肢の取得:
+- master_optionsテーブル（source='rea'）から取得
+- master_category_codeでカテゴリを指定
 """
 from typing import Any, Dict, List, Optional
 
@@ -205,9 +209,9 @@ def get_table_columns_with_labels(
     column_labelsテーブルの情報も結合
     仮想カラム（DBに存在しないがcolumn_labelsに定義されているカラム）も含む
 
-    選択肢の取得順序:
-    1. master_category_code が設定されている場合 → master_options (source='rea') から取得
-    2. enum_values が設定されている場合 → enum_values を使用
+    選択肢の取得:
+    - property_type → property_typesテーブル
+    - その他 → master_options (source='rea') から取得（master_category_codeで指定）
     """
     try:
         # master_optionsキャッシュを先に取得
@@ -232,7 +236,6 @@ def get_table_columns_with_labels(
                 cl.is_required,
                 cl.group_name,
                 cl.max_length,
-                cl.enum_values,
                 cl.visible_for,
                 cl.master_category_code,
                 -- 主キー判定
@@ -270,17 +273,16 @@ def get_table_columns_with_labels(
         for row in result:
             existing_column_names.add(row.column_name)
 
-            # 選択肢の取得優先順位:
+            # 選択肢の取得:
             # 1. property_type → property_typesテーブル
-            # 2. master_category_code設定あり → master_options (source='rea')
-            # 3. enum_values設定あり → enum_values
+            # 2. その他 → master_options (source='rea')
             if row.column_name == "property_type":
                 options = property_type_options
             elif row.master_category_code and row.master_category_code in master_options_cache:
                 # master_optionsから取得（コード:ラベル形式で返す）
                 options = master_options_cache[row.master_category_code]
             else:
-                options = row.enum_values
+                options = None
 
             column_info = {
                 "column_name": row.column_name,
@@ -307,7 +309,7 @@ def get_table_columns_with_labels(
                 "placeholder": None,  # 存在しない
                 "help_text": row.description,  # descriptionを流用
                 "default_value": None,  # 存在しない
-                "options": options,  # enum_valuesまたはproperty_typesから取得
+                "options": options,  # master_optionsまたはproperty_typesから取得
                 "is_virtual": False,  # 実カラム
                 "visible_for": row.visible_for,  # 物件種別による表示制御
             }
@@ -325,7 +327,6 @@ def get_table_columns_with_labels(
                 cl.is_required,
                 cl.group_name,
                 cl.max_length,
-                cl.enum_values,
                 cl.data_type,
                 cl.visible_for,
                 cl.master_category_code
@@ -342,11 +343,11 @@ def get_table_columns_with_labels(
 
         virtual_result = db.execute(virtual_query, {"table_name": table_name})
         for row in virtual_result:
-            # 仮想カラムのoptions取得
+            # 仮想カラムのoptions取得（master_optionsから）
             if row.master_category_code and row.master_category_code in master_options_cache:
                 virtual_options = master_options_cache[row.master_category_code]
             else:
-                virtual_options = row.enum_values
+                virtual_options = None
 
             column_info = {
                 "column_name": row.column_name,
@@ -420,33 +421,41 @@ def get_enum_values(
 def get_filter_options(db: Session = Depends(dependencies.get_db)) -> Dict[str, Any]:
     """
     フィルター用のオプション一覧を取得（メタデータ駆動）
-    column_labelsテーブルから動的に取得
+    master_optionsテーブルから動的に取得
     """
     try:
-        # column_labelsからフィルター用フィールドの選択肢を取得
+        filter_options: Dict[str, List[Dict[str, Any]]] = {}
+
+        # column_labelsからフィルター用フィールドのmaster_category_codeを取得
         query = text("""
-            SELECT column_name, enum_values
+            SELECT column_name, master_category_code
             FROM column_labels
             WHERE table_name = 'properties'
-            AND column_name IN ('sales_status', 'publication_status', 'property_type')
-            AND enum_values IS NOT NULL
+            AND column_name IN ('sales_status', 'publication_status')
+            AND master_category_code IS NOT NULL
         """)
         result = db.execute(query)
 
-        filter_options: Dict[str, List[Dict[str, Any]]] = {}
-
         for row in result:
             column_name = row.column_name
-            enum_values = row.enum_values
+            master_category_code = row.master_category_code
 
-            if enum_values:
-                options = []
-                for item in enum_values.split(","):
-                    if ":" in item:
-                        parts = item.split(":", 1)
-                        options.append({"value": parts[1], "label": parts[1]})
-                    else:
-                        options.append({"value": item, "label": item})
+            # master_optionsから選択肢を取得
+            options_query = text("""
+                SELECT mo.option_value
+                FROM master_options mo
+                JOIN master_categories mc ON mo.category_id = mc.id
+                WHERE mc.category_code = :category_code
+                AND mo.source = 'rea'
+                AND mo.is_active = true
+                ORDER BY mo.display_order
+            """)
+            options_result = db.execute(options_query, {"category_code": master_category_code})
+            options = [
+                {"value": opt_row.option_value, "label": opt_row.option_value}
+                for opt_row in options_result
+            ]
+            if options:
                 filter_options[column_name] = options
 
         # property_typesテーブルからも取得（簡易版）
