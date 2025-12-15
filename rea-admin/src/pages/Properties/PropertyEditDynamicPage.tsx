@@ -17,10 +17,6 @@ export const PropertyEditDynamicPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSettingSchoolDistricts, setIsSettingSchoolDistricts] = useState(false);
   const [isSettingZoning, setIsSettingZoning] = useState(false);
-  const [isGeneratingFlyer, setIsGeneratingFlyer] = useState(false);
-  const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [previewSvg, setPreviewSvg] = useState<string | null>(null);
-  const [previewType, setPreviewType] = useState<'maisoku' | 'chirashi'>('maisoku');
   const [mainTab, setMainTab] = useState<'property' | 'registry'>('property');
 
   // 既存データの取得（関連テーブル含む）
@@ -81,121 +77,6 @@ export const PropertyEditDynamicPage: React.FC = () => {
     } finally {
       setIsSettingSchoolDistricts(false);
     }
-  };
-
-  // マイソク生成
-  const handleGenerateMaisoku = async (format: 'svg' | 'png' = 'svg') => {
-    if (!id || isNew) return;
-
-    setIsGeneratingFlyer(true);
-    try {
-      const response = await fetch(`${API_URL}/api/v1/flyer/maisoku/${id}?format=${format}`, {
-        method: 'POST',
-      });
-
-      if (!response.ok) {
-        throw new Error('マイソク生成に失敗しました');
-      }
-
-      // ファイルをダウンロード
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `maisoku_${id}.${format}`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-
-      setSaveStatus('saved');
-      setTimeout(() => setSaveStatus('idle'), 3000);
-    } catch (err: any) {
-      setError(err.message || 'マイソク生成に失敗しました');
-      setSaveStatus('error');
-    } finally {
-      setIsGeneratingFlyer(false);
-    }
-  };
-
-  // チラシ生成
-  const handleGenerateChirashi = async (format: 'svg' | 'png' = 'svg') => {
-    if (!id || isNew) return;
-
-    setIsGeneratingFlyer(true);
-    try {
-      const response = await fetch(`${API_URL}/api/v1/flyer/chirashi?format=${format}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ property_ids: [parseInt(id)], layout: 'single' }),
-      });
-
-      if (!response.ok) {
-        throw new Error('チラシ生成に失敗しました');
-      }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `chirashi_${id}.${format}`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-
-      setSaveStatus('saved');
-      setTimeout(() => setSaveStatus('idle'), 3000);
-    } catch (err: any) {
-      setError(err.message || 'チラシ生成に失敗しました');
-      setSaveStatus('error');
-    } finally {
-      setIsGeneratingFlyer(false);
-    }
-  };
-
-  // プレビュー表示
-  const handlePreview = async (type: 'maisoku' | 'chirashi') => {
-    if (!id || isNew) return;
-
-    setIsGeneratingFlyer(true);
-    setPreviewType(type);
-    try {
-      let response;
-      if (type === 'maisoku') {
-        response = await fetch(`${API_URL}/api/v1/flyer/maisoku/${id}?format=svg`, {
-          method: 'POST',
-        });
-      } else {
-        response = await fetch(`${API_URL}/api/v1/flyer/chirashi?format=svg`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ property_ids: [parseInt(id)], layout: 'single' }),
-        });
-      }
-
-      if (!response.ok) {
-        throw new Error('プレビュー生成に失敗しました');
-      }
-
-      const svgText = await response.text();
-      setPreviewSvg(svgText);
-      setShowPreviewModal(true);
-    } catch (err: any) {
-      setError(err.message || 'プレビュー生成に失敗しました');
-    } finally {
-      setIsGeneratingFlyer(false);
-    }
-  };
-
-  // プレビューからダウンロード
-  const handleDownloadFromPreview = (format: 'svg' | 'png') => {
-    if (previewType === 'maisoku') {
-      handleGenerateMaisoku(format);
-    } else {
-      handleGenerateChirashi(format);
-    }
-    setShowPreviewModal(false);
   };
 
   // 用途地域自動設定
@@ -369,26 +250,6 @@ export const PropertyEditDynamicPage: React.FC = () => {
                 )}
               </button>
             )}
-            {/* マイソク生成ボタン */}
-            {!isNew && (
-              <button
-                onClick={() => handleGenerateMaisoku('svg')}
-                disabled={isGeneratingFlyer}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap', padding: '8px 16px', backgroundColor: '#ea580c', color: 'white', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}
-              >
-                {isGeneratingFlyer && previewType === 'maisoku' ? '生成中...' : 'マイソク'}
-              </button>
-            )}
-            {/* チラシ生成ボタン */}
-            {!isNew && (
-              <button
-                onClick={() => handleGenerateChirashi('svg')}
-                disabled={isGeneratingFlyer}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap', padding: '8px 16px', backgroundColor: '#db2777', color: 'white', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}
-              >
-                {isGeneratingFlyer && previewType === 'chirashi' ? '生成中...' : 'チラシ'}
-              </button>
-            )}
             {/* 戻るボタン */}
             <button
               onClick={() => navigate('/properties')}
@@ -463,78 +324,6 @@ export const PropertyEditDynamicPage: React.FC = () => {
 
       {/* 保存状態の表示 */}
       {renderSaveStatus()}
-
-      {/* プレビューモーダル */}
-      {showPreviewModal && previewSvg && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl max-h-[90vh] w-full mx-4 flex flex-col">
-            {/* ヘッダー */}
-            <div className="flex items-center justify-between px-6 py-4 border-b">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {previewType === 'maisoku' ? 'マイソク' : 'チラシ'}プレビュー
-                </h3>
-                <p className="text-sm text-gray-500">
-                  テンプレート: {previewType === 'maisoku' ? '物件種別から自動選択' : 'single（A4全面）'}
-                </p>
-              </div>
-              <button
-                onClick={() => setShowPreviewModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {/* プレビュー表示エリア */}
-            <div className="flex-1 overflow-auto p-4 bg-gray-100">
-              <div
-                className="bg-white shadow-lg mx-auto"
-                style={{
-                  maxWidth: '500px',
-                  transform: 'scale(1)',
-                  transformOrigin: 'top center'
-                }}
-              >
-                <div
-                  style={{
-                    width: '100%',
-                    height: 'auto',
-                    aspectRatio: '210 / 297'
-                  }}
-                  dangerouslySetInnerHTML={{
-                    __html: previewSvg.replace(
-                      /width="[^"]*"\s*height="[^"]*"/,
-                      'width="100%" height="100%" preserveAspectRatio="xMidYMid meet"'
-                    )
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* フッター：ダウンロードボタン */}
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t bg-gray-50">
-              <button
-                onClick={() => setShowPreviewModal(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                閉じる
-              </button>
-              <button
-                onClick={() => handleDownloadFromPreview('svg')}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 flex items-center gap-2"
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                SVGダウンロード
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
