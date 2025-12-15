@@ -4,6 +4,7 @@ import { PropertyFullForm } from '../../components/form/DynamicForm';
 import { propertyService } from '../../services/propertyService';
 import { Property } from '../../types/property';
 import { API_URL } from '../../config';
+import { RegistryTab } from '../../components/registry';
 
 export const PropertyEditDynamicPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -20,6 +21,7 @@ export const PropertyEditDynamicPage: React.FC = () => {
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewSvg, setPreviewSvg] = useState<string | null>(null);
   const [previewType, setPreviewType] = useState<'maisoku' | 'chirashi'>('maisoku');
+  const [mainTab, setMainTab] = useState<'property' | 'registry'>('property');
 
   // 既存データの取得（関連テーブル含む）
   useEffect(() => {
@@ -316,7 +318,7 @@ export const PropertyEditDynamicPage: React.FC = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* ヘッダー */}
       <div className="mb-8">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
               {isNew ? '物件新規登録' : '物件編集'}
@@ -326,7 +328,7 @@ export const PropertyEditDynamicPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-wrap items-center gap-2" style={{ flexShrink: 0 }}>
             {/* 用途地域自動取得ボタン */}
             {!isNew && property?.latitude && property?.longitude && (
               <button
@@ -367,79 +369,25 @@ export const PropertyEditDynamicPage: React.FC = () => {
                 )}
               </button>
             )}
-            {/* マイソク生成ボタン（プレビュー付き） */}
+            {/* マイソク生成ボタン */}
             {!isNew && (
-              <div className="relative group">
-                <button
-                  onClick={() => handlePreview('maisoku')}
-                  disabled={isGeneratingFlyer}
-                  className="px-4 py-2 text-sm font-medium text-white bg-orange-600 border border-orange-600 rounded-l-md hover:bg-orange-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {isGeneratingFlyer && previewType === 'maisoku' ? (
-                    <>
-                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
-                      生成中...
-                    </>
-                  ) : (
-                    <>
-                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      マイソク
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={() => handleGenerateMaisoku('svg')}
-                  disabled={isGeneratingFlyer}
-                  className="px-2 py-2 text-sm font-medium text-white bg-orange-600 border-l border-orange-500 rounded-r-md hover:bg-orange-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                  title="SVGダウンロード"
-                >
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                </button>
-              </div>
+              <button
+                onClick={() => handleGenerateMaisoku('svg')}
+                disabled={isGeneratingFlyer}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap', padding: '8px 16px', backgroundColor: '#ea580c', color: 'white', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}
+              >
+                {isGeneratingFlyer && previewType === 'maisoku' ? '生成中...' : 'マイソク'}
+              </button>
             )}
-            {/* チラシ生成ボタン（プレビュー付き） */}
+            {/* チラシ生成ボタン */}
             {!isNew && (
-              <div className="relative group">
-                <button
-                  onClick={() => handlePreview('chirashi')}
-                  disabled={isGeneratingFlyer}
-                  className="px-4 py-2 text-sm font-medium text-white bg-pink-600 border border-pink-600 rounded-l-md hover:bg-pink-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {isGeneratingFlyer && previewType === 'chirashi' ? (
-                    <>
-                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
-                      生成中...
-                    </>
-                  ) : (
-                    <>
-                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                      </svg>
-                      チラシ
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={() => handleGenerateChirashi('svg')}
-                  disabled={isGeneratingFlyer}
-                  className="px-2 py-2 text-sm font-medium text-white bg-pink-600 border-l border-pink-500 rounded-r-md hover:bg-pink-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                  title="SVGダウンロード"
-                >
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                </button>
-              </div>
+              <button
+                onClick={() => handleGenerateChirashi('svg')}
+                disabled={isGeneratingFlyer}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap', padding: '8px 16px', backgroundColor: '#db2777', color: 'white', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}
+              >
+                {isGeneratingFlyer && previewType === 'chirashi' ? '生成中...' : 'チラシ'}
+              </button>
             )}
             {/* 戻るボタン */}
             <button
@@ -459,8 +407,34 @@ export const PropertyEditDynamicPage: React.FC = () => {
         </div>
       )}
 
-      {/* 動的フォーム（全テーブル表示） */}
-      <div className="bg-white shadow rounded-lg p-6">
+      {/* メインタブナビゲーション（物件情報 / 登記情報） */}
+      {!isNew && (
+        <div className="mb-4 flex gap-2">
+          <button
+            onClick={() => setMainTab('property')}
+            className={`px-6 py-3 rounded-lg font-medium transition-all ${
+              mainTab === 'property'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            物件情報
+          </button>
+          <button
+            onClick={() => setMainTab('registry')}
+            className={`px-6 py-3 rounded-lg font-medium transition-all ${
+              mainTab === 'registry'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            登記情報
+          </button>
+        </div>
+      )}
+
+      {/* 動的フォーム（物件情報タブ） */}
+      <div className="bg-white shadow rounded-lg p-6" style={{ display: mainTab === 'property' || isNew ? 'block' : 'none' }}>
         <PropertyFullForm
           key={isNew ? 'new' : `edit-${id}`}  // 新規/編集切り替え時にフォームをリセット
           onSubmit={handleSubmit}
@@ -478,6 +452,13 @@ export const PropertyEditDynamicPage: React.FC = () => {
           autoSave={false}
         />
       </div>
+
+      {/* 登記情報タブ（編集時のみ） */}
+      {!isNew && mainTab === 'registry' && (
+        <div className="bg-white shadow rounded-lg p-6">
+          <RegistryTab propertyId={parseInt(id!)} />
+        </div>
+      )}
 
 
       {/* 保存状態の表示 */}

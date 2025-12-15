@@ -79,6 +79,7 @@
   <text x="80" y="1100" class="section-title">土地情報</text>
 
   <g transform="translate(80, 1140)">
+    <!-- 1行目：土地面積、用途地域、建ぺい率/容積率 -->
     <rect x="0" y="0" width="680" height="50" fill="#f3f4f6"/>
     <rect x="680" y="0" width="680" height="50" fill="#f3f4f6"/>
     <rect x="1360" y="0" width="680" height="50" fill="#f3f4f6"/>
@@ -94,6 +95,40 @@
     <text x="20" y="95" class="value">{{land_area}}</text>
     <text x="700" y="95" class="value">{{use_district}}</text>
     <text x="1380" y="95" class="value">{{building_coverage}} / {{floor_area_ratio}}</text>
+
+    <!-- 2行目：地目、権利、都市計画 -->
+    <rect x="0" y="120" width="680" height="50" fill="#f3f4f6"/>
+    <rect x="680" y="120" width="680" height="50" fill="#f3f4f6"/>
+    <rect x="1360" y="120" width="680" height="50" fill="#f3f4f6"/>
+
+    <text x="20" y="155" class="label">地目</text>
+    <text x="700" y="155" class="label">土地権利</text>
+    <text x="1380" y="155" class="label">都市計画</text>
+
+    <rect x="0" y="170" width="680" height="60" fill="#fff" stroke="#e5e7eb"/>
+    <rect x="680" y="170" width="680" height="60" fill="#fff" stroke="#e5e7eb"/>
+    <rect x="1360" y="170" width="680" height="60" fill="#fff" stroke="#e5e7eb"/>
+
+    <text x="20" y="215" class="value">{{land_category}}</text>
+    <text x="700" y="215" class="value">{{land_rights}}</text>
+    <text x="1380" y="215" class="value">{{city_planning}}</text>
+
+    <!-- 3行目：接道状況、私道負担、セットバック -->
+    <rect x="0" y="240" width="680" height="50" fill="#f3f4f6"/>
+    <rect x="680" y="240" width="680" height="50" fill="#f3f4f6"/>
+    <rect x="1360" y="240" width="680" height="50" fill="#f3f4f6"/>
+
+    <text x="20" y="275" class="label">接道状況</text>
+    <text x="700" y="275" class="label">私道負担</text>
+    <text x="1380" y="275" class="label">セットバック</text>
+
+    <rect x="0" y="290" width="680" height="60" fill="#fff" stroke="#e5e7eb"/>
+    <rect x="680" y="290" width="680" height="60" fill="#fff" stroke="#e5e7eb"/>
+    <rect x="1360" y="290" width="680" height="60" fill="#fff" stroke="#e5e7eb"/>
+
+    <text x="20" y="335" class="value">{{road_access}}</text>
+    <text x="700" y="335" class="value">{{private_road}}</text>
+    <text x="1380" y="335" class="value">{{setback}}</text>
   </g>
 
   <!-- 写真エリア -->
