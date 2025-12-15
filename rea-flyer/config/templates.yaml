@@ -1,9 +1,21 @@
 # テンプレート定義（メタデータ駆動の核心）
+# デフォルト設定
+defaults:
+  paper_orientation: horizontal  # 横向き（業界標準）
+  font_family: "Noto Sans JP"
+  font_sizes:
+    price: 120        # 価格（最重要）
+    property_name: 36 # 物件名
+    section_title: 24 # セクションタイトル
+    label: 18         # ラベル
+    value: 22         # 値
+    small: 14         # 注釈
+
 maisoku:
   land:
-    template: maisoku/land.svg
+    template: maisoku/land_horizontal.svg
     property_types: [land]
-    paper_size: a4
+    paper_size: a4_horizontal
     sections:
       - name: header
         fields: [property_name, price, price_per_tsubo]
@@ -15,18 +27,22 @@ maisoku:
         fields: [transaction_type, delivery_timing]
 
   detached:
-    template: maisoku/detached.svg
+    template: maisoku/detached_horizontal.svg
     property_types: [detached]
-    paper_size: a4
+    paper_size: a4_horizontal
     sections:
       - name: header
-        fields: [property_name, price]
+        fields: [property_name, price, price_per_tsubo]
       - name: location
         fields: [address, access]
       - name: building_info
         fields: [building_area, floor_plan, building_structure, construction_date]
       - name: land_info
-        fields: [land_area, use_district]
+        fields: [land_area, use_district, land_category, land_rights, city_planning, road_access]
+      - name: transaction
+        fields: [transaction_type, delivery_timing]
+      - name: footer
+        fields: [company_name, company_phone, license_number, company_address]
 
   apartment:
     template: maisoku/apartment.svg

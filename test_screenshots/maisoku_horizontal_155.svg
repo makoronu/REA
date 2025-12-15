@@ -1,0 +1,295 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 戸建用マイソクテンプレート（A4横 + 塗り足し3mm） -->
+<!-- Z型視線誘導: 左上(価格)→右上(概要)→左下(写真)→右下(間取り+会社) -->
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="4175" height="2976"
+     viewBox="0 0 4175 2976">
+
+  <defs>
+    <!-- フォント定義（切り替え可能） -->
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&amp;display=swap');
+
+      /* ベースフォント */
+      .font-base { font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif; }
+
+      /* 物件種別ラベル */
+      .property-type {
+        font-family: "Noto Sans JP", sans-serif;
+        font-size: 42px;
+        font-weight: 700;
+        fill: #ffffff;
+      }
+
+      /* 価格（最重要・最大） */
+      .price-main {
+        font-family: "Noto Sans JP", sans-serif;
+        font-size: 120px;
+        font-weight: 900;
+        fill: #c41e3a;
+      }
+      .price-unit {
+        font-family: "Noto Sans JP", sans-serif;
+        font-size: 48px;
+        font-weight: 700;
+        fill: #c41e3a;
+      }
+
+      /* 物件名 */
+      .property-name {
+        font-family: "Noto Sans JP", sans-serif;
+        font-size: 36px;
+        font-weight: 700;
+        fill: #1a1a1a;
+      }
+
+      /* セクションタイトル */
+      .section-title {
+        font-family: "Noto Sans JP", sans-serif;
+        font-size: 24px;
+        font-weight: 700;
+        fill: #333333;
+      }
+
+      /* ラベル（項目名） */
+      .label {
+        font-family: "Noto Sans JP", sans-serif;
+        font-size: 18px;
+        font-weight: 500;
+        fill: #666666;
+      }
+
+      /* 値（内容） */
+      .value {
+        font-family: "Noto Sans JP", sans-serif;
+        font-size: 22px;
+        font-weight: 500;
+        fill: #1a1a1a;
+      }
+
+      /* 値（大きめ） */
+      .value-large {
+        font-family: "Noto Sans JP", sans-serif;
+        font-size: 28px;
+        font-weight: 700;
+        fill: #1a1a1a;
+      }
+
+      /* 住所 */
+      .address {
+        font-family: "Noto Sans JP", sans-serif;
+        font-size: 26px;
+        font-weight: 500;
+        fill: #1a1a1a;
+      }
+
+      /* 会社情報 */
+      .company-name {
+        font-family: "Noto Sans JP", sans-serif;
+        font-size: 28px;
+        font-weight: 700;
+        fill: #ffffff;
+      }
+      .company-info {
+        font-family: "Noto Sans JP", sans-serif;
+        font-size: 20px;
+        font-weight: 400;
+        fill: #cccccc;
+      }
+
+      /* 小さい注釈 */
+      .small {
+        font-family: "Noto Sans JP", sans-serif;
+        font-size: 14px;
+        fill: #888888;
+      }
+    </style>
+  </defs>
+
+  <!-- 背景（白） -->
+  <rect width="100%" height="100%" fill="#ffffff"/>
+
+  <!-- ==================== 左上エリア：物件種別 + 価格 ==================== -->
+  <g id="top-left">
+    <!-- 物件種別バッジ -->
+    <rect x="60" y="60" width="180" height="56" rx="4" fill="#16a34a"/>
+    <text x="150" y="98" class="property-type" text-anchor="middle">売戸建</text>
+
+    <!-- 物件名 -->
+    <text x="260" y="98" class="property-name">155 【売戸建】中古戸建 北見市田端町 1300万円</text>
+
+    <!-- 価格エリア（最重要） -->
+    <rect x="60" y="140" width="1900" height="200" fill="#fef2f2" rx="8"/>
+    <text x="100" y="200" class="label">販売価格</text>
+    <text x="100" y="310" class="price-main">1,300万円</text>
+    <text x="750" y="310" class="price-unit">万円</text>
+
+    <!-- 坪単価 -->
+    <text x="1000" y="280" class="value">坪単価</text>
+    <text x="1150" y="280" class="value-large">約4万円/坪</text>
+  </g>
+
+  <!-- ==================== 右上エリア：物件概要 ==================== -->
+  <g id="top-right" transform="translate(2020, 60)">
+    <!-- 所在地 -->
+    <rect x="0" y="0" width="2095" height="80" fill="#f8fafc" rx="4"/>
+    <text x="20" y="30" class="label">所在地</text>
+    <text x="20" y="62" class="address">北海道北見市田端町７１番地</text>
+
+    <!-- 交通 -->
+    <rect x="0" y="90" width="2095" height="60" fill="#ffffff" stroke="#e5e7eb" rx="4"/>
+    <text x="20" y="115" class="label">交通</text>
+    <text x="120" y="130" class="value"></text>
+
+    <!-- 建物情報グリッド -->
+    <g transform="translate(0, 170)">
+      <!-- 行1: 建物面積、間取り、構造 -->
+      <rect x="0" y="0" width="700" height="40" fill="#f3f4f6"/>
+      <rect x="700" y="0" width="700" height="40" fill="#f3f4f6"/>
+      <rect x="1400" y="0" width="695" height="40" fill="#f3f4f6"/>
+
+      <text x="20" y="28" class="label">建物面積</text>
+      <text x="720" y="28" class="label">間取り</text>
+      <text x="1420" y="28" class="label">構造</text>
+
+      <rect x="0" y="40" width="700" height="50" fill="#fff" stroke="#e5e7eb"/>
+      <rect x="700" y="40" width="700" height="50" fill="#fff" stroke="#e5e7eb"/>
+      <rect x="1400" y="40" width="695" height="50" fill="#fff" stroke="#e5e7eb"/>
+
+      <text x="20" y="75" class="value-large">111.37㎡（33.69坪）</text>
+      <text x="720" y="75" class="value-large"></text>
+      <text x="1420" y="75" class="value">木造</text>
+    </g>
+
+    <!-- 行2: 土地面積、用途地域、築年月 -->
+    <g transform="translate(0, 270)">
+      <rect x="0" y="0" width="700" height="40" fill="#f3f4f6"/>
+      <rect x="700" y="0" width="700" height="40" fill="#f3f4f6"/>
+      <rect x="1400" y="0" width="695" height="40" fill="#f3f4f6"/>
+
+      <text x="20" y="28" class="label">土地面積</text>
+      <text x="720" y="28" class="label">用途地域</text>
+      <text x="1420" y="28" class="label">築年月</text>
+
+      <rect x="0" y="40" width="700" height="50" fill="#fff" stroke="#e5e7eb"/>
+      <rect x="700" y="40" width="700" height="50" fill="#fff" stroke="#e5e7eb"/>
+      <rect x="1400" y="40" width="695" height="50" fill="#fff" stroke="#e5e7eb"/>
+
+      <text x="20" y="75" class="value-large">885.06㎡（267.73坪）</text>
+      <text x="720" y="75" class="value">商業</text>
+      <text x="1420" y="75" class="value">築23年（平成14年築）</text>
+    </g>
+  </g>
+
+  <!-- ==================== 左下エリア：写真 ==================== -->
+  <g id="bottom-left" transform="translate(60, 380)">
+    <!-- メイン写真（外観） -->
+    <rect x="0" y="0" width="1200" height="800" fill="#f1f5f9" stroke="#e2e8f0" stroke-width="2" rx="8"/>
+    <image x="0" y="0" width="1200" height="800" href="" preserveAspectRatio="xMidYMid slice" clip-path="inset(0 round 8px)"/>
+    <text x="600" y="400" class="label" text-anchor="middle" fill="#94a3b8">外観写真</text>
+
+    <!-- サブ写真1（内観） -->
+    <rect x="1220" y="0" width="580" height="390" fill="#f1f5f9" stroke="#e2e8f0" stroke-width="2" rx="8"/>
+    <image x="1220" y="0" width="580" height="390" href="" preserveAspectRatio="xMidYMid slice" clip-path="inset(0 round 8px)"/>
+    <text x="1510" y="200" class="label" text-anchor="middle" fill="#94a3b8">内観1</text>
+
+    <!-- サブ写真2（内観） -->
+    <rect x="1220" y="410" width="580" height="390" fill="#f1f5f9" stroke="#e2e8f0" stroke-width="2" rx="8"/>
+    <image x="1220" y="410" width="580" height="390" href="" preserveAspectRatio="xMidYMid slice" clip-path="inset(0 round 8px)"/>
+    <text x="1510" y="610" class="label" text-anchor="middle" fill="#94a3b8">内観2</text>
+  </g>
+
+  <!-- ==================== 中央下：土地詳細情報 ==================== -->
+  <g id="bottom-center" transform="translate(60, 1200)">
+    <text x="0" y="30" class="section-title">土地情報</text>
+
+    <g transform="translate(0, 50)">
+      <!-- 行1 -->
+      <rect x="0" y="0" width="450" height="36" fill="#f3f4f6"/>
+      <rect x="450" y="0" width="450" height="36" fill="#f3f4f6"/>
+      <rect x="900" y="0" width="450" height="36" fill="#f3f4f6"/>
+      <rect x="1350" y="0" width="450" height="36" fill="#f3f4f6"/>
+
+      <text x="15" y="25" class="label">地目</text>
+      <text x="465" y="25" class="label">土地権利</text>
+      <text x="915" y="25" class="label">都市計画</text>
+      <text x="1365" y="25" class="label">建ぺい率/容積率</text>
+
+      <rect x="0" y="36" width="450" height="44" fill="#fff" stroke="#e5e7eb"/>
+      <rect x="450" y="36" width="450" height="44" fill="#fff" stroke="#e5e7eb"/>
+      <rect x="900" y="36" width="450" height="44" fill="#fff" stroke="#e5e7eb"/>
+      <rect x="1350" y="36" width="450" height="44" fill="#fff" stroke="#e5e7eb"/>
+
+      <text x="15" y="68" class="value">宅地</text>
+      <text x="465" y="68" class="value"></text>
+      <text x="915" y="68" class="value">市街化区域</text>
+      <text x="1365" y="68" class="value">60.0% / 200.0%</text>
+
+      <!-- 行2 -->
+      <rect x="0" y="90" width="600" height="36" fill="#f3f4f6"/>
+      <rect x="600" y="90" width="600" height="36" fill="#f3f4f6"/>
+      <rect x="1200" y="90" width="600" height="36" fill="#f3f4f6"/>
+
+      <text x="15" y="115" class="label">接道状況</text>
+      <text x="615" y="115" class="label">私道負担</text>
+      <text x="1215" y="115" class="label">セットバック</text>
+
+      <rect x="0" y="126" width="600" height="44" fill="#fff" stroke="#e5e7eb"/>
+      <rect x="600" y="126" width="600" height="44" fill="#fff" stroke="#e5e7eb"/>
+      <rect x="1200" y="126" width="600" height="44" fill="#fff" stroke="#e5e7eb"/>
+
+      <text x="15" y="158" class="value">角地 南東 22.0m</text>
+      <text x="615" y="158" class="value">なし</text>
+      <text x="1215" y="158" class="value">なし</text>
+    </g>
+  </g>
+
+  <!-- ==================== 右下エリア：間取り図 + 取引条件 ==================== -->
+  <g id="bottom-right" transform="translate(2020, 450)">
+    <!-- 間取り図エリア -->
+    <text x="0" y="0" class="section-title">間取り図</text>
+    <rect x="0" y="20" width="1000" height="700" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2" rx="8"/>
+    <image x="0" y="20" width="1000" height="700" href="" preserveAspectRatio="xMidYMid meet" clip-path="inset(0 round 8px)"/>
+
+    <!-- 周辺地図エリア -->
+    <rect x="1020" y="20" width="1095" height="700" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2" rx="8"/>
+    <image x="1020" y="20" width="1095" height="700" href="" preserveAspectRatio="xMidYMid meet" clip-path="inset(0 round 8px)"/>
+    <text x="1567" y="380" class="label" text-anchor="middle" fill="#94a3b8">周辺地図</text>
+
+    <!-- 取引条件 -->
+    <g transform="translate(0, 750)">
+      <rect x="0" y="0" width="530" height="36" fill="#f3f4f6"/>
+      <rect x="530" y="0" width="530" height="36" fill="#f3f4f6"/>
+
+      <text x="15" y="25" class="label">取引態様</text>
+      <text x="545" y="25" class="label">引渡時期</text>
+
+      <rect x="0" y="36" width="530" height="44" fill="#fff" stroke="#e5e7eb"/>
+      <rect x="530" y="36" width="530" height="44" fill="#fff" stroke="#e5e7eb"/>
+
+      <text x="15" y="68" class="value">仲介(一般)</text>
+      <text x="545" y="68" class="value">即時</text>
+    </g>
+
+    <!-- 備考 -->
+    <g transform="translate(0, 850)">
+      <text x="0" y="0" class="section-title">備考</text>
+      <rect x="0" y="15" width="2115" height="80" fill="#fff" stroke="#e5e7eb" rx="4"/>
+      <text x="15" y="55" class="value">内装張替え済</text>
+    </g>
+  </g>
+
+  <!-- ==================== フッター：会社情報 ==================== -->
+  <rect x="0" y="2776" width="4175" height="200" fill="#1e3a5f"/>
+  <g id="footer" transform="translate(60, 2776)">
+    <text x="0" y="60" class="company-name"></text>
+    <text x="0" y="100" class="company-info">TEL: </text>
+    <text x="500" y="100" class="company-info">免許番号: </text>
+    <text x="0" y="140" class="company-info"></text>
+
+    <!-- 右側にQRコード用スペース -->
+    <rect x="3900" y="20" width="160" height="160" fill="#ffffff" rx="4"/>
+    <text x="3980" y="110" class="small" text-anchor="middle" fill="#666">QR</text>
+  </g>
+
+</svg>

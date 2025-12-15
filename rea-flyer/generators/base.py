@@ -90,6 +90,8 @@ class BaseGenerator(ABC):
         # 個別フォーマット処理
         if format_type == "master_option":
             return self._format_master_option(value)
+        elif format_type == "property_type_label":
+            return self._format_property_type_label(value)
         elif format_type == "area_or_none":
             return f"{value}㎡" if value else "なし"
         elif format_type == "setback_display":
@@ -108,6 +110,25 @@ class BaseGenerator(ABC):
         if value is None:
             return ""
         return str(value)
+
+    def _format_property_type_label(self, value) -> str:
+        """物件種別をマイソク用ラベルに変換
+
+        Args:
+            value: property_type値（detached, land等）
+
+        Returns:
+            str: 「売戸建」「売土地」等のラベル
+        """
+        labels = {
+            "detached": "売戸建",
+            "land": "売土地",
+            "apartment": "売マンション",
+            "investment": "収益物件",
+            "house_rental": "賃貸戸建",
+            "apartment_rental": "賃貸マンション",
+        }
+        return labels.get(value, "売物件")
 
     def _format_setback(self, value) -> str:
         """セットバック表示"""

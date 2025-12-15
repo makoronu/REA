@@ -8,6 +8,10 @@ fields:
     label_source: column_labels
     format: null  # そのまま出力
 
+  property_type_label:
+    source: properties.property_type
+    format: property_type_label  # 「売戸建」等のラベル
+
   price:
     source: properties.sale_price
     label_source: column_labels

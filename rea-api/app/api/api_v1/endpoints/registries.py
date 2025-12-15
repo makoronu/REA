@@ -1,10 +1,10 @@
 """
 登記情報API
 
-property_registriesテーブルのCRUD
-メタデータ駆動: column_labelsからフィールド定義を取得
+property_registries（表題部）+ registry_kou_entries（甲区）+ registry_otsu_entries（乙区）
+実務書類（重要事項説明書、売買契約書、登記申請書）に必要な項目を網羅
 """
-from datetime import datetime
+from datetime import datetime, date
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -15,6 +15,114 @@ from app.core.database import get_db
 from shared.database import READatabase
 
 router = APIRouter()
+
+
+# ====================
+# 甲区（所有権）スキーマ
+# ====================
+class KouEntryCreate(BaseModel):
+    rank_number: str
+    purpose: str
+    reception_date: Optional[str] = None
+    reception_number: Optional[str] = None
+    owner_name: str
+    owner_address: Optional[str] = None
+    ownership_ratio: Optional[str] = None
+    cause: Optional[str] = None
+    cause_date: Optional[str] = None
+    cause_detail: Optional[str] = None
+    is_active: bool = True
+    notes: Optional[str] = None
+
+
+class KouEntryResponse(BaseModel):
+    id: int
+    registry_id: int
+    rank_number: str
+    purpose: str
+    reception_date: Optional[str] = None
+    reception_number: Optional[str] = None
+    owner_name: str
+    owner_address: Optional[str] = None
+    ownership_ratio: Optional[str] = None
+    cause: Optional[str] = None
+    cause_date: Optional[str] = None
+    cause_detail: Optional[str] = None
+    is_active: bool
+    deletion_date: Optional[str] = None
+    deletion_reception_number: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ====================
+# 乙区（抵当権等）スキーマ
+# ====================
+class OtsuEntryCreate(BaseModel):
+    rank_number: str
+    purpose: str
+    reception_date: Optional[str] = None
+    reception_number: Optional[str] = None
+    debt_amount: Optional[int] = None
+    interest_rate: Optional[str] = None
+    damage_rate: Optional[str] = None
+    debtor_name: Optional[str] = None
+    debtor_address: Optional[str] = None
+    mortgagee_name: Optional[str] = None
+    mortgagee_address: Optional[str] = None
+    maximum_amount: Optional[int] = None
+    debt_scope: Optional[str] = None
+    right_holder_name: Optional[str] = None
+    right_holder_address: Optional[str] = None
+    right_purpose: Optional[str] = None
+    right_scope: Optional[str] = None
+    right_duration: Optional[str] = None
+    rent_amount: Optional[str] = None
+    cause: Optional[str] = None
+    cause_date: Optional[str] = None
+    joint_collateral_number: Optional[str] = None
+    is_active: bool = True
+    notes: Optional[str] = None
+
+
+class OtsuEntryResponse(BaseModel):
+    id: int
+    registry_id: int
+    rank_number: str
+    purpose: str
+    reception_date: Optional[str] = None
+    reception_number: Optional[str] = None
+    debt_amount: Optional[int] = None
+    interest_rate: Optional[str] = None
+    damage_rate: Optional[str] = None
+    debtor_name: Optional[str] = None
+    debtor_address: Optional[str] = None
+    mortgagee_name: Optional[str] = None
+    mortgagee_address: Optional[str] = None
+    maximum_amount: Optional[int] = None
+    debt_scope: Optional[str] = None
+    right_holder_name: Optional[str] = None
+    right_holder_address: Optional[str] = None
+    right_purpose: Optional[str] = None
+    right_scope: Optional[str] = None
+    right_duration: Optional[str] = None
+    rent_amount: Optional[str] = None
+    cause: Optional[str] = None
+    cause_date: Optional[str] = None
+    joint_collateral_number: Optional[str] = None
+    is_active: bool
+    deletion_date: Optional[str] = None
+    deletion_reception_number: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
 
 
 class RegistryResponse(BaseModel):
@@ -310,3 +418,305 @@ async def delete_registry(registry_id: int):
             raise HTTPException(status_code=404, detail="登記情報が見つかりません")
 
         return {"status": "deleted", "id": registry_id}
+
+
+# ====================
+# 登記目的マスター
+# ====================
+@router.get("/registries/purposes")
+async def get_registry_purposes():
+    """登記目的マスター取得"""
+    with READatabase.cursor() as (cur, conn):
+        cur.execute("""
+            SELECT id, section, code, name, description, display_order
+            FROM m_registry_purposes
+            WHERE is_active = TRUE
+            ORDER BY section, display_order
+        """)
+        rows = cur.fetchall()
+
+        result = {"甲区": [], "乙区": []}
+        for row in rows:
+            entry = {
+                "id": row[0],
+                "code": row[2],
+                "name": row[3],
+                "description": row[4]
+            }
+            result[row[1]].append(entry)
+
+        return result
+
+
+# ====================
+# 甲区（所有権）CRUD
+# ====================
+KOU_COLUMNS = [
+    'id', 'registry_id', 'rank_number', 'purpose', 'reception_date', 'reception_number',
+    'owner_name', 'owner_address', 'ownership_ratio', 'cause', 'cause_date', 'cause_detail',
+    'is_active', 'deletion_date', 'deletion_reception_number', 'notes', 'created_at', 'updated_at'
+]
+
+
+@router.get("/registries/{registry_id}/kou", response_model=List[KouEntryResponse])
+async def get_kou_entries(registry_id: int):
+    """甲区エントリ一覧取得"""
+    with READatabase.cursor() as (cur, conn):
+        cur.execute(f"""
+            SELECT {', '.join(KOU_COLUMNS)}
+            FROM registry_kou_entries
+            WHERE registry_id = %s
+            ORDER BY rank_number
+        """, (registry_id,))
+        rows = cur.fetchall()
+
+        items = []
+        for row in rows:
+            data = row_to_dict(row, KOU_COLUMNS)
+            for key in ['reception_date', 'cause_date', 'deletion_date']:
+                if data.get(key):
+                    data[key] = str(data[key])
+            items.append(KouEntryResponse(**data))
+
+        return items
+
+
+@router.post("/registries/{registry_id}/kou", response_model=KouEntryResponse)
+async def create_kou_entry(registry_id: int, data: KouEntryCreate):
+    """甲区エントリ追加"""
+    with READatabase.cursor(commit=True) as (cur, conn):
+        # 表題部存在確認
+        cur.execute("SELECT id FROM property_registries WHERE id = %s", (registry_id,))
+        if not cur.fetchone():
+            raise HTTPException(status_code=404, detail="表題部が見つかりません")
+
+        insert_data = data.model_dump(exclude_none=True)
+        insert_data['registry_id'] = registry_id
+
+        columns = list(insert_data.keys())
+        values = [insert_data[col] for col in columns]
+        placeholders = ', '.join(['%s'] * len(columns))
+
+        cur.execute(f"""
+            INSERT INTO registry_kou_entries ({', '.join(columns)})
+            VALUES ({placeholders})
+            RETURNING {', '.join(KOU_COLUMNS)}
+        """, values)
+
+        row = cur.fetchone()
+        result = row_to_dict(row, KOU_COLUMNS)
+        for key in ['reception_date', 'cause_date', 'deletion_date']:
+            if result.get(key):
+                result[key] = str(result[key])
+
+        return KouEntryResponse(**result)
+
+
+@router.put("/registries/kou/{entry_id}", response_model=KouEntryResponse)
+async def update_kou_entry(entry_id: int, data: KouEntryCreate):
+    """甲区エントリ更新"""
+    with READatabase.cursor(commit=True) as (cur, conn):
+        update_data = data.model_dump(exclude_none=True)
+        if not update_data:
+            raise HTTPException(status_code=400, detail="更新データがありません")
+
+        set_clauses = [f"{col} = %s" for col in update_data.keys()]
+        values = list(update_data.values())
+        values.append(entry_id)
+
+        cur.execute(f"""
+            UPDATE registry_kou_entries
+            SET {', '.join(set_clauses)}, updated_at = NOW()
+            WHERE id = %s
+            RETURNING {', '.join(KOU_COLUMNS)}
+        """, values)
+
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="甲区エントリが見つかりません")
+
+        result = row_to_dict(row, KOU_COLUMNS)
+        for key in ['reception_date', 'cause_date', 'deletion_date']:
+            if result.get(key):
+                result[key] = str(result[key])
+
+        return KouEntryResponse(**result)
+
+
+@router.delete("/registries/kou/{entry_id}")
+async def delete_kou_entry(entry_id: int):
+    """甲区エントリ削除"""
+    with READatabase.cursor(commit=True) as (cur, conn):
+        cur.execute("DELETE FROM registry_kou_entries WHERE id = %s RETURNING id", (entry_id,))
+        if not cur.fetchone():
+            raise HTTPException(status_code=404, detail="甲区エントリが見つかりません")
+        return {"status": "deleted", "id": entry_id}
+
+
+# ====================
+# 乙区（抵当権等）CRUD
+# ====================
+OTSU_COLUMNS = [
+    'id', 'registry_id', 'rank_number', 'purpose', 'reception_date', 'reception_number',
+    'debt_amount', 'interest_rate', 'damage_rate', 'debtor_name', 'debtor_address',
+    'mortgagee_name', 'mortgagee_address', 'maximum_amount', 'debt_scope',
+    'right_holder_name', 'right_holder_address', 'right_purpose', 'right_scope',
+    'right_duration', 'rent_amount', 'cause', 'cause_date', 'joint_collateral_number',
+    'is_active', 'deletion_date', 'deletion_reception_number', 'notes', 'created_at', 'updated_at'
+]
+
+
+@router.get("/registries/{registry_id}/otsu", response_model=List[OtsuEntryResponse])
+async def get_otsu_entries(registry_id: int):
+    """乙区エントリ一覧取得"""
+    with READatabase.cursor() as (cur, conn):
+        cur.execute(f"""
+            SELECT {', '.join(OTSU_COLUMNS)}
+            FROM registry_otsu_entries
+            WHERE registry_id = %s
+            ORDER BY rank_number
+        """, (registry_id,))
+        rows = cur.fetchall()
+
+        items = []
+        for row in rows:
+            data = row_to_dict(row, OTSU_COLUMNS)
+            for key in ['reception_date', 'cause_date', 'deletion_date']:
+                if data.get(key):
+                    data[key] = str(data[key])
+            items.append(OtsuEntryResponse(**data))
+
+        return items
+
+
+@router.post("/registries/{registry_id}/otsu", response_model=OtsuEntryResponse)
+async def create_otsu_entry(registry_id: int, data: OtsuEntryCreate):
+    """乙区エントリ追加"""
+    with READatabase.cursor(commit=True) as (cur, conn):
+        # 表題部存在確認
+        cur.execute("SELECT id FROM property_registries WHERE id = %s", (registry_id,))
+        if not cur.fetchone():
+            raise HTTPException(status_code=404, detail="表題部が見つかりません")
+
+        insert_data = data.model_dump(exclude_none=True)
+        insert_data['registry_id'] = registry_id
+
+        columns = list(insert_data.keys())
+        values = [insert_data[col] for col in columns]
+        placeholders = ', '.join(['%s'] * len(columns))
+
+        cur.execute(f"""
+            INSERT INTO registry_otsu_entries ({', '.join(columns)})
+            VALUES ({placeholders})
+            RETURNING {', '.join(OTSU_COLUMNS)}
+        """, values)
+
+        row = cur.fetchone()
+        result = row_to_dict(row, OTSU_COLUMNS)
+        for key in ['reception_date', 'cause_date', 'deletion_date']:
+            if result.get(key):
+                result[key] = str(result[key])
+
+        return OtsuEntryResponse(**result)
+
+
+@router.put("/registries/otsu/{entry_id}", response_model=OtsuEntryResponse)
+async def update_otsu_entry(entry_id: int, data: OtsuEntryCreate):
+    """乙区エントリ更新"""
+    with READatabase.cursor(commit=True) as (cur, conn):
+        update_data = data.model_dump(exclude_none=True)
+        if not update_data:
+            raise HTTPException(status_code=400, detail="更新データがありません")
+
+        set_clauses = [f"{col} = %s" for col in update_data.keys()]
+        values = list(update_data.values())
+        values.append(entry_id)
+
+        cur.execute(f"""
+            UPDATE registry_otsu_entries
+            SET {', '.join(set_clauses)}, updated_at = NOW()
+            WHERE id = %s
+            RETURNING {', '.join(OTSU_COLUMNS)}
+        """, values)
+
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="乙区エントリが見つかりません")
+
+        result = row_to_dict(row, OTSU_COLUMNS)
+        for key in ['reception_date', 'cause_date', 'deletion_date']:
+            if result.get(key):
+                result[key] = str(result[key])
+
+        return OtsuEntryResponse(**result)
+
+
+@router.delete("/registries/otsu/{entry_id}")
+async def delete_otsu_entry(entry_id: int):
+    """乙区エントリ削除"""
+    with READatabase.cursor(commit=True) as (cur, conn):
+        cur.execute("DELETE FROM registry_otsu_entries WHERE id = %s RETURNING id", (entry_id,))
+        if not cur.fetchone():
+            raise HTTPException(status_code=404, detail="乙区エントリが見つかりません")
+        return {"status": "deleted", "id": entry_id}
+
+
+# ====================
+# 全情報取得（表題部 + 甲区 + 乙区）
+# ====================
+@router.get("/registries/{registry_id}/full")
+async def get_registry_full(registry_id: int):
+    """登記情報の全情報取得（表題部 + 甲区 + 乙区）"""
+    with READatabase.cursor() as (cur, conn):
+        # 表題部
+        cur.execute(f"""
+            SELECT {', '.join(REGISTRY_COLUMNS)}
+            FROM property_registries
+            WHERE id = %s
+        """, (registry_id,))
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="登記情報が見つかりません")
+
+        registry = row_to_dict(row, REGISTRY_COLUMNS)
+        for key in ['built_date', 'ownership_date', 'mortgage_date', 'certified_date', 'title_cause_date']:
+            if registry.get(key):
+                registry[key] = str(registry[key])
+
+        # 甲区
+        cur.execute(f"""
+            SELECT {', '.join(KOU_COLUMNS)}
+            FROM registry_kou_entries
+            WHERE registry_id = %s
+            ORDER BY rank_number
+        """, (registry_id,))
+        kou_rows = cur.fetchall()
+        kou_entries = []
+        for r in kou_rows:
+            data = row_to_dict(r, KOU_COLUMNS)
+            for key in ['reception_date', 'cause_date', 'deletion_date']:
+                if data.get(key):
+                    data[key] = str(data[key])
+            kou_entries.append(data)
+
+        # 乙区
+        cur.execute(f"""
+            SELECT {', '.join(OTSU_COLUMNS)}
+            FROM registry_otsu_entries
+            WHERE registry_id = %s
+            ORDER BY rank_number
+        """, (registry_id,))
+        otsu_rows = cur.fetchall()
+        otsu_entries = []
+        for r in otsu_rows:
+            data = row_to_dict(r, OTSU_COLUMNS)
+            for key in ['reception_date', 'cause_date', 'deletion_date']:
+                if data.get(key):
+                    data[key] = str(data[key])
+            otsu_entries.append(data)
+
+        return {
+            "registry": registry,
+            "kou_entries": kou_entries,
+            "otsu_entries": otsu_entries
+        }
