@@ -916,7 +916,7 @@ ogr2ogr -f "PostgreSQL" PG:"host=localhost port=5433 dbname=real_estate_db user=
 
 **目的**: REAの物件データからチラシとマイソクを自動生成し、印刷入稿可能な形式で出力
 
-**設計ドキュメント**: `docs/flyer/README.md`
+**設計ドキュメント**: `docs/flyer/README.md` | **元概念**: `docs/flyer/original_concept.md`
 
 ---
 
