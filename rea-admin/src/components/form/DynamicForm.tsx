@@ -1398,7 +1398,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                   </div>
                 </div>
 
-                {/* 右：公開状態 */}
+                {/* 中央：公開状態 */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '12px', color: '#6B7280', fontWeight: 500 }}>公開:</span>
                   <div style={{ display: 'flex', gap: '4px' }}>
@@ -1429,6 +1429,36 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                     })}
                   </div>
                 </div>
+
+                {/* 右：保存ボタン */}
+                {!autoSave && (
+                  <button
+                    type="button"
+                    onClick={form.handleSubmit(onSubmit)}
+                    style={{
+                      backgroundColor: '#10B981',
+                      color: '#fff',
+                      border: 'none',
+                      padding: '8px 24px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      fontSize: '13px',
+                      boxShadow: '0 1px 3px rgba(16, 185, 129, 0.3)',
+                      transition: 'all 150ms',
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.backgroundColor = '#059669';
+                      e.currentTarget.style.transform = 'scale(1.02)';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.backgroundColor = '#10B981';
+                      e.currentTarget.style.transform = 'scale(1)';
+                    }}
+                  >
+                    保存
+                  </button>
+                )}
               </div>
 
               {/* 公開バリデーションエラー表示 */}
@@ -1609,7 +1639,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                 ← 前へ
               </button>
 
-              {/* 中央: 保存ステータス */}
+              {/* 中央: 保存ステータス（自動保存時のみ） */}
               {autoSave && (() => {
                 const status = getSaveStatusDisplay();
                 if (!status) return null;
