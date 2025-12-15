@@ -242,6 +242,34 @@ REGISTRY_COLUMNS = [
 ]
 
 
+# ====================
+# 静的パス（{registry_id}より先に定義）
+# ====================
+@router.get("/registries/purposes")
+async def get_registry_purposes():
+    """登記目的マスター取得"""
+    with READatabase.cursor() as (cur, conn):
+        cur.execute("""
+            SELECT id, section, code, name, description, display_order
+            FROM m_registry_purposes
+            WHERE is_active = TRUE
+            ORDER BY section, display_order
+        """)
+        rows = cur.fetchall()
+
+        result = {"甲区": [], "乙区": []}
+        for row in rows:
+            entry = {
+                "id": row[0],
+                "code": row[2],
+                "name": row[3],
+                "description": row[4]
+            }
+            result[row[1]].append(entry)
+
+        return result
+
+
 @router.get("/registries/metadata")
 async def get_registry_metadata():
     """登記情報のメタデータ（column_labelsから取得）"""
@@ -418,34 +446,6 @@ async def delete_registry(registry_id: int):
             raise HTTPException(status_code=404, detail="登記情報が見つかりません")
 
         return {"status": "deleted", "id": registry_id}
-
-
-# ====================
-# 登記目的マスター
-# ====================
-@router.get("/registries/purposes")
-async def get_registry_purposes():
-    """登記目的マスター取得"""
-    with READatabase.cursor() as (cur, conn):
-        cur.execute("""
-            SELECT id, section, code, name, description, display_order
-            FROM m_registry_purposes
-            WHERE is_active = TRUE
-            ORDER BY section, display_order
-        """)
-        rows = cur.fetchall()
-
-        result = {"甲区": [], "乙区": []}
-        for row in rows:
-            entry = {
-                "id": row[0],
-                "code": row[2],
-                "name": row[3],
-                "description": row[4]
-            }
-            result[row[1]].append(entry)
-
-        return result
 
 
 # ====================

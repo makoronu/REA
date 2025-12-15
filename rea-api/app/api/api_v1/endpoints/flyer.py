@@ -195,6 +195,8 @@ def get_property_full_data(property_id: int) -> dict:
 async def generate_maisoku(
     property_id: int,
     format: str = Query(default="svg", description="出力形式（svg/png/pdf）"),
+    font_family: str = Query(default="Noto Sans JP", description="フォント（Noto Sans JP/Hiragino Kaku Gothic/Meiryo）"),
+    font_scale: float = Query(default=1.0, description="文字サイズ倍率（0.8〜1.5）"),
 ):
     """
     マイソクを生成
@@ -213,9 +215,13 @@ async def generate_maisoku(
         # 物件データ取得
         property_data = get_property_full_data(property_id)
 
-        # マイソク生成
+        # マイソク生成（フォント・サイズオプション付き）
         generator = MaisokuGenerator()
-        svg_content = generator.generate(property_data)
+        svg_content = generator.generate(
+            property_data,
+            font_family=font_family,
+            font_scale=font_scale
+        )
 
         if format == "svg":
             return Response(

@@ -54,8 +54,20 @@ class MaisokuGenerator(BaseGenerator):
             config = self.maisoku_config.get("land", {})
         return config
 
+    # 利用可能なフォント一覧
+    AVAILABLE_FONTS = {
+        "Noto Sans JP": '"Noto Sans JP", sans-serif',
+        "Hiragino Kaku Gothic": '"Hiragino Kaku Gothic ProN", "Hiragino Sans", sans-serif',
+        "Meiryo": '"Meiryo", "メイリオ", sans-serif',
+        "Yu Gothic": '"Yu Gothic", "游ゴシック", sans-serif',
+    }
+
     def generate(
-        self, property_data: Dict[str, Any], output_path: Optional[str] = None
+        self,
+        property_data: Dict[str, Any],
+        output_path: Optional[str] = None,
+        font_family: str = "Noto Sans JP",
+        font_scale: float = 1.0,
     ) -> str:
         """
         マイソクを生成
@@ -63,6 +75,8 @@ class MaisokuGenerator(BaseGenerator):
         Args:
             property_data: 物件データ（/properties/{id}/full APIレスポンス）
             output_path: 出力先パス（指定しない場合はSVG文字列を返す）
+            font_family: フォント名
+            font_scale: 文字サイズ倍率（0.8〜1.5）
 
         Returns:
             str: 生成されたSVG文字列、またはファイルパス
@@ -82,6 +96,9 @@ class MaisokuGenerator(BaseGenerator):
             # テンプレートが存在しない場合は動的生成
             svg_content = self._generate_dynamic_svg(property_data, template_config)
 
+        # フォント・サイズ適用
+        svg_content = self._apply_font_settings(svg_content, font_family, font_scale)
+
         # プレースホルダー置換
         svg_result = self._replace_placeholders(svg_content, property_data)
 
@@ -89,6 +106,47 @@ class MaisokuGenerator(BaseGenerator):
         if output_path:
             return self._save_svg(svg_result, output_path)
         return svg_result
+
+    def _apply_font_settings(
+        self, svg_content: str, font_family: str, font_scale: float
+    ) -> str:
+        """
+        SVGにフォント設定を適用
+
+        Args:
+            svg_content: SVG文字列
+            font_family: フォント名
+            font_scale: 文字サイズ倍率
+
+        Returns:
+            str: フォント設定適用後のSVG
+        """
+        import re
+
+        # フォント名を取得
+        font_stack = self.AVAILABLE_FONTS.get(font_family, self.AVAILABLE_FONTS["Noto Sans JP"])
+
+        # font-familyを置換
+        svg_content = re.sub(
+            r'font-family:\s*"Noto Sans JP"[^;]*;',
+            f'font-family: {font_stack};',
+            svg_content
+        )
+
+        # font-sizeを倍率適用
+        if font_scale != 1.0:
+            def scale_font_size(match):
+                size = float(match.group(1))
+                new_size = size * font_scale
+                return f'font-size: {new_size:.0f}px'
+
+            svg_content = re.sub(
+                r'font-size:\s*(\d+(?:\.\d+)?)px',
+                scale_font_size,
+                svg_content
+            )
+
+        return svg_content
 
     def _generate_dynamic_svg(
         self, property_data: Dict[str, Any], template_config: Dict[str, Any]
