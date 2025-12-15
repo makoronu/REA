@@ -39,12 +39,45 @@ pip install svgwrite cairosvg Pillow PyYAML
 
 ## 使用方法
 
+### Python直接呼び出し
+
 ```python
-from rea_flyer.generators.maisoku import MaisokuGenerator
+import sys
+sys.path.insert(0, 'rea-flyer')
+from generators import MaisokuGenerator
 
 generator = MaisokuGenerator()
-svg_content = generator.generate(property_id=1)
+svg_content = generator.generate(property_data)  # dict形式の物件データ
 ```
+
+### API経由
+
+```bash
+# マイソク生成（SVG）
+curl -X POST "http://localhost:8005/api/v1/flyer/maisoku/{property_id}?format=svg"
+
+# マイソク生成（PNG）
+curl -X POST "http://localhost:8005/api/v1/flyer/maisoku/{property_id}?format=png"
+
+# プレビュー（PNG）
+curl "http://localhost:8005/api/v1/flyer/maisoku/{property_id}/preview"
+
+# テンプレート一覧
+curl "http://localhost:8005/api/v1/flyer/templates"
+```
+
+## 実装状況
+
+| 機能 | 状態 | 備考 |
+|------|------|------|
+| マイソク（土地） | ✅ | templates/maisoku/land.svg |
+| マイソク（戸建） | 🔲 | 動的生成で対応可 |
+| マイソク（マンション） | 🔲 | 動的生成で対応可 |
+| マイソク（収益） | 🔲 | 動的生成で対応可 |
+| チラシ（1件） | 🔲 | 未実装 |
+| チラシ（複数件） | 🔲 | 未実装 |
+| PNG変換 | ✅ | cairosvg使用 |
+| PDF変換 | 🔲 | 未実装 |
 
 ## 設計ドキュメント
 

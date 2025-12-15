@@ -101,6 +101,10 @@ class BaseGenerator(ABC):
         Returns:
             str: フォーマット済みフィールド値
         """
+        # 住所フィールドは特別処理（複数カラム結合）
+        if field_name == "address":
+            return self._build_full_address(property_data)
+
         field_config = self.field_mappings.get("fields", {}).get(field_name, {})
 
         # ソースカラム取得
@@ -122,6 +126,23 @@ class BaseGenerator(ABC):
         # フォーマット適用
         format_type = field_config.get("format")
         return self._format_value(value, format_type)
+
+    def _build_full_address(self, property_data: Dict[str, Any]) -> str:
+        """
+        フル住所を組み立て
+
+        Args:
+            property_data: 物件データ
+
+        Returns:
+            str: 組み立てた住所文字列
+        """
+        parts = []
+        for key in ["prefecture", "city", "address", "address_detail"]:
+            value = property_data.get(key)
+            if value:
+                parts.append(str(value))
+        return "".join(parts) if parts else "住所未定"
 
     def _calculate_field(
         self,
