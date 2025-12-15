@@ -254,7 +254,7 @@ export const LocationField: React.FC<LocationFieldProps> = ({ disabled = false }
           <p style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px' }}>
             マーカーをドラッグするか、地図をクリックして位置を調整できます
           </p>
-          <div style={{ height: '300px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #E5E7EB' }}>
+          <div style={{ height: '300px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #E5E7EB', position: 'relative', zIndex: 0 }}>
             <MapContainer
               center={mapCenter}
               zoom={hasValidCoords ? 16 : 10}
