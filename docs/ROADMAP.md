@@ -1006,28 +1006,25 @@ ogr2ogr -f "PostgreSQL" PG:"host=localhost port=5433 dbname=real_estate_db user=
 
 ---
 
-### Phase 2: マスターテーブル統合 🔜 次回着手
+### Phase 2: マスターテーブル統合 ✅ 完了（2025-12-15）
 
 **目標**: 選択肢系データを `master_options` に統一
 
 | # | 項目 | 状態 |
 |---|------|------|
-| 2-1 | 現状のマスターテーブル棚卸し | [ ] |
-| 2-2 | 統合対象の特定（重複・類似テーブル） | [ ] |
-| 2-3 | master_categoriesにカテゴリ追加 | [ ] |
-| 2-4 | 既存データをmaster_optionsに移行 | [ ] |
-| 2-5 | 旧マスターテーブル参照を切り替え | [ ] |
-| 2-6 | 旧マスターテーブル削除 | [ ] |
+| 2-1 | 現状のマスターテーブル棚卸し | [x] |
+| 2-2 | 統合対象の特定（重複・類似テーブル） | [x] |
+| 2-3 | master_categoriesにカテゴリ追加 | [x] |
+| 2-4 | 既存データをmaster_optionsに移行 | [x] |
+| 2-5 | 旧マスターテーブル参照を切り替え | [x] |
+| 2-6 | 旧マスターテーブル削除 | [x] |
 
-**統合対象候補**:
-| 旧テーブル | 件数 | 移行先 |
-|-----------|------|--------|
-| building_structure | ? | master_options (category=building_structure) |
-| current_status | ? | master_options (category=current_status) |
-| land_rights | ? | master_options (category=land_rights) |
-| property_types | 63 | master_options (category=property_type) |
-| floor_plan_room_types | ? | master_options (category=room_type) |
-| image_types | ? | master_options (category=image_type) |
+**実施内容**:
+- enum_valuesの内容を`master_options`に移行（source='rea'）
+- `column_labels`に`master_category_code`カラム追加
+- メタデータAPIを`master_options`参照に切り替え
+- 旧マスターテーブル6つを削除（building_structure, current_status, floor_plan_room_types, land_rights, zoning_districts, image_types）
+- `property_types`は残存（Phase 5で対応）
 
 **維持するテーブル（地理系）**:
 - m_stations（駅）
@@ -1040,15 +1037,15 @@ ogr2ogr -f "PostgreSQL" PG:"host=localhost port=5433 dbname=real_estate_db user=
 
 ---
 
-### Phase 3: column_labels.enum_values 自動生成化
+### Phase 3: column_labels.enum_values 自動生成化 🔄 一部完了
 
 **目標**: enum_valuesをmaster_optionsから自動生成、手動編集禁止
 
 | # | 項目 | 状態 |
 |---|------|------|
-| 3-1 | column_labelsに `master_category_code` カラム追加 | [ ] |
+| 3-1 | column_labelsに `master_category_code` カラム追加 | [x] |
 | 3-2 | enum_valuesカラムを廃止（またはVIEW化） | [ ] |
-| 3-3 | メタデータAPI修正（master_optionsからoptions生成） | [ ] |
+| 3-3 | メタデータAPI修正（master_optionsからoptions生成） | [x] |
 | 3-4 | 管理画面で選択肢を編集する場合はmaster_optionsを編集 | [ ] |
 
 **Before/After**:

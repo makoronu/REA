@@ -204,8 +204,15 @@ def get_table_columns_with_labels(
     テーブルのカラム情報をラベル付きで取得
     column_labelsテーブルの情報も結合
     仮想カラム（DBに存在しないがcolumn_labelsに定義されているカラム）も含む
+
+    選択肢の取得順序:
+    1. master_category_code が設定されている場合 → master_options (source='rea') から取得
+    2. enum_values が設定されている場合 → enum_values を使用
     """
     try:
+        # master_optionsキャッシュを先に取得
+        master_options_cache = _get_master_options_cache(db)
+
         # 1. DBカラム + column_labels（column_labelsに登録されているカラムのみ表示）
         query = text(
             """
@@ -227,6 +234,7 @@ def get_table_columns_with_labels(
                 cl.max_length,
                 cl.enum_values,
                 cl.visible_for,
+                cl.master_category_code,
                 -- 主キー判定
                 CASE
                     WHEN pk.column_name IS NOT NULL THEN true
@@ -262,9 +270,15 @@ def get_table_columns_with_labels(
         for row in result:
             existing_column_names.add(row.column_name)
 
-            # property_typeカラムの場合はproperty_typesテーブルから選択肢を取得
+            # 選択肢の取得優先順位:
+            # 1. property_type → property_typesテーブル
+            # 2. master_category_code設定あり → master_options (source='rea')
+            # 3. enum_values設定あり → enum_values
             if row.column_name == "property_type":
                 options = property_type_options
+            elif row.master_category_code and row.master_category_code in master_options_cache:
+                # master_optionsから取得（コード:ラベル形式で返す）
+                options = master_options_cache[row.master_category_code]
             else:
                 options = row.enum_values
 
@@ -313,7 +327,8 @@ def get_table_columns_with_labels(
                 cl.max_length,
                 cl.enum_values,
                 cl.data_type,
-                cl.visible_for
+                cl.visible_for,
+                cl.master_category_code
             FROM column_labels cl
             WHERE cl.table_name = :table_name
             AND cl.column_name NOT IN (
@@ -327,6 +342,12 @@ def get_table_columns_with_labels(
 
         virtual_result = db.execute(virtual_query, {"table_name": table_name})
         for row in virtual_result:
+            # 仮想カラムのoptions取得
+            if row.master_category_code and row.master_category_code in master_options_cache:
+                virtual_options = master_options_cache[row.master_category_code]
+            else:
+                virtual_options = row.enum_values
+
             column_info = {
                 "column_name": row.column_name,
                 "data_type": row.data_type or "virtual",
@@ -349,7 +370,7 @@ def get_table_columns_with_labels(
                 "placeholder": None,
                 "help_text": row.description,
                 "default_value": None,
-                "options": row.enum_values,
+                "options": virtual_options,
                 "is_virtual": True,  # 仮想カラム
                 "visible_for": row.visible_for,  # 物件種別による表示制御
             }
@@ -544,3 +565,40 @@ def _guess_input_type(data_type: str) -> str:
     }
 
     return type_mapping.get(data_type.lower(), "text")
+
+
+def _get_master_options_cache(db: Session) -> Dict[str, str]:
+    """
+    master_optionsからREAソースの選択肢をカテゴリ別に取得
+    フロントエンドが期待する形式（コード:ラベル,コード:ラベル...）で返す
+
+    Returns:
+        Dict[category_code, "1:ラベル1,2:ラベル2,..."]
+    """
+    query = text("""
+        SELECT
+            mc.category_code,
+            mo.option_code,
+            mo.option_value
+        FROM master_options mo
+        JOIN master_categories mc ON mo.category_id = mc.id
+        WHERE mo.source = 'rea'
+        AND mo.is_active = true
+        ORDER BY mc.category_code, mo.display_order
+    """)
+    result = db.execute(query)
+
+    # カテゴリごとにグループ化
+    options_by_category: Dict[str, list] = {}
+    for row in result:
+        if row.category_code not in options_by_category:
+            options_by_category[row.category_code] = []
+        # option_code は "rea_1" 形式なので、数字部分のみ抽出
+        code = row.option_code.replace("rea_", "")
+        options_by_category[row.category_code].append(f"{code}:{row.option_value}")
+
+    # カンマ区切り文字列に変換
+    return {
+        category: ",".join(options)
+        for category, options in options_by_category.items()
+    }
