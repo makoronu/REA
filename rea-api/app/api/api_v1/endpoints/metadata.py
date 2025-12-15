@@ -429,6 +429,8 @@ def get_filter_options(db: Session = Depends(dependencies.get_db)) -> Dict[str, 
                 filter_options[column_name] = options
 
         # property_typesテーブルからも取得（簡易版）
+        # 注意: valueはid（英語）、labelは日本語ラベル
+        # DBのproperty_typeカラムには英語ID（detached等）が入っている
         pt_query = text("""
             SELECT id, label, group_name
             FROM property_types
@@ -443,7 +445,7 @@ def get_filter_options(db: Session = Depends(dependencies.get_db)) -> Dict[str, 
         """)
         pt_result = db.execute(pt_query)
         filter_options["property_type_simple"] = [
-            {"value": row.label, "label": row.label, "group": row.group_name}
+            {"value": row.id, "label": row.label, "group": row.group_name}
             for row in pt_result
         ]
 

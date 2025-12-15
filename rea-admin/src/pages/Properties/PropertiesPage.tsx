@@ -95,6 +95,9 @@ const PropertiesPage = () => {
     property_type_simple: [],
   });
 
+  // 物件種別のID→ラベル変換マップ
+  const [propertyTypeMap, setPropertyTypeMap] = useState<Record<string, string>>({});
+
   // ページネーション
   const [currentPage, setCurrentPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
@@ -175,6 +178,12 @@ const PropertiesPage = () => {
           publication_status: options.publication_status || [],
           property_type_simple: options.property_type_simple || [],
         });
+        // 物件種別のID→ラベル変換マップを作成
+        const typeMap: Record<string, string> = {};
+        (options.property_type_simple || []).forEach((opt: FilterOption) => {
+          typeMap[opt.value] = opt.label;
+        });
+        setPropertyTypeMap(typeMap);
       } catch (err) {
         console.error('フィルターオプション取得エラー:', err);
       }
@@ -259,7 +268,11 @@ const PropertiesPage = () => {
       case 'company_property_number': return property.company_property_number || '-';
       case 'property_name': return property.property_name || '-';
       case 'sale_price': return formatPrice(property.sale_price);
-      case 'property_type': return property.property_type?.replace(/【.*?】/, '') || '-';
+      case 'property_type': {
+        // 英語ID（detached等）→日本語ラベル（一戸建て等）に変換
+        const typeId = property.property_type?.replace(/【.*?】/, '');
+        return typeId ? (propertyTypeMap[typeId] || typeId) : '-';
+      }
       case 'sales_status': return property.sales_status || '未設定';
       case 'publication_status': return property.publication_status === '公開' ? '公開' : '非公開';
       case 'prefecture': return property.prefecture || '-';
@@ -505,7 +518,7 @@ const PropertiesPage = () => {
                 }}
                 onClick={() => { setFilters({ ...filters, property_type: '' }); setCurrentPage(1); }}
               >
-                種別: {filters.property_type}
+                種別: {propertyTypeMap[filters.property_type] || filters.property_type}
                 <span style={{ opacity: 0.6 }}>×</span>
               </span>
             )}
