@@ -188,8 +188,8 @@ def delete_property(property_id: int, db: Session = Depends(get_db)):
     if existing is None:
         raise HTTPException(status_code=404, detail="Property not found")
 
-    # 関連テーブルを先に削除
-    for table_name in ["building_info", "land_info", "amenities", "property_images"]:
+    # 関連テーブルを先に削除（アプリ層で明示的に削除制御）
+    for table_name in ["building_info", "land_info", "amenities", "property_images", "property_locations"]:
         db.execute(
             text(f"DELETE FROM {table_name} WHERE property_id = :pid"),
             {"pid": property_id}

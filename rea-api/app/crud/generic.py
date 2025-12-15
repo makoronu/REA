@@ -51,6 +51,7 @@ class GenericCRUD:
         "land_info",
         "amenities",
         "property_images",
+        "property_locations",
     }
 
     # システムカラム（更新不可）
@@ -137,12 +138,27 @@ class GenericCRUD:
     def get_full(self, property_id: int) -> Optional[Dict[str, Any]]:
         """
         物件の全データを取得（properties + 関連テーブル）
-        重複カラムは properties を優先
+        住所はproperty_locationsを優先、その他はpropertiesを優先
         """
         # properties 取得
         result = self.get("properties", property_id)
         if result is None:
             return None
+
+        # property_locations を最優先で取得（住所の正規化されたソース）
+        location = self.db.execute(
+            text("SELECT * FROM property_locations WHERE property_id = :pid"),
+            {"pid": property_id}
+        ).fetchone()
+
+        if location:
+            location_dict = dict(location._mapping)
+            # 住所関連カラムはproperty_locationsの値で上書き
+            address_columns = ['postal_code', 'prefecture', 'city', 'address',
+                               'address_detail', 'latitude', 'longitude', 'geom']
+            for key in address_columns:
+                if key in location_dict and location_dict[key] is not None:
+                    result[key] = location_dict[key]
 
         # 関連テーブルを取得してマージ
         related_tables = ["building_info", "land_info", "amenities"]
@@ -284,8 +300,12 @@ class GenericCRUD:
     def update_full(self, property_id: int, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
         物件の全データを更新（properties + 関連テーブル）
-        各カラムがどのテーブルに属するかをcolumn_labelsから判断
+        住所データはproperty_locationsに保存
         """
+        # 住所関連カラム（property_locationsに保存）
+        address_columns = {'postal_code', 'prefecture', 'city', 'address',
+                          'address_detail', 'latitude', 'longitude', 'geom'}
+
         # 各テーブルのカラムを取得
         table_columns: Dict[str, Set[str]] = {}
         for table_name in ["properties", "building_info", "land_info", "amenities"]:
@@ -297,14 +317,21 @@ class GenericCRUD:
             "building_info": {},
             "land_info": {},
             "amenities": {},
+            "property_locations": {},
         }
 
         for key, value in data.items():
             if key in self.SYSTEM_COLUMNS:
                 continue
 
+            # 住所関連はproperty_locationsへ
+            if key in address_columns:
+                table_data["property_locations"][key] = value
+                # propertiesにも同期（移行期間中の互換性）
+                if key in table_columns["properties"]:
+                    table_data["properties"][key] = value
             # propertiesを優先
-            if key in table_columns["properties"]:
+            elif key in table_columns["properties"]:
                 table_data["properties"][key] = value
             elif key in table_columns["building_info"]:
                 table_data["building_info"][key] = value
@@ -316,6 +343,19 @@ class GenericCRUD:
         # properties を更新
         if table_data["properties"]:
             self.update("properties", property_id, table_data["properties"])
+
+        # property_locations を更新（存在しなければ作成）
+        if table_data["property_locations"]:
+            existing_loc = self.db.execute(
+                text("SELECT id FROM property_locations WHERE property_id = :pid"),
+                {"pid": property_id}
+            ).fetchone()
+
+            if existing_loc:
+                self._update_related("property_locations", existing_loc[0], table_data["property_locations"])
+            else:
+                table_data["property_locations"]["property_id"] = property_id
+                self._create_related("property_locations", table_data["property_locations"])
 
         # 関連テーブルを更新（存在しなければ作成）
         for table_name in ["building_info", "land_info", "amenities"]:
