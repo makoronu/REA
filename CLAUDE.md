@@ -18,10 +18,10 @@
 | 項目 | 内容 |
 |------|------|
 | 作業中 | なし |
-| 完了 | **Phase 2-3完了**: マスターテーブル統合、enum_valuesカラム廃止。Phase 4-5は保留（複雑性高い、優先度低い）|
-| 残り | ZOHO画像同期、定期同期 |
-| 最終更新 | 2025-12-15 17:30 |
-| 備考 | 選択肢データは全てmaster_options (source='rea') に統一。column_labelsからenum_valuesカラム削除済み。 |
+| 完了 | **テーブル再設計Phase1完了**: property_locations導入、land_infoから住所カラム削除、API修正。Phase 2-3（マスターテーブル統合）も完了済み |
+| 残り | テーブル再設計Phase2-4、ZOHO画像同期、定期同期 |
+| 最終更新 | 2025-12-15 20:00 |
+| 備考 | property_locationsテーブルで住所一元管理。移行期間中はpropertiesにも同期書き込み。ON DELETE CASCADE違反を修正済み。 |
 
 ### メタ駆動マッピングシステム
 
