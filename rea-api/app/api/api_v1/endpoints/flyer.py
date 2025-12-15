@@ -117,17 +117,20 @@ def get_property_full_data(property_id: int) -> dict:
 @router.post("/maisoku/{property_id}")
 async def generate_maisoku(
     property_id: int,
-    format: str = Query(default="svg", description="出力形式（svg/png）"),
+    format: str = Query(default="svg", description="出力形式（svg/png/pdf）"),
 ):
     """
     マイソクを生成
 
     Args:
         property_id: 物件ID
-        format: 出力形式（svg/png）
+        format: 出力形式（svg/png/pdf）
+            - svg: 編集可能、Illustrator対応
+            - png: Web表示用
+            - pdf: 印刷入稿用（CMYK、塗り足し3mm込み）
 
     Returns:
-        SVGまたはPNG
+        SVG/PNG/PDF
     """
     try:
         # 物件データ取得
@@ -157,6 +160,18 @@ async def generate_maisoku(
                     "Content-Disposition": f"attachment; filename=maisoku_{property_id}.png"
                 },
             )
+        elif format == "pdf":
+            # PDF変換（印刷入稿用）
+            import cairosvg
+
+            pdf_content = cairosvg.svg2pdf(bytestring=svg_content.encode("utf-8"))
+            return Response(
+                content=pdf_content,
+                media_type="application/pdf",
+                headers={
+                    "Content-Disposition": f"attachment; filename=maisoku_{property_id}.pdf"
+                },
+            )
         else:
             raise HTTPException(status_code=400, detail=f"未対応の形式: {format}")
 
@@ -183,7 +198,7 @@ async def preview_maisoku(property_id: int):
 @router.post("/chirashi")
 async def generate_chirashi(
     request: ChirashiRequest,
-    format: str = Query(default="svg", description="出力形式（svg/png）"),
+    format: str = Query(default="svg", description="出力形式（svg/png/pdf）"),
 ):
     """
     チラシを生成（複数物件対応）
@@ -231,6 +246,17 @@ async def generate_chirashi(
                 media_type="image/png",
                 headers={
                     "Content-Disposition": f"attachment; filename=chirashi_{ids_str}.png"
+                },
+            )
+        elif format == "pdf":
+            import cairosvg
+
+            pdf_content = cairosvg.svg2pdf(bytestring=svg_content.encode("utf-8"))
+            return Response(
+                content=pdf_content,
+                media_type="application/pdf",
+                headers={
+                    "Content-Disposition": f"attachment; filename=chirashi_{ids_str}.pdf"
                 },
             )
         else:

@@ -85,6 +85,10 @@ const PropertiesPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // 複数選択（チラシ生成用）
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [isGeneratingChirashi, setIsGeneratingChirashi] = useState(false);
+
   // メタデータ駆動のフィルターオプション
   const [filterOptions, setFilterOptions] = useState<{
     sales_status: FilterOption[];
@@ -238,6 +242,64 @@ const PropertiesPage = () => {
     }
   };
 
+  // 複数選択ハンドラー
+  const handleSelectAll = () => {
+    if (selectedIds.length === properties.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(properties.map(p => p.id));
+    }
+  };
+
+  const handleSelectOne = (id: number) => {
+    if (selectedIds.includes(id)) {
+      setSelectedIds(selectedIds.filter(i => i !== id));
+    } else {
+      setSelectedIds([...selectedIds, id]);
+    }
+  };
+
+  // チラシ生成（複数物件）
+  const handleGenerateChirashi = async (format: 'svg' | 'png' | 'pdf') => {
+    if (selectedIds.length === 0) return;
+
+    setIsGeneratingChirashi(true);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8005';
+      const layout = selectedIds.length === 1 ? 'single' : selectedIds.length === 2 ? 'dual' : 'grid';
+
+      const response = await fetch(`${apiUrl}/api/v1/flyer/chirashi?format=${format}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ property_ids: selectedIds, layout }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`チラシ生成に失敗しました: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const ext = format;
+      const ids = selectedIds.slice(0, 4).join('_');
+      a.download = `chirashi_${ids}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      // 選択解除
+      setSelectedIds([]);
+    } catch (err) {
+      console.error('チラシ生成エラー:', err);
+      alert('チラシ生成に失敗しました');
+    } finally {
+      setIsGeneratingChirashi(false);
+    }
+  };
+
   const handleSort = (column: string) => {
     const colDef = ALL_COLUMNS.find(c => c.key === column);
     if (!colDef?.sortable) return;
@@ -354,6 +416,7 @@ const PropertiesPage = () => {
 
   const SkeletonRow = () => (
     <tr className="animate-pulse">
+      <td className="px-3 py-4"><div className="h-4 w-4 bg-gray-200 rounded"></div></td>
       {visibleColumns.map((_, i) => (
         <td key={i} className="px-4 py-4">
           <div className="h-4 bg-gray-200 rounded w-full"></div>
@@ -841,12 +904,108 @@ const PropertiesPage = () => {
         </div>
       </div>
 
+      {/* 選択ツールバー（物件選択時に表示） */}
+      {selectedIds.length > 0 && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '12px 16px',
+            marginBottom: '8px',
+            backgroundColor: '#EFF6FF',
+            borderRadius: '12px',
+            border: '1px solid #BFDBFE',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '14px', fontWeight: 500, color: '#1D4ED8' }}>
+              {selectedIds.length}件選択中
+            </span>
+            <button
+              onClick={() => setSelectedIds([])}
+              style={{
+                padding: '4px 8px',
+                fontSize: '12px',
+                color: '#6B7280',
+                backgroundColor: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              選択解除
+            </button>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '13px', color: '#6B7280' }}>チラシ生成:</span>
+            <button
+              onClick={() => handleGenerateChirashi('svg')}
+              disabled={isGeneratingChirashi}
+              style={{
+                padding: '6px 12px',
+                fontSize: '13px',
+                color: '#2563EB',
+                backgroundColor: 'white',
+                border: '1px solid #2563EB',
+                borderRadius: '6px',
+                cursor: isGeneratingChirashi ? 'not-allowed' : 'pointer',
+                opacity: isGeneratingChirashi ? 0.6 : 1,
+              }}
+            >
+              SVG
+            </button>
+            <button
+              onClick={() => handleGenerateChirashi('png')}
+              disabled={isGeneratingChirashi}
+              style={{
+                padding: '6px 12px',
+                fontSize: '13px',
+                color: '#16A34A',
+                backgroundColor: 'white',
+                border: '1px solid #16A34A',
+                borderRadius: '6px',
+                cursor: isGeneratingChirashi ? 'not-allowed' : 'pointer',
+                opacity: isGeneratingChirashi ? 0.6 : 1,
+              }}
+            >
+              PNG
+            </button>
+            <button
+              onClick={() => handleGenerateChirashi('pdf')}
+              disabled={isGeneratingChirashi}
+              style={{
+                padding: '6px 12px',
+                fontSize: '13px',
+                color: 'white',
+                backgroundColor: '#DC2626',
+                border: '1px solid #DC2626',
+                borderRadius: '6px',
+                cursor: isGeneratingChirashi ? 'not-allowed' : 'pointer',
+                opacity: isGeneratingChirashi ? 0.6 : 1,
+              }}
+            >
+              PDF（印刷用）
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* テーブル */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full">
             <thead>
               <tr className="border-b border-gray-100">
+                {/* チェックボックス列 */}
+                <th className="px-3 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    checked={properties.length > 0 && selectedIds.length === properties.length}
+                    onChange={handleSelectAll}
+                    style={{ accentColor: '#2563EB', width: '16px', height: '16px', cursor: 'pointer' }}
+                    title="全選択"
+                  />
+                </th>
                 {visibleColumns.map(key => {
                   const col = ALL_COLUMNS.find(c => c.key === key);
                   if (!col) return null;
@@ -875,14 +1034,14 @@ const PropertiesPage = () => {
                 [...Array(5)].map((_, i) => <SkeletonRow key={i} />)
               ) : error ? (
                 <tr>
-                  <td colSpan={visibleColumns.length + 1} className="px-4 py-16 text-center">
+                  <td colSpan={visibleColumns.length + 2} className="px-4 py-16 text-center">
                     <p className="text-gray-600 mb-4">{error}</p>
                     <button onClick={() => fetchProperties()} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">再読み込み</button>
                   </td>
                 </tr>
               ) : properties.length === 0 ? (
                 <tr>
-                  <td colSpan={visibleColumns.length + 1} className="px-4 py-16 text-center text-gray-500">
+                  <td colSpan={visibleColumns.length + 2} className="px-4 py-16 text-center text-gray-500">
                     該当する物件がありません
                   </td>
                 </tr>
@@ -890,9 +1049,18 @@ const PropertiesPage = () => {
                 properties.map((property) => (
                   <tr
                     key={property.id}
-                    className="border-b border-gray-50 hover:bg-blue-50/50 cursor-pointer transition-colors"
+                    className={`border-b border-gray-50 hover:bg-blue-50/50 cursor-pointer transition-colors ${selectedIds.includes(property.id) ? 'bg-blue-50' : ''}`}
                     onClick={() => handleEdit(property.id)}
                   >
+                    {/* チェックボックス */}
+                    <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(property.id)}
+                        onChange={() => handleSelectOne(property.id)}
+                        style={{ accentColor: '#2563EB', width: '16px', height: '16px', cursor: 'pointer' }}
+                      />
+                    </td>
                     {visibleColumns.map(key => {
                       const value = getCellValue(property, key);
                       const badgeClass = getStatusBadgeClass(key, String(value));
