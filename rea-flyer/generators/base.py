@@ -199,7 +199,45 @@ class BaseGenerator(ABC):
             field_name = match.group(1)
             return self._get_field_value(property_data, field_name)
 
-        return re.sub(pattern, replacer, svg_content)
+        result = re.sub(pattern, replacer, svg_content)
+
+        # 画像プレースホルダー置換（{{main_image}}）
+        result = self._replace_image_placeholder(result, property_data)
+
+        return result
+
+    def _replace_image_placeholder(
+        self, svg_content: str, property_data: Dict[str, Any]
+    ) -> str:
+        """
+        画像プレースホルダーを置換
+
+        Args:
+            svg_content: SVG文字列
+            property_data: 物件データ（_main_imageキー含む）
+
+        Returns:
+            str: 画像置換済みSVG
+        """
+        image_data = property_data.get("_main_image", {})
+
+        if not image_data:
+            return svg_content
+
+        # Base64画像がある場合
+        if image_data.get("type") == "base64" and image_data.get("data"):
+            # <image>タグのhref属性を置換
+            # パターン: href="{{main_image}}" または xlink:href="{{main_image}}"
+            svg_content = svg_content.replace(
+                'href="{{main_image}}"',
+                f'href="{image_data["data"]}"'
+            )
+            svg_content = svg_content.replace(
+                'xlink:href="{{main_image}}"',
+                f'xlink:href="{image_data["data"]}"'
+            )
+
+        return svg_content
 
     @abstractmethod
     def generate(

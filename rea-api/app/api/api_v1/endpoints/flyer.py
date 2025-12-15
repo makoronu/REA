@@ -19,6 +19,7 @@ FLYER_PATH = REA_ROOT / "rea-flyer"
 sys.path.insert(0, str(FLYER_PATH))
 
 from generators import MaisokuGenerator, ChirashiGenerator
+from utils import ImageHandler
 from shared.database import READatabase
 from pydantic import BaseModel
 from typing import List
@@ -100,6 +101,11 @@ def get_property_full_data(property_id: int) -> dict:
                 if key not in ["id", "property_id", "created_at", "updated_at"]:
                     if value is not None or key not in property_data:
                         property_data[key] = value
+
+        # 画像データ取得（メタデータ駆動）
+        image_handler = ImageHandler()
+        image_data = image_handler.get_image_for_svg(property_id, conn)
+        property_data["_main_image"] = image_data
 
         return property_data
 
