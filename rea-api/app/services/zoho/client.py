@@ -118,6 +118,33 @@ class ZohoClient:
             "info": result.get("info", {})
         }
 
+    async def update_record(
+        self,
+        record_id: str,
+        data: Dict[str, Any],
+        module: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """レコードを更新（REA→ZOHO同期用）"""
+        module = module or self.module_name
+        payload = {
+            "data": [data]
+        }
+        result = await self._request("PUT", f"/{module}/{record_id}", json_data=payload)
+        return result
+
+    async def create_record(
+        self,
+        data: Dict[str, Any],
+        module: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """レコードを新規作成（REA→ZOHO同期用）"""
+        module = module or self.module_name
+        payload = {
+            "data": [data]
+        }
+        result = await self._request("POST", f"/{module}", json_data=payload)
+        return result
+
     async def test_connection(self) -> Dict[str, Any]:
         """接続テスト"""
         try:

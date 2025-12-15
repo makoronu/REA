@@ -21,7 +21,7 @@ from app.core.exceptions import (
 )
 from app.services.zoho.auth import zoho_auth
 from app.services.zoho.client import zoho_client
-from app.services.zoho.mapper import zoho_mapper
+from app.services.zoho.mapper import zoho_mapper, zoho_reverse_mapper
 from shared.database import READatabase
 
 router = APIRouter()
@@ -412,6 +412,130 @@ async def get_failed_records():
             for row in cur.fetchall()
         ]
         return {"failed": failed, "count": len(failed)}
+
+
+# ========================================
+# REA → ZOHO 同期
+# ========================================
+
+class ZohoSyncRequest(BaseModel):
+    """同期リクエスト"""
+    property_ids: List[int]
+
+
+class ZohoSyncResult(BaseModel):
+    """同期結果"""
+    success: int
+    failed: int
+    created: int
+    updated: int
+    errors: List[dict]
+
+
+def _get_property_full_data(cur, property_id: int) -> Optional[dict]:
+    """物件の全データを取得（properties + land_info + building_info）"""
+    # properties
+    cur.execute("SELECT * FROM properties WHERE id = %s", (property_id,))
+    prop_row = cur.fetchone()
+    if not prop_row:
+        return None
+
+    columns = [desc[0] for desc in cur.description]
+    result = {"properties": dict(zip(columns, prop_row))}
+
+    # land_info
+    cur.execute("SELECT * FROM land_info WHERE property_id = %s", (property_id,))
+    land_row = cur.fetchone()
+    if land_row:
+        columns = [desc[0] for desc in cur.description]
+        result["land_info"] = dict(zip(columns, land_row))
+    else:
+        result["land_info"] = {}
+
+    # building_info
+    cur.execute("SELECT * FROM building_info WHERE property_id = %s", (property_id,))
+    building_row = cur.fetchone()
+    if building_row:
+        columns = [desc[0] for desc in cur.description]
+        result["building_info"] = dict(zip(columns, building_row))
+    else:
+        result["building_info"] = {}
+
+    return result
+
+
+@router.post("/sync", response_model=ZohoSyncResult)
+async def sync_to_zoho(request: ZohoSyncRequest):
+    """REAの物件データをZOHOに同期（逆方向）"""
+    success_count = 0
+    failed_count = 0
+    created_count = 0
+    updated_count = 0
+    errors = []
+
+    with READatabase.cursor() as (cur, conn):
+        for property_id in request.property_ids:
+            try:
+                # 1. REAから物件データ取得
+                rea_data = _get_property_full_data(cur, property_id)
+                if not rea_data:
+                    errors.append({"property_id": property_id, "message": "物件が見つかりません"})
+                    failed_count += 1
+                    continue
+
+                # 2. 逆マッピングでZOHO形式に変換
+                zoho_data = zoho_reverse_mapper.reverse_map_record(rea_data)
+
+                # 3. zoho_idの有無で更新/新規作成を判定
+                zoho_id = rea_data["properties"].get("zoho_id")
+
+                if zoho_id:
+                    # 既存レコード更新
+                    result = await zoho_client.update_record(zoho_id, zoho_data)
+                    updated_count += 1
+                else:
+                    # 新規作成
+                    result = await zoho_client.create_record(zoho_data)
+                    # 作成されたzoho_idをREAに保存
+                    if result.get("data") and len(result["data"]) > 0:
+                        new_zoho_id = result["data"][0].get("details", {}).get("id")
+                        if new_zoho_id:
+                            cur.execute("""
+                                UPDATE properties
+                                SET zoho_id = %s, zoho_synced_at = NOW(), zoho_sync_status = 'synced'
+                                WHERE id = %s
+                            """, (str(new_zoho_id), property_id))
+                            conn.commit()
+                    created_count += 1
+
+                # 同期日時更新
+                cur.execute("""
+                    UPDATE properties
+                    SET zoho_synced_at = NOW(), zoho_sync_status = 'synced'
+                    WHERE id = %s
+                """, (property_id,))
+                conn.commit()
+                success_count += 1
+
+            except Exception as e:
+                conn.rollback()
+                errors.append({"property_id": property_id, "message": str(e)})
+                failed_count += 1
+
+    return {
+        "success": success_count,
+        "failed": failed_count,
+        "created": created_count,
+        "updated": updated_count,
+        "errors": errors
+    }
+
+
+@router.post("/sync/{property_id}")
+async def sync_single_to_zoho(property_id: int):
+    """単一物件をZOHOに同期"""
+    request = ZohoSyncRequest(property_ids=[property_id])
+    return await sync_to_zoho(request)
 
 
 @router.post("/staging/retry")

@@ -296,3 +296,133 @@ class ZohoMapper(MetaDrivenMapper):
 
     def __init__(self):
         super().__init__(source_type="zoho")
+
+
+class ReverseMapper:
+    """
+    逆マッピング: REA → ZOHO
+
+    REAのデータをZOHO形式に変換してエクスポートする。
+    import_field_mappings, import_value_mappingsを逆引きする。
+    """
+
+    def __init__(self, target_type: str = "zoho"):
+        self.target_type = target_type
+        self._reverse_field_mappings: Optional[Dict[str, Dict]] = None
+        self._reverse_value_mappings: Optional[Dict[str, Dict[str, str]]] = None
+        self._db = None
+
+    def _get_db(self):
+        if self._db is None:
+            from shared.database import READatabase
+            self._db = READatabase()
+        return self._db
+
+    def load_mappings(self) -> None:
+        """DBから逆マッピング定義を読み込む"""
+        db = self._get_db()
+        conn = db.get_connection()
+        cur = conn.cursor()
+
+        # フィールドマッピング（逆引き: target_column -> source_field）
+        cur.execute("""
+            SELECT source_field, target_table, target_column
+            FROM import_field_mappings
+            WHERE source_type = %s AND is_active = true
+        """, (self.target_type,))
+
+        self._reverse_field_mappings = {}
+        for row in cur.fetchall():
+            source_field = row[0]
+            target_table = row[1]
+            target_column = row[2]
+            key = f"{target_table}.{target_column}"
+            self._reverse_field_mappings[key] = {
+                "zoho_field": source_field,
+                "table": target_table,
+                "column": target_column
+            }
+
+        # 値マッピング（逆引き: target_value -> source_value）
+        cur.execute("""
+            SELECT field_name, source_value, target_value
+            FROM import_value_mappings
+            WHERE source_type = %s AND is_active = true
+        """, (self.target_type,))
+
+        self._reverse_value_mappings = {}
+        for row in cur.fetchall():
+            field_name = row[0]
+            source_value = row[1]
+            target_value = row[2]
+
+            # target_valueからコード部分を抽出（例: "1:木造" -> "1"）
+            code = target_value.split(":")[0] if ":" in target_value else target_value
+
+            if field_name not in self._reverse_value_mappings:
+                self._reverse_value_mappings[field_name] = {}
+            # REAのcode -> ZOHOのsource_value
+            self._reverse_value_mappings[field_name][code] = source_value
+
+        cur.close()
+        conn.close()
+
+    def reverse_map_record(self, rea_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        REAデータをZOHO形式に変換
+
+        Args:
+            rea_data: REAの物件データ（properties + land_info + building_info等を統合したもの）
+
+        Returns:
+            ZOHO APIに送信できる形式のデータ
+        """
+        if self._reverse_field_mappings is None:
+            self.load_mappings()
+
+        zoho_data = {}
+
+        # テーブル別に処理
+        tables = ["properties", "land_info", "building_info"]
+
+        for table in tables:
+            table_data = rea_data.get(table, {})
+            if not table_data:
+                # rea_dataが統合済みの場合（table名なしでフラット）
+                table_data = rea_data
+
+            for column, value in table_data.items():
+                if value is None:
+                    continue
+
+                key = f"{table}.{column}"
+                mapping = self._reverse_field_mappings.get(key)
+
+                if mapping:
+                    zoho_field = mapping["zoho_field"]
+
+                    # 値の逆変換
+                    if column in self._reverse_value_mappings:
+                        str_value = str(value)
+                        zoho_value = self._reverse_value_mappings[column].get(str_value, value)
+                    else:
+                        zoho_value = value
+
+                    zoho_data[zoho_field] = zoho_value
+
+        return zoho_data
+
+    def get_stats(self) -> Dict[str, Any]:
+        """マッピング統計"""
+        if self._reverse_field_mappings is None:
+            self.load_mappings()
+
+        return {
+            "target_type": self.target_type,
+            "field_mappings_count": len(self._reverse_field_mappings),
+            "value_mappings_count": sum(len(v) for v in self._reverse_value_mappings.values())
+        }
+
+
+# ZOHO逆マッピング用シングルトン
+zoho_reverse_mapper = ReverseMapper(target_type="zoho")
