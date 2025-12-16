@@ -4,7 +4,7 @@
  * 物件の緯度経度から法令制限・ハザード情報を取得・表示
  */
 import React, { useState, useEffect, useCallback } from 'react';
-import { reinfLibService, AllRegulations } from '../../services/reinfLibService';
+import { reinfLibService, AllRegulations, RegulationData } from '../../services/reinfLibService';
 
 interface RegulationPanelProps {
   lat: number | null;
