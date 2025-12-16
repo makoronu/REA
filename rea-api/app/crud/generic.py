@@ -381,7 +381,12 @@ class GenericCRUD:
         if not data:
             return
 
-        processed_data = _serialize_data(data)
+        # property_idは更新対象外（既存レコードのFKを変更しない）
+        filtered_data = {k: v for k, v in data.items() if k != 'property_id'}
+        if not filtered_data:
+            return
+
+        processed_data = _serialize_data(filtered_data)
         set_clause = ", ".join([f"{col} = :{col}" for col in processed_data.keys()])
         processed_data["id"] = id
 
