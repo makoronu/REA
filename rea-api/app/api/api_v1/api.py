@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from .endpoints import metadata, properties, equipment, geo, admin, zoho, touki, registries, integrations, reinfolib
+from .endpoints import metadata, properties, equipment, geo, admin, zoho, touki, registries, integrations, reinfolib, flyer
 
 api_router = APIRouter()
 api_router.include_router(properties.router, prefix="/properties", tags=["properties"])
@@ -13,3 +13,4 @@ api_router.include_router(touki.router, prefix="/touki", tags=["touki"])
 api_router.include_router(registries.router, tags=["registries"])
 api_router.include_router(integrations.router, prefix="/integrations", tags=["integrations"])
 api_router.include_router(reinfolib.router, prefix="/reinfolib", tags=["reinfolib"])
+api_router.include_router(flyer.router, prefix="/flyer", tags=["flyer"])
