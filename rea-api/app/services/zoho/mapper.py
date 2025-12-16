@@ -176,6 +176,10 @@ class MetaDrivenMapper:
             mapping = self._value_mappings[field_name]
             if str_value in mapping:
                 target, extra = mapping[str_value]
+                # code:label形式の場合、DBに保存するのはcodeのみ
+                # （DBカラムがinteger型の場合に対応）
+                if target and ':' in str(target):
+                    target = target.split(':')[0]
                 return target, extra
 
         # マッピングが見つからない場合はNone
