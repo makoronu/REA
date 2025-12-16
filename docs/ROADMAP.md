@@ -1245,31 +1245,31 @@ def format_road_access(direction: str, width: float) -> str:
 
 ---
 
-### Phase 1: CSV仕様確認・マッピング完成
+### Phase 1: CSV仕様確認・マッピング完成 ✅ 完了（2025-12-16）
 
 | # | 項目 | 状態 |
 |---|------|------|
-| 1-1 | ホームズCSV仕様書v4.3.2の全フィールド確認 | [ ] |
-| 1-2 | 必須フィールド・任意フィールド整理 | [ ] |
-| 1-3 | REAカラム → ホームズフィールドのマッピング定義 | [ ] |
-| 1-4 | 未対応フィールドの洗い出し（REAに無いデータ） | [ ] |
+| 1-1 | ホームズCSV仕様書v4.3.2の全フィールド確認 | [x] |
+| 1-2 | 必須フィールド・任意フィールド整理 | [x] 必須37件/任意347件 |
+| 1-3 | REAカラム → ホームズフィールドのマッピング定義 | [x] `docs/portal/homes_field_mapping.yaml` |
+| 1-4 | 未対応フィールドの洗い出し（REAに無いデータ） | [x] 路線コード等 |
 
 ---
 
-### Phase 2: CSV出力機能実装
+### Phase 2: CSV出力機能実装 ✅ 完了（2025-12-16）
 
 | # | 項目 | 状態 |
 |---|------|------|
-| 2-1 | `rea-api/app/services/portal/homes_exporter.py` 作成 | [ ] |
-| 2-2 | REA→ホームズ値変換ロジック（master_options参照） | [ ] |
-| 2-3 | CSVエンコーディング対応（Shift_JIS） | [ ] |
-| 2-4 | 画像URL出力対応 | [ ] |
-| 2-5 | `/api/v1/portal/homes/export` エンドポイント作成 | [ ] |
-| 2-6 | 単体テスト | [ ] |
+| 2-1 | `rea-api/app/services/portal/homes_exporter.py` 作成 | [x] |
+| 2-2 | REA→ホームズ値変換ロジック（master_options参照） | [x] |
+| 2-3 | CSVエンコーディング対応（Shift_JIS） | [x] |
+| 2-4 | 画像URL出力対応 | [ ] 次Phase |
+| 2-5 | `/api/v1/portal/homes/export` エンドポイント作成 | [x] |
+| 2-6 | 単体テスト | [x] 動作確認済み |
 
 ---
 
-### Phase 3: フロントエンドUI
+### Phase 3: フロントエンドUI 🔄 進行中
 
 | # | 項目 | 状態 |
 |---|------|------|
