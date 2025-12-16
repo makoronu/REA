@@ -85,6 +85,28 @@ class GenericCRUD:
         self._column_cache[table_name] = columns
         return columns
 
+    def _get_updatable_columns(self, table_name: str) -> Set[str]:
+        """
+        column_labelsから更新可能なカラム一覧を取得
+        is_updatable = true のカラムのみ返す
+        """
+        cache_key = f"{table_name}_updatable"
+        if cache_key in self._column_cache:
+            return set(self._column_cache[cache_key])
+
+        result = self.db.execute(
+            text("""
+                SELECT column_name
+                FROM column_labels
+                WHERE table_name = :table_name
+                AND is_updatable = true
+            """),
+            {"table_name": table_name}
+        )
+        columns = [row[0] for row in result]
+        self._column_cache[cache_key] = columns
+        return set(columns)
+
     def _get_db_columns(self, table_name: str) -> List[str]:
         """
         実際のDBカラム一覧を取得
@@ -108,14 +130,18 @@ class GenericCRUD:
 
     def _filter_data(self, table_name: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        有効なカラムのみをフィルタリング
-        column_labelsに登録されているカラムのみ許可
+        有効なカラムのみをフィルタリング（メタデータ駆動）
+
+        フィルタ条件:
+        1. column_labelsに登録されている
+        2. 実際にDBに存在する
+        3. is_updatable = true である
         """
-        valid_columns = set(self._get_valid_columns(table_name))
+        updatable_columns = self._get_updatable_columns(table_name)
         db_columns = set(self._get_db_columns(table_name))
 
-        # 有効 = column_labelsに登録 AND 実際にDBに存在 AND システムカラムでない
-        allowed = valid_columns & db_columns - self.SYSTEM_COLUMNS
+        # 有効 = column_labelsでis_updatable=true AND 実際にDBに存在
+        allowed = updatable_columns & db_columns
 
         return {k: v for k, v in data.items() if k in allowed}
 
@@ -377,12 +403,16 @@ class GenericCRUD:
         return self.get_full(property_id)
 
     def _update_related(self, table_name: str, id: int, data: Dict[str, Any]) -> None:
-        """関連テーブルの更新（内部用）"""
+        """
+        関連テーブルの更新（内部用）
+
+        メタデータ駆動: is_updatable=true のカラムのみ更新可能
+        """
         if not data:
             return
 
-        # property_idは更新対象外（既存レコードのFKを変更しない）
-        filtered_data = {k: v for k, v in data.items() if k != 'property_id'}
+        # メタデータ駆動フィルタリング（is_updatable=trueのカラムのみ）
+        filtered_data = self._filter_data(table_name, data)
         if not filtered_data:
             return
 
