@@ -13,6 +13,56 @@ interface RegulationMapProps {
   lng: number;
 }
 
+// 用途地域の色マッピング（youto_id → 色）
+const ZONE_COLORS: Record<number, string> = {
+  1: '#00FF00',   // 第一種低層住居専用
+  2: '#80FF00',   // 第二種低層住居専用
+  3: '#FFFF00',   // 第一種中高層住居専用
+  4: '#FFCC00',   // 第二種中高層住居専用
+  5: '#FF9900',   // 第一種住居
+  6: '#FF6600',   // 第二種住居
+  7: '#FF3300',   // 準住居
+  8: '#FF00FF',   // 近隣商業
+  9: '#FF0000',   // 商業
+  10: '#00FFFF',  // 準工業
+  11: '#0080FF',  // 工業
+  12: '#0000FF',  // 工業専用
+  21: '#90EE90',  // 田園住居
+  99: '#CCCCCC',  // 無指定
+};
+
+// 用途地域凡例
+const ZONE_LEGEND = [
+  { code: 1, name: '1低専', color: '#00FF00' },
+  { code: 2, name: '2低専', color: '#80FF00' },
+  { code: 3, name: '1中高', color: '#FFFF00' },
+  { code: 4, name: '2中高', color: '#FFCC00' },
+  { code: 5, name: '1住居', color: '#FF9900' },
+  { code: 6, name: '2住居', color: '#FF6600' },
+  { code: 7, name: '準住居', color: '#FF3300' },
+  { code: 8, name: '近商', color: '#FF00FF' },
+  { code: 9, name: '商業', color: '#FF0000' },
+  { code: 10, name: '準工', color: '#00FFFF' },
+  { code: 11, name: '工業', color: '#0080FF' },
+  { code: 12, name: '工専', color: '#0000FF' },
+  { code: 21, name: '田園', color: '#90EE90' },
+];
+
+// 防火地域の色
+const FIRE_COLORS: Record<string, string> = {
+  '防火地域': '#FF0000',
+  '準防火地域': '#FF9900',
+};
+
+// 浸水深の色
+const FLOOD_COLORS: Record<string, string> = {
+  '0.5m未満': '#FFFFCC',
+  '0.5～3m': '#FFCC66',
+  '3～5m': '#FF9933',
+  '5～10m': '#FF6600',
+  '10m以上': '#CC0000',
+};
+
 // レイヤー定義
 const LAYER_DEFINITIONS = [
   { code: 'XKT002', name: '用途地域', color: '#3B82F6', checked: true },
@@ -63,35 +113,71 @@ export const RegulationMap: React.FC<RegulationMapProps> = ({ lat, lng }) => {
       // GeoJSONがあればレイヤーを追加
       if (geojson.features && geojson.features.length > 0) {
         const layerDef = LAYER_DEFINITIONS.find(l => l.code === layerCode);
-        const color = layerDef?.color || '#666';
+
+        // 色決定関数
+        const getFeatureColor = (props: any): string => {
+          if (layerCode === 'XKT002') {
+            // 用途地域: youto_id で色分け
+            const youtoId = props.youto_id || 99;
+            return ZONE_COLORS[youtoId] || '#CCCCCC';
+          } else if (layerCode === 'XKT014') {
+            // 防火地域
+            const fireType = props.fire_prevent_ja || '';
+            return FIRE_COLORS[fireType] || '#F97316';
+          } else if (layerCode === 'XKT026' || layerCode === 'XKT027' || layerCode === 'XKT028') {
+            // 浸水系: 浸水深で色分け
+            const depth = props.depth_ja || '';
+            return FLOOD_COLORS[depth] || '#06B6D4';
+          } else if (layerCode === 'XKT029') {
+            // 土砂災害: 警戒区域=黄, 特別警戒区域=赤
+            const type = props.kiken_type_ja || '';
+            return type.includes('特別') ? '#FF0000' : '#FFCC00';
+          }
+          return layerDef?.color || '#666';
+        };
 
         const layer = L.geoJSON(geojson, {
-          style: () => ({
-            fillColor: color,
-            fillOpacity: 0.4,
-            color: color,
-            weight: 2,
-          }),
+          style: (feature) => {
+            const color = getFeatureColor(feature?.properties || {});
+            return {
+              fillColor: color,
+              fillOpacity: 0.5,
+              color: '#333',
+              weight: 1,
+            };
+          },
           onEachFeature: (feature, layer) => {
             // ポップアップ表示
             const props = feature.properties;
-            let content = `<strong>${layerDef?.name || layerCode}</strong><br/>`;
+            let content = '';
 
-            // プロパティを表示
-            Object.entries(props).forEach(([key, value]) => {
-              if (value && key !== 'fid') {
-                content += `${key}: ${value}<br/>`;
-              }
-            });
+            if (layerCode === 'XKT002') {
+              content = `<strong>${props.use_area_ja || '用途地域'}</strong><br/>`;
+              content += `建ぺい率: ${props.u_building_coverage_ratio_ja || '-'}<br/>`;
+              content += `容積率: ${props.u_floor_area_ratio_ja || '-'}<br/>`;
+              content += `${props.city_name || ''}`;
+            } else if (layerCode === 'XKT014') {
+              content = `<strong>${props.fire_prevent_ja || '防火地域'}</strong>`;
+            } else if (layerCode === 'XKT026') {
+              content = `<strong>洪水浸水想定</strong><br/>`;
+              content += `浸水深: ${props.depth_ja || '-'}<br/>`;
+              content += `河川: ${props.river_name || '-'}`;
+            } else if (layerCode === 'XKT029') {
+              content = `<strong>土砂災害警戒区域</strong><br/>`;
+              content += `種別: ${props.kiken_type_ja || '-'}<br/>`;
+              content += `現象: ${props.gensyo_type_ja || '-'}`;
+            } else {
+              content = `<strong>${layerDef?.name || layerCode}</strong>`;
+            }
 
             layer.bindPopup(content);
 
             // ホバー効果
             layer.on('mouseover', (e) => {
-              (e.target as L.Path).setStyle({ fillOpacity: 0.7, weight: 3 });
+              (e.target as L.Path).setStyle({ fillOpacity: 0.8, weight: 2 });
             });
             layer.on('mouseout', (e) => {
-              (e.target as L.Path).setStyle({ fillOpacity: 0.4, weight: 2 });
+              (e.target as L.Path).setStyle({ fillOpacity: 0.5, weight: 1 });
             });
           },
         });
@@ -226,16 +312,66 @@ export const RegulationMap: React.FC<RegulationMapProps> = ({ lat, lng }) => {
         })}
       </div>
 
-      {/* 地図 */}
-      <div
-        ref={mapContainerRef}
-        style={{
-          width: '100%',
-          height: '400px',
-          borderRadius: '8px',
-          border: '1px solid #E5E7EB',
-        }}
-      />
+      {/* 地図と凡例 */}
+      <div style={{ display: 'flex', gap: '12px' }}>
+        {/* 地図 */}
+        <div
+          ref={mapContainerRef}
+          style={{
+            flex: 1,
+            height: '450px',
+            borderRadius: '8px',
+            border: '1px solid #E5E7EB',
+          }}
+        />
+
+        {/* 凡例（用途地域選択時のみ表示） */}
+        {activeLayers.includes('XKT002') && (
+          <div style={{
+            width: '140px',
+            backgroundColor: '#fff',
+            border: '1px solid #E5E7EB',
+            borderRadius: '8px',
+            padding: '10px',
+            fontSize: '11px',
+            maxHeight: '450px',
+            overflowY: 'auto',
+          }}>
+            <div style={{
+              fontWeight: 600,
+              color: '#374151',
+              marginBottom: '8px',
+              paddingBottom: '6px',
+              borderBottom: '1px solid #E5E7EB',
+            }}>
+              用途地域
+            </div>
+            {ZONE_LEGEND.map((item) => (
+              <div
+                key={item.code}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '3px 0',
+                }}
+              >
+                <div
+                  style={{
+                    width: '14px',
+                    height: '14px',
+                    backgroundColor: item.color,
+                    border: '1px solid #666',
+                    borderRadius: '2px',
+                    flexShrink: 0,
+                  }}
+                />
+                <span>{item.name}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* 説明 */}
       <div style={{
@@ -246,7 +382,7 @@ export const RegulationMap: React.FC<RegulationMapProps> = ({ lat, lng }) => {
         fontSize: '11px',
         color: '#1E40AF',
       }}>
-        💡 上のボタンで表示レイヤーを切り替えられます。ポリゴンをクリックすると詳細が表示されます。
+        💡 ポリゴンをクリックすると詳細情報が表示されます。赤丸が物件位置です。
       </div>
     </div>
   );
