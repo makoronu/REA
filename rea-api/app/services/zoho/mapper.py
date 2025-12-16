@@ -285,6 +285,159 @@ class MetaDrivenMapper:
             "value_mapping_fields": list(self._value_mappings.keys())
         }
 
+    def validate_mappings(self) -> Dict[str, Any]:
+        """
+        マッピングの整合性をチェック
+
+        Returns:
+            {
+                "valid": bool,
+                "errors": [...],
+                "warnings": [...]
+            }
+        """
+        if self._field_mappings is None:
+            self.load_mappings()
+
+        errors = []
+        warnings = []
+
+        db = self._get_db()
+        conn = db.get_connection()
+        cur = conn.cursor()
+
+        # master_optionsの全オプションを取得
+        cur.execute("""
+            SELECT mc.category_code, mo.option_code, mo.option_value
+            FROM master_options mo
+            JOIN master_categories mc ON mo.category_id = mc.id
+            WHERE mo.is_active = true
+        """)
+        valid_options = {}
+        for row in cur.fetchall():
+            category = row[0]
+            if category not in valid_options:
+                valid_options[category] = {}
+            valid_options[category][row[1]] = row[2]  # code -> value
+
+        # property_typesテーブルから有効なIDを取得（別マスター）
+        cur.execute("SELECT id, label FROM property_types")
+        property_type_ids = {}
+        for row in cur.fetchall():
+            property_type_ids[row[0]] = row[1]  # id -> label
+
+        # 各value_mappingのtarget_valueをチェック
+        for field_name, mappings in self._value_mappings.items():
+            for source_value, (target_value, extra) in mappings.items():
+                # property_typeは別マスター（property_typesテーブル）を使用
+                if field_name == 'property_type':
+                    if target_value not in property_type_ids:
+                        errors.append({
+                            "field": field_name,
+                            "source_value": source_value,
+                            "target_value": target_value,
+                            "error": f"'{target_value}' がproperty_typesテーブルに存在しません"
+                        })
+                    # property_typeはcode:label形式ではないので、警告不要
+                    continue
+
+                # code:label形式かチェック
+                if ':' in str(target_value):
+                    code, label = target_value.split(':', 1)
+                    # master_optionsに存在するかチェック
+                    if field_name in valid_options:
+                        if code not in valid_options[field_name]:
+                            errors.append({
+                                "field": field_name,
+                                "source_value": source_value,
+                                "target_value": target_value,
+                                "error": f"code '{code}' がmaster_options ({field_name}) に存在しません"
+                            })
+                        elif valid_options[field_name][code] != label:
+                            warnings.append({
+                                "field": field_name,
+                                "source_value": source_value,
+                                "target_value": target_value,
+                                "warning": f"labelが一致しません: master_options='{valid_options[field_name][code]}', mapping='{label}'"
+                            })
+                else:
+                    # code:label形式でない場合は警告
+                    warnings.append({
+                        "field": field_name,
+                        "source_value": source_value,
+                        "target_value": target_value,
+                        "warning": "code:label形式ではありません（推奨形式: 'code:label'）"
+                    })
+
+        cur.close()
+        conn.close()
+
+        return {
+            "valid": len(errors) == 0,
+            "errors": errors,
+            "warnings": warnings,
+            "checked_fields": list(self._value_mappings.keys())
+        }
+
+    def validate_record(self, source_record: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        レコードのマッピング結果を事前検証（ドライラン）
+
+        Returns:
+            {
+                "valid": bool,
+                "mapped_data": {...},
+                "errors": [...],
+                "warnings": [...]
+            }
+        """
+        errors = []
+        warnings = []
+
+        # マッピング実行
+        try:
+            mapped_data = self.map_record(source_record)
+        except Exception as e:
+            return {
+                "valid": False,
+                "mapped_data": None,
+                "errors": [{"error": str(e)}],
+                "warnings": []
+            }
+
+        # 必須フィールドのチェック
+        required_fields = ['property_type', 'property_name']
+        for field in required_fields:
+            if not mapped_data.get('properties', {}).get(field):
+                warnings.append({
+                    "field": field,
+                    "warning": f"必須フィールド '{field}' が空です"
+                })
+
+        # 数値フィールドの妥当性チェック
+        price = mapped_data.get('properties', {}).get('price')
+        if price is not None and (price < 0 or price > 100000000000):
+            warnings.append({
+                "field": "price",
+                "value": price,
+                "warning": "価格が異常値です"
+            })
+
+        land_area = mapped_data.get('land_info', {}).get('land_area')
+        if land_area is not None and (land_area < 0 or land_area > 1000000):
+            warnings.append({
+                "field": "land_area",
+                "value": land_area,
+                "warning": "土地面積が異常値です"
+            })
+
+        return {
+            "valid": len(errors) == 0,
+            "mapped_data": mapped_data,
+            "errors": errors,
+            "warnings": warnings
+        }
+
 
 # ZOHO用シングルトンインスタンス
 zoho_mapper = MetaDrivenMapper(source_type="zoho")
