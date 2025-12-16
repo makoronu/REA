@@ -4,8 +4,6 @@ import { PropertyFullForm } from '../../components/form/DynamicForm';
 import { propertyService } from '../../services/propertyService';
 import { Property } from '../../types/property';
 import { API_URL } from '../../config';
-import { RegistryTab } from '../../components/registry';
-import { RegulationPanel } from '../../components/regulations/RegulationPanel';
 
 export const PropertyEditDynamicPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -16,9 +14,6 @@ export const PropertyEditDynamicPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(!isNew);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
-  const [isSettingSchoolDistricts, setIsSettingSchoolDistricts] = useState(false);
-  const [isSettingZoning, setIsSettingZoning] = useState(false);
-  const [mainTab, setMainTab] = useState<'property' | 'registry' | 'regulation'>('property');
   const [isSyncingToZoho, setIsSyncingToZoho] = useState(false);
 
   // 既存データの取得（関連テーブル含む）
@@ -40,83 +35,6 @@ export const PropertyEditDynamicPage: React.FC = () => {
       fetchProperty();
     }
   }, [id, isNew]);
-
-  // 学区自動設定
-  const handleSetSchoolDistricts = async () => {
-    if (!id || isNew) return;
-
-    setIsSettingSchoolDistricts(true);
-    try {
-      const response = await fetch(`${API_URL}/api/v1/geo/properties/${id}/set-school-districts`, {
-        method: 'POST',
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || '学区の取得に失敗しました');
-      }
-
-      const result = await response.json();
-
-      // プロパティを更新
-      setProperty(prev => prev ? {
-        ...prev,
-        elementary_school: result.elementary_school,
-        elementary_school_minutes: result.elementary_school_minutes,
-        junior_high_school: result.junior_high_school,
-        junior_high_school_minutes: result.junior_high_school_minutes,
-      } : null);
-
-      // 成功メッセージ
-      setSaveStatus('saved');
-      setTimeout(() => setSaveStatus('idle'), 3000);
-
-      // ページをリロードしてフォームを更新
-      window.location.reload();
-    } catch (err: any) {
-      setError(err.message || '学区の取得に失敗しました');
-      setSaveStatus('error');
-    } finally {
-      setIsSettingSchoolDistricts(false);
-    }
-  };
-
-  // 用途地域自動設定
-  const handleSetZoning = async () => {
-    if (!id || isNew) return;
-
-    setIsSettingZoning(true);
-    setError(null);
-    try {
-      const response = await fetch(`${API_URL}/api/v1/geo/properties/${id}/set-zoning`, {
-        method: 'POST',
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || '用途地域の取得に失敗しました');
-      }
-
-      const result = await response.json();
-
-      // 成功メッセージ
-      setSaveStatus('saved');
-      setTimeout(() => setSaveStatus('idle'), 3000);
-
-      // 結果を表示（複数の用途地域がある場合）
-      if (result.zones && result.zones.length > 1) {
-        alert(`複数の用途地域が検出されました:\n${result.zones.map((z: any) => `${z.zone_name}（建ぺい率${z.building_coverage_ratio}%、容積率${z.floor_area_ratio}%）${z.is_primary ? ' ★主' : ''}`).join('\n')}`);
-      }
-
-      // ページをリロードしてフォームを更新
-      window.location.reload();
-    } catch (err: any) {
-      setError(err.message || '用途地域の取得に失敗しました');
-      setSaveStatus('error');
-    } finally {
-      setIsSettingZoning(false);
-    }
-  };
 
   // ZOHOに同期
   const handleSyncToZoho = async () => {
@@ -253,46 +171,6 @@ export const PropertyEditDynamicPage: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2" style={{ flexShrink: 0 }}>
-            {/* 用途地域自動取得ボタン */}
-            {!isNew && property?.latitude && property?.longitude && (
-              <button
-                onClick={handleSetZoning}
-                disabled={isSettingZoning}
-                className="px-4 py-2 text-sm font-medium text-white bg-purple-600 border border-purple-600 rounded-md hover:bg-purple-700 disabled:bg-gray-400 disabled:border-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {isSettingZoning ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    取得中...
-                  </>
-                ) : (
-                  '用途地域を自動取得'
-                )}
-              </button>
-            )}
-            {/* 学区自動取得ボタン */}
-            {!isNew && property?.latitude && property?.longitude && (
-              <button
-                onClick={handleSetSchoolDistricts}
-                disabled={isSettingSchoolDistricts}
-                className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-green-600 rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:border-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {isSettingSchoolDistricts ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    取得中...
-                  </>
-                ) : (
-                  '学区を自動取得'
-                )}
-              </button>
-            )}
             {/* ZOHOに同期ボタン */}
             {!isNew && (
               <button
@@ -336,54 +214,15 @@ export const PropertyEditDynamicPage: React.FC = () => {
         </div>
       )}
 
-      {/* メインタブナビゲーション（物件情報 / 登記情報） */}
-      {!isNew && (
-        <div className="mb-4 flex gap-2">
-          <button
-            onClick={() => setMainTab('property')}
-            className={`px-6 py-3 rounded-lg font-medium transition-all ${
-              mainTab === 'property'
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-            }`}
-          >
-            物件情報
-          </button>
-          <button
-            onClick={() => setMainTab('registry')}
-            className={`px-6 py-3 rounded-lg font-medium transition-all ${
-              mainTab === 'registry'
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-            }`}
-          >
-            登記情報
-          </button>
-          {property?.latitude && property?.longitude && (
-            <button
-              onClick={() => setMainTab('regulation')}
-              className={`px-6 py-3 rounded-lg font-medium transition-all ${
-                mainTab === 'regulation'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-              }`}
-            >
-              法令制限・ハザード
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* 動的フォーム（物件情報タブ） */}
-      <div className="bg-white shadow rounded-lg p-6" style={{ display: mainTab === 'property' || isNew ? 'block' : 'none' }}>
+      {/* 動的フォーム（全タブ統合済み） */}
+      <div className="bg-white shadow rounded-lg p-6">
         <PropertyFullForm
-          key={isNew ? 'new' : `edit-${id}`}  // 新規/編集切り替え時にフォームをリセット
+          key={isNew ? 'new' : `edit-${id}`}
           onSubmit={handleSubmit}
           defaultValues={property || {
-            // 新規登録時のデフォルト値
             sales_status: '準備中',
             publication_status: '非公開',
-            price_status: '1',  // ENUM値のキー部分のみ
+            price_status: '1',
             tax_type: '税込',
             is_residential: true,
             is_commercial: false,
@@ -393,23 +232,6 @@ export const PropertyEditDynamicPage: React.FC = () => {
           autoSave={false}
         />
       </div>
-
-      {/* 登記情報タブ（編集時のみ） */}
-      {!isNew && mainTab === 'registry' && (
-        <div className="bg-white shadow rounded-lg p-6">
-          <RegistryTab propertyId={parseInt(id!)} />
-        </div>
-      )}
-
-      {/* 法令制限・ハザード情報タブ */}
-      {!isNew && mainTab === 'regulation' && property?.latitude && property?.longitude && (
-        <div className="bg-white shadow rounded-lg p-6">
-          <RegulationPanel
-            lat={property.latitude}
-            lng={property.longitude}
-          />
-        </div>
-      )}
 
       {/* 保存状態の表示 */}
       {renderSaveStatus()}

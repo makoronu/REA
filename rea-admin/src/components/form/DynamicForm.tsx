@@ -7,6 +7,8 @@ import { ColumnWithLabel, metadataService } from '../../services/metadataService
 import { SelectableListModal, SelectableItem, Category } from '../common/SelectableListModal';
 import { API_URL } from '../../config';
 import { AUTO_SAVE_DELAY_MS } from '../../constants';
+import { RegulationTab } from './RegulationTab';
+import { RegistryTab } from '../registry/RegistryTab';
 
 // 学校候補の型
 interface SchoolCandidate {
@@ -1263,6 +1265,13 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
             groups: grouped
           });
         }
+        // 法令制限タブを追加（基本・取引情報の直後）
+        tabGroups.push({
+          tableName: 'regulations',
+          tableLabel: '法令制限',
+          tableIcon: '📋',
+          groups: {} // 特殊タブ：RegulationTabコンポーネントを使用
+        });
         return;
       }
 
@@ -1287,6 +1296,14 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
           groups: grouped
         });
       }
+    });
+
+    // 登記情報タブを追加（画像情報の後）
+    tabGroups.push({
+      tableName: 'registries',
+      tableLabel: '登記情報',
+      tableIcon: '📜',
+      groups: {} // 特殊タブ：RegistryTabコンポーネントを使用
     });
 
     // ステータス表示用（色設定はAPIから取得済み: salesStatusConfig, publicationStatusConfig）
@@ -1385,36 +1402,33 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                 </div>
               )}
 
-              {/* ステータスバー - 販売状況・公開状態 */}
+              {/* ステータスバー - 二段レイアウト */}
               <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
                 marginBottom: '12px',
-                padding: '12px 16px',
+                padding: '8px 12px',
                 backgroundColor: '#fff',
-                borderRadius: '10px',
-                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+                borderRadius: '8px',
+                boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
               }}>
-                {/* 左：販売状況 */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '12px', color: '#6B7280', fontWeight: 500 }}>案件:</span>
-                  <div style={{ display: 'flex', gap: '4px' }}>
+                {/* 上段：案件ステータス */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '11px', color: '#9CA3AF', fontWeight: 500, width: '32px' }}>案件</span>
+                  <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap' }}>
                     {Object.entries(salesStatusConfig).map(([status, config]) => (
                       <button
                         key={status}
                         type="button"
                         onClick={() => handleSalesStatusChange(status)}
                         style={{
-                          padding: '6px 12px',
-                          borderRadius: '6px',
-                          border: currentSalesStatus === status ? `2px solid ${config.color}` : '1px solid #E5E7EB',
-                          backgroundColor: currentSalesStatus === status ? config.bg : '#fff',
-                          color: currentSalesStatus === status ? config.color : '#6B7280',
-                          fontSize: '12px',
+                          padding: '3px 8px',
+                          borderRadius: '4px',
+                          border: currentSalesStatus === status ? `1.5px solid ${config.color}` : '1px solid #E5E7EB',
+                          backgroundColor: currentSalesStatus === status ? config.bg : 'transparent',
+                          color: currentSalesStatus === status ? config.color : '#9CA3AF',
+                          fontSize: '11px',
                           fontWeight: currentSalesStatus === status ? 600 : 400,
                           cursor: 'pointer',
-                          transition: 'all 150ms',
+                          transition: 'all 100ms',
                         }}
                       >
                         {config.label}
@@ -1423,70 +1437,69 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                   </div>
                 </div>
 
-                {/* 中央：公開状態 */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '12px', color: '#6B7280', fontWeight: 500 }}>公開:</span>
-                  <div style={{ display: 'flex', gap: '4px' }}>
-                    {Object.entries(publicationStatusConfig).map(([status, config]) => {
-                      const isDisabled = !isPublicationEditable && status !== '非公開';
-                      return (
-                        <button
-                          key={status}
-                          type="button"
-                          onClick={() => !isDisabled && handlePublicationStatusChange(status)}
-                          disabled={isDisabled}
-                          style={{
-                            padding: '6px 12px',
-                            borderRadius: '6px',
-                            border: currentPublicationStatus === status ? `2px solid ${config.color}` : '1px solid #E5E7EB',
-                            backgroundColor: currentPublicationStatus === status ? config.bg : (isDisabled ? '#F9FAFB' : '#fff'),
-                            color: currentPublicationStatus === status ? config.color : (isDisabled ? '#D1D5DB' : '#6B7280'),
-                            fontSize: '12px',
-                            fontWeight: currentPublicationStatus === status ? 600 : 400,
-                            cursor: isDisabled ? 'not-allowed' : 'pointer',
-                            transition: 'all 150ms',
-                            opacity: isDisabled ? 0.5 : 1,
-                          }}
-                        >
-                          {config.label}
-                        </button>
-                      );
-                    })}
+                {/* 下段：公開ステータス + 保存ボタン */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '11px', color: '#9CA3AF', fontWeight: 500, width: '32px' }}>公開</span>
+                    <div style={{ display: 'flex', gap: '3px' }}>
+                      {Object.entries(publicationStatusConfig).map(([status, config]) => {
+                        const isDisabled = !isPublicationEditable && status !== '非公開';
+                        return (
+                          <button
+                            key={status}
+                            type="button"
+                            onClick={() => !isDisabled && handlePublicationStatusChange(status)}
+                            disabled={isDisabled}
+                            style={{
+                              padding: '3px 8px',
+                              borderRadius: '4px',
+                              border: currentPublicationStatus === status ? `1.5px solid ${config.color}` : '1px solid #E5E7EB',
+                              backgroundColor: currentPublicationStatus === status ? config.bg : 'transparent',
+                              color: currentPublicationStatus === status ? config.color : (isDisabled ? '#D1D5DB' : '#9CA3AF'),
+                              fontSize: '11px',
+                              fontWeight: currentPublicationStatus === status ? 600 : 400,
+                              cursor: isDisabled ? 'not-allowed' : 'pointer',
+                              transition: 'all 100ms',
+                              opacity: isDisabled ? 0.5 : 1,
+                            }}
+                          >
+                            {config.label}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
 
-                {/* 右：保存ボタン */}
-                {!autoSave && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      console.log('Save button clicked');
-                      submitForm();
-                    }}
-                    style={{
-                      backgroundColor: '#10B981',
-                      color: '#fff',
-                      border: 'none',
-                      padding: '8px 24px',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontWeight: 600,
-                      fontSize: '13px',
-                      boxShadow: '0 1px 3px rgba(16, 185, 129, 0.3)',
-                      transition: 'all 150ms',
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.backgroundColor = '#059669';
-                      e.currentTarget.style.transform = 'scale(1.02)';
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.backgroundColor = '#10B981';
-                      e.currentTarget.style.transform = 'scale(1)';
-                    }}
-                  >
-                    保存
-                  </button>
-                )}
+                  {/* 保存ボタン */}
+                  {!autoSave && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        console.log('Save button clicked');
+                        submitForm();
+                      }}
+                      style={{
+                        backgroundColor: '#10B981',
+                        color: '#fff',
+                        border: 'none',
+                        padding: '5px 16px',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                        fontSize: '11px',
+                        transition: 'all 100ms',
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.backgroundColor = '#059669';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.backgroundColor = '#10B981';
+                      }}
+                    >
+                      保存
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* 公開バリデーションエラー表示 */}
@@ -1567,71 +1580,127 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                   key={tabGroup.tableName}
                   style={{ display: activeTab === index ? 'block' : 'none' }}
                 >
-                  {/* タブタイトル */}
-                  <div style={{ marginBottom: '24px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <span style={{ fontSize: '32px' }}>{tabGroup.tableIcon}</span>
-                      <div>
-                        <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1A1A1A', margin: 0 }}>
-                          {tabGroup.tableLabel}
-                        </h2>
-                        <p style={{ fontSize: '13px', color: '#9CA3AF', margin: '4px 0 0' }}>
-                          {Object.keys(tabGroup.groups).length}つのセクション
-                        </p>
+                  {/* 特殊タブ：法令制限 */}
+                  {tabGroup.tableName === 'regulations' ? (
+                    <>
+                      <div style={{ marginBottom: '24px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <span style={{ fontSize: '32px' }}>{tabGroup.tableIcon}</span>
+                          <div>
+                            <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1A1A1A', margin: 0 }}>
+                              {tabGroup.tableLabel}
+                            </h2>
+                            <p style={{ fontSize: '13px', color: '#9CA3AF', margin: '4px 0 0' }}>
+                              用途地域・ハザード情報を自動取得
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
+                      <RegulationTab />
+                    </>
+                  ) : tabGroup.tableName === 'registries' ? (
+                    /* 特殊タブ：登記情報 */
+                    <>
+                      <div style={{ marginBottom: '24px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <span style={{ fontSize: '32px' }}>{tabGroup.tableIcon}</span>
+                          <div>
+                            <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1A1A1A', margin: 0 }}>
+                              {tabGroup.tableLabel}
+                            </h2>
+                            <p style={{ fontSize: '13px', color: '#9CA3AF', margin: '4px 0 0' }}>
+                              土地・建物の登記情報
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      {formData.id ? (
+                        <RegistryTab propertyId={formData.id} />
+                      ) : (
+                        <div style={{
+                          padding: '40px 20px',
+                          backgroundColor: '#F9FAFB',
+                          borderRadius: '8px',
+                          border: '2px dashed #D1D5DB',
+                          textAlign: 'center',
+                        }}>
+                          <div style={{ fontSize: '32px', marginBottom: '12px' }}>📜</div>
+                          <div style={{ fontSize: '14px', color: '#6B7280' }}>
+                            物件を保存すると登記情報を追加できます
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    /* 通常タブ */
+                    <>
+                      {/* タブタイトル */}
+                      <div style={{ marginBottom: '24px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <span style={{ fontSize: '32px' }}>{tabGroup.tableIcon}</span>
+                          <div>
+                            <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1A1A1A', margin: 0 }}>
+                              {tabGroup.tableLabel}
+                            </h2>
+                            <p style={{ fontSize: '13px', color: '#9CA3AF', margin: '4px 0 0' }}>
+                              {Object.keys(tabGroup.groups).length}つのセクション
+                            </p>
+                          </div>
+                        </div>
+                      </div>
 
-                  {/* フィールドグループ */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                    {Object.entries(tabGroup.groups).map(([groupName, groupColumns]) => {
-                      // 元請会社グループは仲介（3:専任媒介, 4:一般媒介, 5:専属専任）の場合のみ表示
-                      if (groupName === '元請会社') {
-                        const transactionType = formData.transaction_type;
-                        const isBrokerage = ['3', '4', '5'].includes(String(transactionType));
-                        if (!isBrokerage) return null;
-                      }
-                      return (
-                      <div key={`${tabGroup.tableName}-${groupName}`}>
-                        {/* 学区グループの場合、自動取得ボタンを表示 */}
-                        {groupName === '学区' && <SchoolDistrictAutoFetchButton />}
-                        {/* 電車・鉄道グループの場合、駅自動取得ボタンのみ表示（FieldGroup不要） */}
-                        {groupName === '電車・鉄道' ? (
-                          <div>
-                            <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#374151', marginBottom: '12px' }}>
-                              電車・鉄道
-                            </h3>
-                            <StationAutoFetchButton />
+                      {/* フィールドグループ */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                        {Object.entries(tabGroup.groups).map(([groupName, groupColumns]) => {
+                          // 元請会社グループは仲介（3:専任媒介, 4:一般媒介, 5:専属専任）の場合のみ表示
+                          if (groupName === '元請会社') {
+                            const transactionType = formData.transaction_type;
+                            const isBrokerage = ['3', '4', '5'].includes(String(transactionType));
+                            if (!isBrokerage) return null;
+                          }
+                          return (
+                          <div key={`${tabGroup.tableName}-${groupName}`}>
+                            {/* 学区グループの場合、自動取得ボタンを表示 */}
+                            {groupName === '学区' && <SchoolDistrictAutoFetchButton />}
+                            {/* 電車・鉄道グループの場合、駅自動取得ボタンのみ表示（FieldGroup不要） */}
+                            {groupName === '電車・鉄道' ? (
+                              <div>
+                                <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#374151', marginBottom: '12px' }}>
+                                  電車・鉄道
+                                </h3>
+                                <StationAutoFetchButton />
+                              </div>
+                            ) : groupName === 'バス' ? (
+                              /* バスグループの場合、バス停自動取得ボタンのみ表示（FieldGroup不要） */
+                              <div>
+                                <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#374151', marginBottom: '12px' }}>
+                                  バス
+                                </h3>
+                                <BusStopAutoFetchButton />
+                              </div>
+                            ) : groupName === '周辺施設' ? (
+                              /* 周辺施設グループの場合、施設自動取得ボタンのみ表示 */
+                              <div>
+                                <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#374151', marginBottom: '12px' }}>
+                                  周辺施設
+                                </h3>
+                                <FacilityAutoFetchButton />
+                              </div>
+                            ) : (
+                              <FieldGroup
+                                groupName={groupName}
+                                columns={groupColumns}
+                                disabled={false}
+                                collapsible={tabGroup.tableName === 'amenities'}
+                                defaultCollapsed={false}
+                              />
+                            )}
                           </div>
-                        ) : groupName === 'バス' ? (
-                          /* バスグループの場合、バス停自動取得ボタンのみ表示（FieldGroup不要） */
-                          <div>
-                            <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#374151', marginBottom: '12px' }}>
-                              バス
-                            </h3>
-                            <BusStopAutoFetchButton />
-                          </div>
-                        ) : groupName === '周辺施設' ? (
-                          /* 周辺施設グループの場合、施設自動取得ボタンのみ表示 */
-                          <div>
-                            <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#374151', marginBottom: '12px' }}>
-                              周辺施設
-                            </h3>
-                            <FacilityAutoFetchButton />
-                          </div>
-                        ) : (
-                          <FieldGroup
-                            groupName={groupName}
-                            columns={groupColumns}
-                            disabled={false}
-                            collapsible={tabGroup.tableName === 'amenities'}
-                            defaultCollapsed={false}
-                          />
-                        )}
+                        );
+                        })}
                       </div>
-                    );
-                    })}
-                  </div>
+                    </>
+                  )}
                 </div>
               ))}
             </div>
