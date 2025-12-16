@@ -1,0 +1,64 @@
+# REA チラシ・マイソク出力設定
+# ハードコーディング禁止: 出力仕様はすべてここで管理
+
+output:
+  format: svg           # 出力形式
+  color_mode: cmyk      # 色空間（印刷用）
+  bleed_mm: 3           # 塗り足し
+  dpi: 350              # 解像度
+  font_family: "Noto Sans JP"
+
+paper_sizes:
+  a4:
+    width_mm: 210
+    height_mm: 297
+  b4:
+    width_mm: 257
+    height_mm: 364
+  a3:
+    width_mm: 297
+    height_mm: 420
+
+# SVG座標系（1mm = 単位）
+coordinate:
+  unit: mm
+  origin: top_left
+
+# 画像品質
+image:
+  max_width: 1200       # 最大幅（px）
+  max_height: 800       # 最大高さ（px）
+  quality: 90           # JPEG品質
+  format: jpg           # 埋め込み形式
+
+# フォントサイズ（mm）
+fonts:
+  title: 8
+  subtitle: 6
+  heading: 5
+  body: 3.5
+  caption: 2.5
+  small: 2
+
+# 色定義（CMYK）
+colors:
+  primary:
+    c: 100
+    m: 57
+    y: 0
+    k: 40
+  secondary:
+    c: 0
+    m: 100
+    y: 100
+    k: 0
+  text:
+    c: 0
+    m: 0
+    y: 0
+    k: 100
+  background:
+    c: 0
+    m: 0
+    y: 0
+    k: 0

@@ -1,0 +1,143 @@
+# REA テンプレート定義
+# メタデータ駆動の核心: テンプレートとセクション構成を定義
+
+maisoku:
+  # 土地用マイソク
+  land:
+    template: maisoku/land.svg
+    property_types: [land]
+    paper_size: a4
+    orientation: portrait
+    sections:
+      - name: header
+        fields: [property_name, price, price_per_tsubo]
+      - name: location
+        fields: [address, access, nearest_station]
+      - name: land_info
+        fields: [land_area, land_area_tsubo, use_district, building_coverage_ratio, floor_area_ratio]
+      - name: transaction
+        fields: [transaction_type, delivery_timing, current_status]
+      - name: photos
+        max_images: 4
+      - name: company
+        fields: [company_name, company_phone, company_license]
+
+  # 戸建用マイソク
+  detached:
+    template: maisoku/detached.svg
+    property_types: [detached, house]
+    paper_size: a4
+    orientation: portrait
+    sections:
+      - name: header
+        fields: [property_name, price, building_age]
+      - name: location
+        fields: [address, access, nearest_station]
+      - name: building_info
+        fields: [building_area, floor_plan, building_structure, floors_above, floors_below]
+      - name: land_info
+        fields: [land_area, land_area_tsubo, use_district, building_coverage_ratio, floor_area_ratio]
+      - name: transaction
+        fields: [transaction_type, delivery_timing, current_status]
+      - name: photos
+        max_images: 6
+      - name: company
+        fields: [company_name, company_phone, company_license]
+
+  # マンション用マイソク
+  apartment:
+    template: maisoku/apartment.svg
+    property_types: [apartment, mansion]
+    paper_size: a4
+    orientation: portrait
+    sections:
+      - name: header
+        fields: [property_name, price, building_age]
+      - name: location
+        fields: [address, access, nearest_station]
+      - name: building_info
+        fields: [building_area, floor_plan, floor_number, total_floors, balcony_area]
+      - name: management
+        fields: [management_fee, repair_fund, management_company]
+      - name: transaction
+        fields: [transaction_type, delivery_timing, current_status]
+      - name: photos
+        max_images: 6
+      - name: company
+        fields: [company_name, company_phone, company_license]
+
+  # 収益物件用マイソク
+  investment:
+    template: maisoku/investment.svg
+    property_types: [investment, rental]
+    paper_size: a4
+    orientation: portrait
+    sections:
+      - name: header
+        fields: [property_name, price, gross_yield]
+      - name: location
+        fields: [address, access, nearest_station]
+      - name: income
+        fields: [monthly_rent, annual_income, occupancy_rate]
+      - name: building_info
+        fields: [building_area, building_structure, building_age, total_units]
+      - name: land_info
+        fields: [land_area, use_district]
+      - name: transaction
+        fields: [transaction_type, delivery_timing, current_status]
+      - name: photos
+        max_images: 4
+      - name: company
+        fields: [company_name, company_phone, company_license]
+
+chirashi:
+  # 1件用チラシ（A4全面）
+  single:
+    template: chirashi/single.svg
+    max_properties: 1
+    paper_size: a4
+    orientation: portrait
+    layout: full_page
+    sections:
+      - name: main_photo
+        max_images: 1
+      - name: sub_photos
+        max_images: 3
+      - name: header
+        fields: [property_name, price, catchcopy]
+      - name: features
+        max_items: 5
+      - name: basic_info
+        fields: [address, access, land_area, building_area, floor_plan]
+      - name: company
+        fields: [company_name, company_phone]
+
+  # 2件用チラシ（上下分割）
+  dual:
+    template: chirashi/dual.svg
+    max_properties: 2
+    paper_size: a4
+    orientation: portrait
+    layout: vertical_split
+    sections:
+      - name: property_card
+        repeat: 2
+        fields: [property_name, price, address, land_area, building_area, floor_plan]
+        max_images: 2
+      - name: company
+        fields: [company_name, company_phone]
+
+  # 4件用チラシ（グリッド）
+  grid:
+    template: chirashi/grid.svg
+    max_properties: 4
+    paper_size: a4
+    orientation: portrait
+    layout: grid_2x2
+    sections:
+      - name: property_card
+        repeat: 4
+        fields: [property_name, price, address, floor_plan]
+        max_images: 1
+      - name: company
+        fields: [company_name, company_phone]

@@ -1,0 +1,217 @@
+# REA フィールドマッピング
+# DB列→出力フィールドのマッピング
+# column_labelsと連携し、日本語ラベルを自動取得
+
+# フォーマット関数は shared/real_estate_utils.py を使用
+# DRY原則: 重複実装禁止
+
+fields:
+  # === 基本情報 ===
+  property_name:
+    source: properties.property_name
+    label_source: column_labels
+    format: null  # そのまま出力
+
+  catchcopy:
+    source: properties.catchcopy
+    label_source: column_labels
+    format: null
+
+  # === 価格 ===
+  price:
+    source: properties.sale_price
+    label_source: column_labels
+    format: format_price_man  # shared/real_estate_utils.py
+
+  price_per_tsubo:
+    source: calculated  # 計算フィールド
+    depends_on: [properties.sale_price, land_info.land_area]
+    format: format_price_per_tsubo
+
+  # === 所在地 ===
+  address:
+    source: properties.address
+    label_source: column_labels
+    format: null
+
+  nearest_station:
+    source: properties.nearest_station
+    label_source: column_labels
+    format: null
+
+  access:
+    source: properties.access
+    label_source: column_labels
+    format: null
+
+  # === 土地情報 ===
+  land_area:
+    source: land_info.land_area
+    label_source: column_labels
+    format: format_area_with_tsubo
+
+  land_area_tsubo:
+    source: land_info.land_area
+    label_source: column_labels
+    format: format_area_tsubo_only
+
+  use_district:
+    source: land_info.use_district
+    label_source: column_labels
+    format: use_district_name  # マスターテーブルから名称取得
+
+  building_coverage_ratio:
+    source: land_info.building_coverage_ratio
+    label_source: column_labels
+    format: format_percentage
+
+  floor_area_ratio:
+    source: land_info.floor_area_ratio
+    label_source: column_labels
+    format: format_percentage
+
+  # === 建物情報 ===
+  building_area:
+    source: building_info.total_floor_area
+    label_source: column_labels
+    format: format_area_with_tsubo
+
+  floor_plan:
+    source: building_info.floor_plan
+    label_source: column_labels
+    format: null
+
+  building_structure:
+    source: building_info.structure
+    label_source: column_labels
+    format: building_structure_name  # マスターテーブルから名称取得
+
+  floors_above:
+    source: building_info.floors_above
+    label_source: column_labels
+    format: format_floor_display
+
+  floors_below:
+    source: building_info.floors_below
+    label_source: column_labels
+    format: format_floor_display
+
+  building_age:
+    source: building_info.construction_date
+    label_source: column_labels
+    format: format_building_age
+
+  floor_number:
+    source: building_info.floor_number
+    label_source: column_labels
+    format: format_floor_display
+
+  total_floors:
+    source: building_info.total_floors
+    label_source: column_labels
+    format: null
+
+  balcony_area:
+    source: building_info.balcony_area
+    label_source: column_labels
+    format: format_area_with_tsubo
+
+  # === 取引情報 ===
+  transaction_type:
+    source: properties.transaction_type
+    label_source: column_labels
+    format: transaction_type_name
+
+  delivery_timing:
+    source: properties.delivery_timing
+    label_source: column_labels
+    format: null
+
+  current_status:
+    source: properties.current_status
+    label_source: column_labels
+    format: current_status_name
+
+  # === 管理情報（マンション用） ===
+  management_fee:
+    source: building_info.management_fee
+    label_source: column_labels
+    format: format_price_display
+
+  repair_fund:
+    source: building_info.repair_fund
+    label_source: column_labels
+    format: format_price_display
+
+  management_company:
+    source: building_info.management_company
+    label_source: column_labels
+    format: null
+
+  # === 収益情報 ===
+  monthly_rent:
+    source: properties.monthly_rent
+    label_source: column_labels
+    format: format_price_display
+
+  annual_income:
+    source: calculated
+    depends_on: [properties.monthly_rent]
+    format: format_price_man
+
+  gross_yield:
+    source: calculated
+    depends_on: [properties.sale_price, properties.monthly_rent]
+    format: format_percentage
+
+  occupancy_rate:
+    source: properties.occupancy_rate
+    label_source: column_labels
+    format: format_percentage
+
+  total_units:
+    source: building_info.total_units
+    label_source: column_labels
+    format: null
+
+  # === 会社情報 ===
+  company_name:
+    source: companies.name
+    label_source: null
+    format: null
+
+  company_phone:
+    source: companies.phone
+    label_source: null
+    format: null
+
+  company_license:
+    source: companies.license_number
+    label_source: null
+    format: null
+
+# マスターテーブル参照設定
+master_tables:
+  use_district_name:
+    table: master_options
+    filter: category = 'use_district'
+    key: value
+    display: label
+
+  building_structure_name:
+    table: master_options
+    filter: category = 'building_structure'
+    key: value
+    display: label
+
+  transaction_type_name:
+    table: master_options
+    filter: category = 'transaction_type'
+    key: value
+    display: label
+
+  current_status_name:
+    table: master_options
+    filter: category = 'current_status'
+    key: value
+    display: label
