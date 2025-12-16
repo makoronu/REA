@@ -5,6 +5,7 @@ import { propertyService } from '../../services/propertyService';
 import { Property } from '../../types/property';
 import { API_URL } from '../../config';
 import { RegistryTab } from '../../components/registry';
+import { RegulationPanel } from '../../components/regulations/RegulationPanel';
 
 export const PropertyEditDynamicPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -17,7 +18,7 @@ export const PropertyEditDynamicPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSettingSchoolDistricts, setIsSettingSchoolDistricts] = useState(false);
   const [isSettingZoning, setIsSettingZoning] = useState(false);
-  const [mainTab, setMainTab] = useState<'property' | 'registry'>('property');
+  const [mainTab, setMainTab] = useState<'property' | 'registry' | 'regulation'>('property');
   const [isSyncingToZoho, setIsSyncingToZoho] = useState(false);
 
   // 既存データの取得（関連テーブル含む）
@@ -358,6 +359,18 @@ export const PropertyEditDynamicPage: React.FC = () => {
           >
             登記情報
           </button>
+          {property?.latitude && property?.longitude && (
+            <button
+              onClick={() => setMainTab('regulation')}
+              className={`px-6 py-3 rounded-lg font-medium transition-all ${
+                mainTab === 'regulation'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              法令制限・ハザード
+            </button>
+          )}
         </div>
       )}
 
@@ -388,6 +401,15 @@ export const PropertyEditDynamicPage: React.FC = () => {
         </div>
       )}
 
+      {/* 法令制限・ハザード情報タブ */}
+      {!isNew && mainTab === 'regulation' && property?.latitude && property?.longitude && (
+        <div className="bg-white shadow rounded-lg p-6">
+          <RegulationPanel
+            lat={property.latitude}
+            lng={property.longitude}
+          />
+        </div>
+      )}
 
       {/* 保存状態の表示 */}
       {renderSaveStatus()}
