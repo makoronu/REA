@@ -5,6 +5,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { reinfLibService, AllRegulations, RegulationData } from '../../services/reinfLibService';
+import { RegulationMap } from './RegulationMap';
 
 interface RegulationPanelProps {
   lat: number | null;
@@ -227,6 +228,11 @@ export const RegulationPanel: React.FC<RegulationPanelProps> = ({
           );
         })}
       </div>
+
+      {/* MAP表示 */}
+      {lat && lng && (
+        <RegulationMap lat={lat} lng={lng} />
+      )}
 
       {/* 免責事項 */}
       <p className="text-xs text-gray-400">
