@@ -226,6 +226,42 @@ const PropertiesPage = () => {
   const handleEdit = (id: number) => navigate(`/properties/${id}/edit`);
   const handleNew = () => navigate('/properties/new');
 
+  // HOMES CSV出力
+  const [exporting, setExporting] = useState(false);
+  const handleHomesExport = async () => {
+    if (properties.length === 0) {
+      alert('出力する物件がありません');
+      return;
+    }
+
+    setExporting(true);
+    try {
+      const propertyIds = properties.map(p => p.id);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/portal/homes/export`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ property_ids: propertyIds }),
+      });
+
+      if (!response.ok) throw new Error('CSV出力に失敗しました');
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `homes_${new Date().toISOString().slice(0,10).replace(/-/g,'')}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error('HOMES出力エラー:', err);
+      alert('HOMES CSV出力に失敗しました');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const handleDelete = async (id: number) => {
     if (window.confirm('この物件を削除しますか？')) {
       try {
@@ -369,12 +405,21 @@ const PropertiesPage = () => {
       {/* ヘッダー */}
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-semibold text-[#1A1A1A]">物件一覧</h1>
-        <button
-          onClick={handleNew}
-          className="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 hover:bg-blue-700 hover:scale-[1.02] active:scale-[0.98]"
-        >
-          + 新規登録
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={handleHomesExport}
+            disabled={exporting || properties.length === 0}
+            className="px-4 py-2.5 bg-emerald-600 text-white rounded-lg font-medium transition-all duration-200 hover:bg-emerald-700 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {exporting ? '出力中...' : 'HOMES出力'}
+          </button>
+          <button
+            onClick={handleNew}
+            className="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 hover:bg-blue-700 hover:scale-[1.02] active:scale-[0.98]"
+          >
+            + 新規登録
+          </button>
+        </div>
       </div>
 
       {/* ビュータブ + ツールバー */}
