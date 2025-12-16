@@ -6,7 +6,7 @@
 - master_optionsテーブル（source='rea'）から取得
 - master_category_codeでカテゴリを指定
 """
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from app.api import dependencies
 from app.core.database import engine
@@ -15,6 +15,14 @@ from sqlalchemy import MetaData, Table, text
 from sqlalchemy.orm import Session
 
 router = APIRouter()
+
+# SQLインジェクション対策: 許可テーブルのホワイトリスト
+ALLOWED_TABLES: Set[str] = {
+    "properties", "building_info", "land_info", "property_images",
+    "property_locations", "property_registries", "amenities",
+    "column_labels", "master_categories", "master_options",
+    "m_facilities", "m_stations", "m_postal_codes",
+}
 
 
 @router.get("/tables", response_model=List[Dict[str, Any]])
@@ -183,9 +191,12 @@ def get_table_details(
             }
             columns.append(column_info)
 
-        # レコード数取得（動的SQLは使えないので別途実行）
-        count_query = text(f"SELECT COUNT(*)::int FROM {table_name}")
-        record_count = db.execute(count_query).scalar()
+        # レコード数取得（ホワイトリスト検証済みのテーブルのみ）
+        if table_name in ALLOWED_TABLES:
+            count_query = text(f"SELECT COUNT(*)::int FROM {table_name}")
+            record_count = db.execute(count_query).scalar()
+        else:
+            record_count = None  # 許可外テーブルはカウントしない
 
         return {
             "table_name": table_name,

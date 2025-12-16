@@ -1,0 +1,475 @@
+# HOMES CSV フィールドマッピング定義
+#
+# REAカラム → HOMES CSVフィールド の対応表
+#
+# 仕様書: docs/ホームズ仕様書.csv (Version 4.3.2)
+# 参照: master_options (source='homes')
+
+version: "4.3.2"
+encoding: "shift_jis"
+delimiter: ","
+line_ending: "\r\n"
+filename: "homes.csv"
+
+# ヘッダ部（固定値）
+header:
+  - name: header_identifier
+    value: "header"
+    csv_no: 1
+  - name: version_number
+    value: "4.3.0"
+    csv_no: 2
+  - name: process_type
+    value: "0"
+    csv_no: 3
+  - name: homes_member_id
+    env_var: "HOMES_MEMBER_ID"  # 環境変数から取得
+    csv_no: 4
+  - name: character_code
+    value: "0"  # Shift_JIS
+    csv_no: 5
+  - name: image_file_path
+    value: ""
+    csv_no: 6
+  - name: route_setting_pattern
+    value: "0"  # HOME'S路線駅コード
+    csv_no: 7
+  - name: write_mode
+    value: "0"
+    csv_no: 8
+  - name: test_mode
+    value: "0"  # 本番: 0, テスト: 1
+    csv_no: 9
+
+# データ部マッピング
+# ■: 必須, ◎: 条件付き必須, ○: 任意
+data:
+  # === 識別情報 ===
+  - csv_no: 1
+    csv_name: 自社管理物件番号
+    required: true
+    rea_source: properties.company_property_number
+    fallback: properties.id
+    max_length: 30
+
+  - csv_no: 2
+    csv_name: 自社管理修正日時
+    required: true
+    rea_source: properties.updated_at
+    format: "datetime"  # yyyy/mm/dd hh:mm:ss
+    max_length: 19
+
+  - csv_no: 3
+    csv_name: 情報掲載期限日
+    required: true
+    rea_source: properties.listing_start_date
+    format: "date"  # yyyy/mm/dd
+    fallback: "+14days"  # 掲載開始から14日後
+    max_length: 10
+
+  # === 公開設定 ===
+  - csv_no: 4
+    csv_name: 公開可否
+    required: true
+    rea_source: properties.publication_status
+    master_category: publication_status
+    default: "1"  # HOME'S公開
+
+  - csv_no: 5
+    csv_name: 自社物フラグ
+    required: true
+    default: "0"  # 先物（他社物件）
+
+  - csv_no: 6
+    csv_name: 状態
+    required: true
+    rea_source: properties.sales_status
+    transform: sales_status_to_homes
+    default: "1"  # 空有/売出中
+
+  # === 物件種別 ===
+  - csv_no: 7
+    csv_name: 物件種別
+    required: true
+    rea_source: properties.property_type
+    master_category: property_type
+    # REA property_type → HOMES コード変換必要
+
+  # === 物件名 ===
+  - csv_no: 10
+    csv_name: 建物名・物件名
+    required: true
+    rea_source: properties.property_name
+    max_length: 60
+
+  - csv_no: 11
+    csv_name: 建物名フリガナ
+    required: false
+    rea_source: properties.property_name_kana
+    max_length: 200
+
+  - csv_no: 12
+    csv_name: 物件名公開
+    required: false
+    default: "1"  # 公開
+
+  # === 空情報 ===
+  - csv_no: 15
+    csv_name: 空き物件内容
+    required: true
+    default: ""
+    max_length: 30
+
+  # === 所在地 ===
+  - csv_no: 16
+    csv_name: 郵便番号
+    required: false
+    rea_source: properties.postal_code
+    format: "postal"  # 000-0000形式
+
+  - csv_no: 17
+    csv_name: 所在地コード
+    required: true
+    rea_source: properties.postal_code
+    transform: postal_to_jis_code
+    # 5桁JISコード + 6桁000000
+
+  - csv_no: 18
+    csv_name: 所在地住所
+    required: true
+    rea_source: properties.address
+    max_length: 200
+
+  - csv_no: 19
+    csv_name: 所在地詳細_表示用
+    required: true
+    rea_source: properties.address_detail
+    max_length: 200
+
+  - csv_no: 21
+    csv_name: 緯度/経度
+    required: false
+    rea_source: [properties.latitude, properties.longitude]
+    format: "latlon"  # 度分秒形式
+
+  # === 交通 ===
+  - csv_no: 22
+    csv_name: 路線1
+    required: conditional  # No.32がない場合必須
+    rea_source: properties.transportation[0].line
+
+  - csv_no: 23
+    csv_name: 駅1
+    required: conditional
+    rea_source: properties.transportation[0].station
+
+  - csv_no: 26
+    csv_name: 徒歩距離1
+    required: conditional
+    rea_source: properties.transportation[0].distance_m
+
+  - csv_no: 32
+    csv_name: その他交通
+    required: false
+    rea_source: null
+    max_length: 200
+
+  # === 土地情報 ===
+  - csv_no: 34
+    csv_name: 地目
+    required: true
+    rea_source: land_info.land_category
+    master_category: land_category
+
+  - csv_no: 35
+    csv_name: 用途地域
+    required: true
+    rea_source: land_info.use_district
+    master_category: zoning_district
+
+  - csv_no: 36
+    csv_name: 都市計画
+    required: true
+    rea_source: land_info.city_planning
+    master_category: city_planning
+
+  - csv_no: 37
+    csv_name: 地勢
+    required: false
+    rea_source: land_info.terrain
+    master_category: terrain
+
+  - csv_no: 38
+    csv_name: 土地面積計測方式
+    required: false
+    rea_source: land_info.land_area_measurement
+    master_category: land_measurement
+
+  - csv_no: 39
+    csv_name: 区画面積
+    required: true
+    rea_source: land_info.land_area
+    format: "decimal"
+    max_length: 8.2
+
+  - csv_no: 45
+    csv_name: 建ぺい率
+    required: false
+    rea_source: land_info.building_coverage_ratio
+    format: "integer"
+
+  - csv_no: 46
+    csv_name: 容積率
+    required: false
+    rea_source: land_info.floor_area_ratio
+    format: "integer"
+
+  # === セットバック ===
+  - csv_no: 47
+    csv_name: セットバック
+    required: false
+    rea_source: land_info.setback
+    master_category: setback
+
+  - csv_no: 48
+    csv_name: セットバック面積
+    required: false
+    rea_source: land_info.setback_amount
+    format: "decimal"
+
+  # === 接道 ===
+  - csv_no: 49
+    csv_name: 接道状況
+    required: false
+    rea_source: land_info.road_info[0].access_type
+    master_category: road_access
+
+  - csv_no: 50
+    csv_name: 接道方向
+    required: false
+    rea_source: land_info.road_info[0].direction
+    master_category: road_direction
+
+  - csv_no: 51
+    csv_name: 接道種別
+    required: false
+    rea_source: land_info.road_info[0].road_type
+    master_category: road_type
+
+  - csv_no: 52
+    csv_name: 接道幅員
+    required: false
+    rea_source: land_info.road_info[0].width
+    format: "decimal"
+
+  # === 土地権利 ===
+  - csv_no: 68
+    csv_name: 土地権利(借地権種類)
+    required: true
+    rea_source: land_info.land_rights
+    master_category: land_rights
+
+  # === 建物情報 ===
+  - csv_no: 71
+    csv_name: 建物構造
+    required: true
+    rea_source: building_info.building_structure
+    master_category: building_structure
+
+  - csv_no: 72
+    csv_name: 建物面積計測方式
+    required: false
+    rea_source: building_info.area_measurement_type
+    master_category: building_measurement
+
+  - csv_no: 73
+    csv_name: 建物面積・専有面積
+    required: true
+    rea_source: building_info.total_floor_area
+    fallback: building_info.exclusive_area
+    format: "decimal"
+    max_length: 8.2
+
+  - csv_no: 77
+    csv_name: 建物階数(地上)
+    required: true
+    rea_source: building_info.building_floors_above
+    format: "integer"
+
+  - csv_no: 78
+    csv_name: 建物階数(地下)
+    required: false
+    rea_source: building_info.building_floors_below
+    format: "integer"
+
+  - csv_no: 79
+    csv_name: 築年月
+    required: true
+    rea_source: building_info.construction_date
+    format: "yyyymm"  # yyyy/mm形式
+
+  - csv_no: 80
+    csv_name: 向き
+    required: false
+    rea_source: building_info.direction
+    master_category: orientation
+
+  # === 管理情報 ===
+  - csv_no: 81
+    csv_name: 管理人
+    required: true
+    rea_source: building_info.building_manager
+    master_category: manager_type
+
+  - csv_no: 82
+    csv_name: 管理形態
+    required: true
+    rea_source: building_info.management_type
+    master_category: management_type
+
+  - csv_no: 83
+    csv_name: 管理組合有無
+    required: false
+    rea_source: building_info.management_association
+    master_category: management_association
+
+  # === 部屋情報 ===
+  - csv_no: 85
+    csv_name: 部屋階数
+    required: true
+    rea_source: building_info.room_floor
+    format: "integer"
+
+  - csv_no: 86
+    csv_name: バルコニー面積
+    required: true
+    rea_source: building_info.balcony_area
+    format: "decimal"
+    default: "0"
+
+  - csv_no: 88
+    csv_name: 間取部屋数
+    required: true
+    rea_source: building_info.room_count
+    format: "integer"
+
+  - csv_no: 89
+    csv_name: 間取部屋種類
+    required: true
+    rea_source: building_info.room_type
+    master_category: floor_plan_type
+
+  # === 価格情報 ===
+  - csv_no: 139
+    csv_name: 賃料・価格
+    required: true
+    rea_source: properties.sale_price
+    format: "integer"
+    max_length: 12
+
+  - csv_no: 140
+    csv_name: 価格公開フラグ
+    required: false
+    default: "1"  # 公開
+
+  - csv_no: 141
+    csv_name: 価格状態
+    required: false
+    rea_source: properties.price_status
+    master_category: price_status
+    default: "2"  # 確定
+
+  - csv_no: 142
+    csv_name: 税金
+    required: true
+    rea_source: properties.tax_type
+    master_category: tax_type
+    default: "3"  # 税表示無し
+
+  # === 管理費・修繕積立金 ===
+  - csv_no: 145
+    csv_name: 共益費・管理費
+    required: true
+    rea_source: properties.management_fee
+    format: "integer"
+    default: "0"
+
+  - csv_no: 146
+    csv_name: 共益費・管理費 税
+    required: true
+    default: "3"  # 税表示無し
+
+  - csv_no: 166
+    csv_name: 修繕積立金
+    required: true
+    rea_source: properties.repair_reserve_fund
+    format: "integer"
+    default: "0"
+
+  # === 礼金・敷金（売買では未使用だが必須） ===
+  - csv_no: 147
+    csv_name: 礼金・月数
+    required: true
+    default: "0"
+
+  - csv_no: 148
+    csv_name: 礼金 税
+    required: true
+    default: "3"
+
+  - csv_no: 149
+    csv_name: 敷金・月数
+    required: true
+    default: "0"
+
+  # === 引渡情報 ===
+  - csv_no: 185
+    csv_name: 引渡/入居時期
+    required: true
+    rea_source: properties.delivery_timing
+    master_category: delivery_timing
+    default: "2"  # 相談
+
+  # === 取引情報 ===
+  - csv_no: 198
+    csv_name: 取引態様
+    required: true
+    rea_source: properties.transaction_type
+    master_category: transaction_type
+
+  - csv_no: 200
+    csv_name: 客付
+    required: true
+    default: "1"  # 可
+
+  # === 終了マーク ===
+  - csv_no: 426
+    csv_name: レコード終了マーク
+    required: true
+    value: "/"
+
+# REA property_type → HOMES property_type 変換
+property_type_mapping:
+  land: "1101"         # 売地
+  detached: "1202"     # 中古戸建
+  apartment: "1302"    # 中古マンション
+  mansion: "1302"      # 中古マンション
+  store: "1401"        # 売店舗
+  office: "1405"       # 売事務所
+  warehouse: "1410"    # 売倉庫
+  factory: "1408"      # 売工場
+  building: "1407"     # 売ビル
+  parking: "3282"      # 駐車場（賃貸扱い）
+
+# REA sales_status → HOMES 状態 変換
+sales_status_mapping:
+  # REA sales_status → HOMES 状態コード
+  "1": "1"   # 査定中 → 空有/売出中
+  "2": "1"   # 保留 → 空有/売出中
+  "3": "1"   # 販売準備 → 空有/売出中
+  "4": "1"   # 販売中 → 空有/売出中
+  "5": "1"   # 商談中 → 空有/売出中
+  "6": "4"   # 成約済み → 成約
+  "7": "3"   # 販売終了 → 空無/売止
+  "8": "3"   # 取り下げ → 空無/売止
+  "9": "3"   # 他決 → 空無/売止

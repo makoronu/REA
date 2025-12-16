@@ -65,8 +65,15 @@ class ZohoImportResult(BaseModel):
 # 共通ヘルパー関数
 # ========================================
 
+ALLOWED_RELATED_TABLES = {"land_info", "building_info", "property_locations"}
+
+
 def _upsert_related_table(cur, table_name: str, property_id: int, data: dict):
     """関連テーブルの更新または挿入（共通処理）"""
+    # SQLインジェクション対策: ホワイトリスト検証
+    if table_name not in ALLOWED_RELATED_TABLES:
+        raise ValueError(f"Table '{table_name}' is not allowed for upsert")
+
     if not data:
         return
 

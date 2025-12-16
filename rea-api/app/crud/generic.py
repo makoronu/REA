@@ -54,7 +54,8 @@ class GenericCRUD:
         "property_registries",
     }
 
-    # システムカラム（更新不可）
+    # システムカラム - 廃止予定（column_labels.is_updatable=falseで管理）
+    # 後方互換のため残すが、新コードは_get_updatable_columns()を使用すること
     SYSTEM_COLUMNS: Set[str] = {
         "id",
         "created_at",
@@ -346,7 +347,9 @@ class GenericCRUD:
         }
 
         for key, value in data.items():
-            if key in self.SYSTEM_COLUMNS:
+            # システムカラムはスキップ（メタデータ駆動: is_updatable=falseで定義）
+            # 各テーブルの_filter_data()で最終フィルタされるが、ここでも早期除外
+            if key in {'id', 'created_at', 'updated_at'}:
                 continue
 
             # 住所関連はproperty_locationsへ
