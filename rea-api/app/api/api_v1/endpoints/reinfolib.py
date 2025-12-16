@@ -117,12 +117,13 @@ async def get_hazard_info(
 async def get_tile_geojson(
     api_code: str,
     lat: float = Query(..., description="緯度"),
-    lng: float = Query(..., description="経度")
+    lng: float = Query(..., description="経度"),
+    radius: int = Query(1, description="取得範囲（1=3x3タイル, 2=5x5タイル）")
 ):
     """
     指定APIのタイルデータ（GeoJSON）を取得
 
-    MAP表示用の生データを返す
+    MAP表示用の生データを返す（周辺タイルも含む広域取得）
     """
     try:
         client = ReinfLibClient()
@@ -134,7 +135,8 @@ async def get_tile_geojson(
                 detail=f"Invalid API code. Available: {list(available.keys())}"
             )
 
-        geojson = client.get_tile_data(api_code, lat, lng)
+        # 広域取得（3x3または5x5タイル）
+        geojson = client.get_tile_data_wide(api_code, lat, lng, radius=radius)
         return geojson
 
     except HTTPException:

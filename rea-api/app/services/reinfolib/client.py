@@ -157,7 +157,7 @@ class ReinfLibClient:
         response_format: str = "geojson"
     ) -> dict:
         """
-        タイル系APIからデータ取得
+        タイル系APIからデータ取得（単一タイル）
 
         Args:
             api_code: API識別子（XKT002等）
@@ -183,6 +183,67 @@ class ReinfLibClient:
         }
 
         return self._request(api_def["endpoint"], params)
+
+    def get_tile_data_wide(
+        self,
+        api_code: str,
+        lat: float,
+        lng: float,
+        radius: int = 1
+    ) -> dict:
+        """
+        タイル系APIから広域データ取得（周辺タイルも含む）
+
+        Args:
+            api_code: API識別子（XKT002等）
+            lat: 緯度
+            lng: 経度
+            radius: 取得範囲（1=3x3, 2=5x5）
+
+        Returns:
+            マージされたGeoJSONデータ
+        """
+        api_def = API_DEFINITIONS.get(api_code)
+        if not api_def or api_def["type"] != "tile":
+            raise ValueError(f"Invalid tile API code: {api_code}")
+
+        zoom = api_def["zoom_level"]
+        center_x, center_y = lat_lng_to_tile(lat, lng, zoom)
+
+        all_features = []
+        seen_geometries = set()
+
+        # 周辺タイルを取得（3x3 or 5x5）
+        for dx in range(-radius, radius + 1):
+            for dy in range(-radius, radius + 1):
+                x = center_x + dx
+                y = center_y + dy
+
+                try:
+                    params = {
+                        "response_format": "geojson",
+                        "z": zoom,
+                        "x": x,
+                        "y": y
+                    }
+                    data = self._request(api_def["endpoint"], params)
+                    features = data.get("features", [])
+
+                    for feature in features:
+                        # 重複排除（geometryのハッシュで判定）
+                        geom_str = str(feature.get("geometry", {}).get("coordinates", []))
+                        if geom_str not in seen_geometries:
+                            seen_geometries.add(geom_str)
+                            all_features.append(feature)
+
+                except Exception as e:
+                    logger.warning(f"Failed to get tile ({x}, {y}): {e}")
+                    continue
+
+        return {
+            "type": "FeatureCollection",
+            "features": all_features
+        }
 
     def get_regulation_at_point(
         self,
