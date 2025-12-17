@@ -160,7 +160,7 @@ export const CommandPalette = ({ open, onOpenChange }: CommandPaletteProps) => {
       setHistory(getSearchHistory());
       setSearch('');
       setResults([]);
-      setSelectedIndex(0);
+      _setSelectedIndex(0);
     }
   }, [open]);
 
@@ -188,7 +188,7 @@ export const CommandPalette = ({ open, onOpenChange }: CommandPaletteProps) => {
 
       const data = await propertyService.getProperties(params);
       setResults(data);
-      setSelectedIndex(0);
+      _setSelectedIndex(0);
     } catch (err) {
       console.error('検索エラー:', err);
       setResults([]);

@@ -130,14 +130,6 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
     onChange(newImages);
   };
 
-  const _getImageTypeLabel = (typeValue: string) => {
-    return IMAGE_TYPES.find(t => t.value === typeValue)?.label || '未分類';
-  };
-
-  const _getImageTypeIcon = (typeValue: string) => {
-    return IMAGE_TYPES.find(t => t.value === typeValue)?.icon || '📁';
-  };
-
   // 未分類の画像数
   const unclassifiedCount = value.filter(img => img.image_type === '0' || !img.image_type).length;
 

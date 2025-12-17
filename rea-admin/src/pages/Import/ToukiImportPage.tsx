@@ -52,7 +52,6 @@ export default function ToukiImportPage() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [parsing, setParsingId] = useState<number | null>(null);
-  const [_creating, setCreatingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -190,46 +189,6 @@ export default function ToukiImportPage() {
     }
   };
 
-  // 物件登録（登録後、登記レコードは削除）- 将来使用予定
-  const _handleCreateProperty = async (record: ToukiRecord) => {
-    setCreatingId(record.id);
-    setError(null);
-    setSuccess(null);
-
-    try {
-      const payload = record.document_type === 'land'
-        ? { land_touki_record_id: record.id }
-        : { building_touki_record_id: record.id };
-
-      const res = await fetch(`${API_URL}/api/v1/touki/records/create-property`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || '物件登録に失敗しました');
-      }
-
-      const result = await res.json();
-
-      // 登記レコードを削除（一時データなので）
-      await fetch(`${API_URL}/api/v1/touki/records/${record.id}`, {
-        method: 'DELETE',
-      });
-
-      setSuccess(`物件ID ${result.property_id} を登録しました`);
-      await loadData();
-
-      // 編集ページを新しいタブで開く
-      window.open(`/properties/${result.property_id}/edit`, '_blank');
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setCreatingId(null);
-    }
-  };
 
   // 登記レコード削除
   const handleDeleteRecord = async (recordId: number) => {
