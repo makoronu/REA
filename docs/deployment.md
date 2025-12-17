@@ -6,8 +6,7 @@
 |------|-----|
 | IP | 160.251.196.148 |
 | ドメイン | realestateautomation.net |
-| rootパスワード | %zM-M27f*kR( |
-| SSH | root@160.251.196.148 |
+| SSH | `ssh rea-conoha` または `ssh -i ~/.ssh/REA.pem root@160.251.196.148` |
 
 ## ConoHa API（未検証）
 
