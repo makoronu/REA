@@ -18,10 +18,10 @@
 | 項目 | 内容 |
 |------|------|
 | 作業中 | なし |
-| 完了 | Docker→ローカル移行、**rea-portal-app基盤作成**、チラシ・マイソク、ZOHOインポート |
+| 完了 | **認証フロントエンド実装**、Docker→ローカル移行、rea-portal-app基盤作成、チラシ・マイソク、ZOHOインポート |
 | 残り | **HOMES入稿（画面確認待ち）**、ZOHO画像同期、定期同期 |
 | 最終更新 | 2025-12-17 |
-| 備考 | **DB: Postgres.app（ポート5432）**。rea-portal-app: Electron+Playwright基盤作成済み、HOMES入稿画面確認後に実装再開 |
+| 備考 | **DB: Postgres.app（ポート5432）**。認証機能: ログイン画面+保護ルート完成（バックエンドは既存）。rea-portal-app: Electron+Playwright基盤作成済み |
 
 ### メタ駆動マッピングシステム
 
