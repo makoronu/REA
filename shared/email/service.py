@@ -32,12 +32,6 @@ class EmailService:
         Returns:
             成功時True
         """
-        if not EmailConfig.SMTP_USER or not EmailConfig.SMTP_PASSWORD:
-            logger.warning("SMTP credentials not configured. Email not sent.")
-            logger.info("Would send email to: {} subject: {}".format(to_email, subject))
-            logger.info("Body: {}".format(body_text))
-            return False
-
         try:
             msg = MIMEMultipart('alternative')
             msg['Subject'] = subject
@@ -55,8 +49,11 @@ class EmailService:
                 msg.attach(part2)
 
             with smtplib.SMTP(EmailConfig.SMTP_HOST, EmailConfig.SMTP_PORT) as server:
-                server.starttls()
-                server.login(EmailConfig.SMTP_USER, EmailConfig.SMTP_PASSWORD)
+                # localhost以外はTLS+認証
+                if EmailConfig.SMTP_HOST != 'localhost':
+                    server.starttls()
+                    if EmailConfig.SMTP_USER and EmailConfig.SMTP_PASSWORD:
+                        server.login(EmailConfig.SMTP_USER, EmailConfig.SMTP_PASSWORD)
                 server.sendmail(
                     EmailConfig.SMTP_FROM_EMAIL,
                     to_email,
