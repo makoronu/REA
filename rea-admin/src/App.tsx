@@ -1,6 +1,9 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import { AuthProvider } from './contexts/AuthContext';
 import Layout from './components/common/Layout';
+import PrivateRoute from './components/common/PrivateRoute';
+import LoginPage from './pages/Auth/LoginPage';
 import PropertiesPage from './pages/Properties/PropertiesPage';
 import PropertyEditDynamicPage from './pages/Properties/PropertyEditDynamicPage';
 import FieldVisibilityPage from './pages/admin/FieldVisibilityPage';
@@ -11,7 +14,7 @@ import IntegrationsPage from './pages/Settings/IntegrationsPage';
 import CommandPalette from './components/CommandPalette';
 import './styles/globals.css';
 
-function App() {
+function AppContent() {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
   // ⌘K / Ctrl+K でコマンドパレットを開く
@@ -28,21 +31,87 @@ function App() {
   }, []);
 
   return (
-    <Router>
-      <Layout onOpenCommandPalette={() => setCommandPaletteOpen(true)}>
-        <Routes>
-          <Route path="/" element={<PropertiesPage />} />
-          <Route path="/properties" element={<PropertiesPage />} />
-          <Route path="/properties/:id/edit" element={<PropertyEditDynamicPage />} />
-          <Route path="/properties/new" element={<PropertyEditDynamicPage />} />
-          <Route path="/admin/field-visibility" element={<FieldVisibilityPage />} />
-          <Route path="/map/zoning" element={<ZoningMapPage />} />
-          <Route path="/import/zoho" element={<ZohoImportPage />} />
-          <Route path="/import/touki" element={<ToukiImportPage />} />
-          <Route path="/settings/integrations" element={<IntegrationsPage />} />
-        </Routes>
-      </Layout>
+    <>
+      <Routes>
+        {/* 公開ルート */}
+        <Route path="/login" element={<LoginPage />} />
+
+        {/* 保護ルート */}
+        <Route path="/" element={
+          <PrivateRoute>
+            <Layout onOpenCommandPalette={() => setCommandPaletteOpen(true)}>
+              <PropertiesPage />
+            </Layout>
+          </PrivateRoute>
+        } />
+        <Route path="/properties" element={
+          <PrivateRoute>
+            <Layout onOpenCommandPalette={() => setCommandPaletteOpen(true)}>
+              <PropertiesPage />
+            </Layout>
+          </PrivateRoute>
+        } />
+        <Route path="/properties/:id/edit" element={
+          <PrivateRoute>
+            <Layout onOpenCommandPalette={() => setCommandPaletteOpen(true)}>
+              <PropertyEditDynamicPage />
+            </Layout>
+          </PrivateRoute>
+        } />
+        <Route path="/properties/new" element={
+          <PrivateRoute>
+            <Layout onOpenCommandPalette={() => setCommandPaletteOpen(true)}>
+              <PropertyEditDynamicPage />
+            </Layout>
+          </PrivateRoute>
+        } />
+        <Route path="/admin/field-visibility" element={
+          <PrivateRoute minLevel={50}>
+            <Layout onOpenCommandPalette={() => setCommandPaletteOpen(true)}>
+              <FieldVisibilityPage />
+            </Layout>
+          </PrivateRoute>
+        } />
+        <Route path="/map/zoning" element={
+          <PrivateRoute>
+            <Layout onOpenCommandPalette={() => setCommandPaletteOpen(true)}>
+              <ZoningMapPage />
+            </Layout>
+          </PrivateRoute>
+        } />
+        <Route path="/import/zoho" element={
+          <PrivateRoute>
+            <Layout onOpenCommandPalette={() => setCommandPaletteOpen(true)}>
+              <ZohoImportPage />
+            </Layout>
+          </PrivateRoute>
+        } />
+        <Route path="/import/touki" element={
+          <PrivateRoute>
+            <Layout onOpenCommandPalette={() => setCommandPaletteOpen(true)}>
+              <ToukiImportPage />
+            </Layout>
+          </PrivateRoute>
+        } />
+        <Route path="/settings/integrations" element={
+          <PrivateRoute>
+            <Layout onOpenCommandPalette={() => setCommandPaletteOpen(true)}>
+              <IntegrationsPage />
+            </Layout>
+          </PrivateRoute>
+        } />
+      </Routes>
       <CommandPalette open={commandPaletteOpen} onOpenChange={setCommandPaletteOpen} />
+    </>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </Router>
   );
 }
