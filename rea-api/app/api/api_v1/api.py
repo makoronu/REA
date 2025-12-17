@@ -1,8 +1,9 @@
 from fastapi import APIRouter
 
-from .endpoints import metadata, properties, equipment, geo, admin, zoho, touki, registries, integrations, reinfolib, flyer, portal
+from .endpoints import metadata, properties, equipment, geo, admin, zoho, touki, registries, integrations, reinfolib, flyer, portal, auth
 
 api_router = APIRouter()
+api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(properties.router, prefix="/properties", tags=["properties"])
 api_router.include_router(metadata.router, prefix="/metadata", tags=["metadata"])
 api_router.include_router(equipment.router, prefix="/equipment", tags=["equipment"])
