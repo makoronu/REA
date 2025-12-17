@@ -21,7 +21,7 @@
 | 完了 | **本番デプロイ完了（テナント名表示+開発者ログイン）**、パスワードリセット機能、認証フロントエンド |
 | 残り | HOMES入稿、ZOHO画像同期 |
 | 最終更新 | 2025-12-17 |
-| 備考 | **本番URL: https://realestateautomation.net/** テナント名+ログアウト表示OK。開発者ログイン: `/dev-login`。SSH設定: `~/.ssh/config`（Host: rea-conoha）。ハードコードパス修正済み。 |
+| 備考 | **本番URL: https://realestateautomation.net/** メール送信設定完了（Postfix+DKIM）。テナント名+ログアウト表示OK。開発者ログイン: `/dev-login`。SSH: `ssh rea-conoha` |
 
 ### メタ駆動マッピングシステム
 
