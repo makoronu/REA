@@ -18,10 +18,10 @@
 | 項目 | 内容 |
 |------|------|
 | 作業中 | なし |
-| 完了 | **本番デプロイ完了**、認証フロントエンド実装、Docker→ローカル移行、rea-portal-app基盤作成、チラシ・マイソク、ZOHOインポート |
-| 残り | SSL証明書(Let's Encrypt)、HOMES入稿、ZOHO画像同期、定期同期 |
+| 完了 | **パスワードリセット機能実装**、本番デプロイ完了、認証フロントエンド実装、Docker→ローカル移行、rea-portal-app基盤作成 |
+| 残り | **初期データ投入（デプロイ承認待ち）**、SMTP設定、HOMES入稿、ZOHO画像同期 |
 | 最終更新 | 2025-12-17 |
-| 備考 | **本番URL: http://realestateautomation.net/** ConoHa VPS(160.251.196.148)にデプロイ完了。nginx+uvicorn構成。DBスキーマ+マスターデータ投入済み。 |
+| 備考 | **本番URL: https://realestateautomation.net/** SSL証明書設定済み。パスワードリセット機能実装完了（メール送信サービス、API、フロントエンド）。初期データ投入スクリプト: `scripts/init_auth_data.py` |
 
 ### メタ駆動マッピングシステム
 
