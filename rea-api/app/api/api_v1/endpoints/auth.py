@@ -1,6 +1,9 @@
 # 認証API
 import sys
-sys.path.insert(0, '/Users/yaguchimakoto/my_programing/REA')
+from pathlib import Path
+# プロジェクトルートをパスに追加（auth.py → endpoints → api_v1 → api → app → rea-api → REA）
+project_root = Path(__file__).resolve().parent.parent.parent.parent.parent.parent
+sys.path.insert(0, str(project_root))
 
 import secrets
 from fastapi import APIRouter, HTTPException, Request

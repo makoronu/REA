@@ -3,7 +3,7 @@
 【重要】DB接続設定について
 ========================
 このファイルは必ずプロジェクトルートの.envファイルから設定を読み込みます。
-.envファイルの場所: /Users/yaguchimakoto/my_programing/REA/.env
+.envファイルの場所: プロジェクトルート/.env（shared/の親ディレクトリ）
 
 .envファイルに以下の設定が必要です：
 
@@ -60,8 +60,9 @@ class READatabase:
         - プロジェクトルートを固定パスで指定
         - どこから実行しても必ず同じ.envファイルを読む
         """
-        # プロジェクトルートを固定（どこから実行しても同じ）
-        project_root = Path("/Users/yaguchimakoto/my_programing/REA")
+        # プロジェクトルートを検出（このファイルの親の親ディレクトリ）
+        # shared/database.py → shared → REA
+        project_root = Path(__file__).resolve().parent.parent
         env_path = project_root / ".env"
 
         if env_path.exists():
