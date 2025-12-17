@@ -2,6 +2,7 @@
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.header import Header
 from typing import Optional
 import logging
 
@@ -34,9 +35,9 @@ class EmailService:
         """
         try:
             msg = MIMEMultipart('alternative')
-            msg['Subject'] = subject
+            msg['Subject'] = Header(subject, 'utf-8')
             msg['From'] = "{} <{}>".format(
-                EmailConfig.SMTP_FROM_NAME,
+                Header(EmailConfig.SMTP_FROM_NAME, 'utf-8').encode(),
                 EmailConfig.SMTP_FROM_EMAIL
             )
             msg['To'] = to_email
@@ -116,7 +117,7 @@ REA - Real Estate Automation System
     <style>
         body {{ font-family: sans-serif; line-height: 1.6; color: #333; }}
         .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-        .button {{ display: inline-block; padding: 12px 24px; background: #2563eb; color: #fff; text-decoration: none; border-radius: 6px; }}
+        .button {{ display: inline-block; padding: 12px 24px; background: #3B82F6; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold; }}
         .footer {{ margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; }}
     </style>
 </head>
@@ -194,7 +195,7 @@ REA - Real Estate Automation System
     <style>
         body {{ font-family: sans-serif; line-height: 1.6; color: #333; }}
         .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-        .button {{ display: inline-block; padding: 12px 24px; background: #2563eb; color: #fff; text-decoration: none; border-radius: 6px; }}
+        .button {{ display: inline-block; padding: 12px 24px; background: #3B82F6; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold; }}
         .footer {{ margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; }}
     </style>
 </head>
