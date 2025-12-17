@@ -96,6 +96,27 @@ export const authService = {
   isAuthenticated(): boolean {
     return !!getToken();
   },
+
+  // パスワードリセットリクエスト
+  async requestPasswordReset(email: string): Promise<{ message: string }> {
+    const response = await api.post<{ message: string }>('/auth/password-reset/request', { email });
+    return response.data;
+  },
+
+  // パスワードリセットトークン検証
+  async verifyResetToken(token: string): Promise<{ valid: boolean; message: string }> {
+    const response = await api.get<{ valid: boolean; message: string }>(`/auth/password-reset/verify/${token}`);
+    return response.data;
+  },
+
+  // パスワードリセット実行
+  async confirmPasswordReset(token: string, newPassword: string): Promise<{ message: string }> {
+    const response = await api.post<{ message: string }>('/auth/password-reset/confirm', {
+      token,
+      new_password: newPassword,
+    });
+    return response.data;
+  },
 };
 
 export default authService;

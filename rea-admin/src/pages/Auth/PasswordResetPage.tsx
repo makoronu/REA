@@ -1,66 +1,75 @@
-// ログインページ
-import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+// パスワードリセットページ
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { authService } from '../../services/authService';
 
-const LoginPage: React.FC = () => {
+const PasswordResetPage: React.FC = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { login, isLoading: authLoading } = useAuth();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
 
-  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [forgotEmail, setForgotEmail] = useState('');
+  const [isValidToken, setIsValidToken] = useState<boolean | null>(null);
+  const [tokenMessage, setTokenMessage] = useState('');
 
-  // リダイレクト先（ログイン後に戻る場所）
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
+  // トークン検証
+  useEffect(() => {
+    if (token) {
+      authService.verifyResetToken(token)
+        .then((result) => {
+          setIsValidToken(result.valid);
+          setTokenMessage(result.message);
+        })
+        .catch(() => {
+          setIsValidToken(false);
+          setTokenMessage('トークンの検証に失敗しました');
+        });
+    } else {
+      setIsValidToken(false);
+      setTokenMessage('トークンが指定されていません');
+    }
+  }, [token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
+
+    // バリデーション
+    if (password.length < 8) {
+      setError('パスワードは8文字以上で入力してください');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('パスワードが一致しません');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      await login({ email, password });
-      navigate(from, { replace: true });
+      await authService.confirmPasswordReset(token!, password);
+      setSuccess('パスワードを更新しました。ログインページに移動します...');
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error && 'response' in err
         ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
         : null;
-      setError(errorMessage || 'ログインに失敗しました');
+      setError(errorMessage || 'パスワードの更新に失敗しました');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleForgotPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-    setIsSubmitting(true);
-
-    try {
-      const result = await authService.requestPasswordReset(forgotEmail);
-      setSuccess(result.message);
-      setShowForgotPassword(false);
-      setForgotEmail('');
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error && 'response' in err
-        ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
-        : null;
-      setError(errorMessage || 'リクエストに失敗しました');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  if (authLoading) {
+  // トークン検証中
+  if (isValidToken === null) {
     return (
       <div style={{
         minHeight: '100vh',
@@ -69,7 +78,66 @@ const LoginPage: React.FC = () => {
         justifyContent: 'center',
         backgroundColor: '#F9FAFB',
       }}>
-        <div style={{ color: '#6B7280' }}>読み込み中...</div>
+        <div style={{ color: '#6B7280' }}>確認中...</div>
+      </div>
+    );
+  }
+
+  // 無効なトークン
+  if (!isValidToken) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#F9FAFB',
+        padding: '16px',
+      }}>
+        <div style={{
+          width: '100%',
+          maxWidth: '400px',
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+          padding: '32px',
+          textAlign: 'center',
+        }}>
+          <div style={{
+            width: '64px',
+            height: '64px',
+            backgroundColor: '#FEF2F2',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 24px',
+          }}>
+            <svg width="32" height="32" fill="none" stroke="#DC2626" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+          <h2 style={{ fontSize: '20px', fontWeight: 600, color: '#1F2937', marginBottom: '8px' }}>
+            無効なリンク
+          </h2>
+          <p style={{ color: '#6B7280', marginBottom: '24px' }}>
+            {tokenMessage}
+          </p>
+          <Link
+            to="/login"
+            style={{
+              display: 'inline-block',
+              padding: '12px 24px',
+              backgroundColor: '#3B82F6',
+              color: 'white',
+              borderRadius: '8px',
+              textDecoration: 'none',
+              fontWeight: 500,
+            }}
+          >
+            ログインページへ
+          </Link>
+        </div>
       </div>
     );
   }
@@ -91,21 +159,21 @@ const LoginPage: React.FC = () => {
         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
         padding: '32px',
       }}>
-        {/* ロゴ・タイトル */}
+        {/* タイトル */}
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <h1 style={{
-            fontSize: '28px',
+            fontSize: '24px',
             fontWeight: 700,
             color: '#1F2937',
             marginBottom: '8px',
           }}>
-            REA
+            パスワード設定
           </h1>
           <p style={{
             fontSize: '14px',
             color: '#6B7280',
           }}>
-            不動産管理システム
+            新しいパスワードを入力してください
           </p>
         </div>
 
@@ -139,7 +207,7 @@ const LoginPage: React.FC = () => {
           </div>
         )}
 
-        {/* ログインフォーム */}
+        {/* フォーム */}
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '20px' }}>
             <label style={{
@@ -149,14 +217,15 @@ const LoginPage: React.FC = () => {
               color: '#374151',
               marginBottom: '6px',
             }}>
-              メールアドレス
+              新しいパスワード
             </label>
             <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               required
-              autoComplete="email"
+              minLength={8}
+              autoComplete="new-password"
               autoFocus
               style={{
                 width: '100%',
@@ -176,7 +245,7 @@ const LoginPage: React.FC = () => {
                 e.target.style.borderColor = '#D1D5DB';
                 e.target.style.boxShadow = 'none';
               }}
-              placeholder="mail@example.com"
+              placeholder="8文字以上"
             />
           </div>
 
@@ -188,14 +257,14 @@ const LoginPage: React.FC = () => {
               color: '#374151',
               marginBottom: '6px',
             }}>
-              パスワード
+              パスワード確認
             </label>
             <input
               type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
               required
-              autoComplete="current-password"
+              autoComplete="new-password"
               style={{
                 width: '100%',
                 padding: '12px 14px',
@@ -214,7 +283,7 @@ const LoginPage: React.FC = () => {
                 e.target.style.borderColor = '#D1D5DB';
                 e.target.style.boxShadow = 'none';
               }}
-              placeholder="********"
+              placeholder="もう一度入力"
             />
           </div>
 
@@ -246,114 +315,26 @@ const LoginPage: React.FC = () => {
               }
             }}
           >
-            {isSubmitting ? 'ログイン中...' : 'ログイン'}
+            {isSubmitting ? '更新中...' : 'パスワードを設定'}
           </button>
         </form>
 
-        {/* パスワードを忘れた場合 */}
+        {/* ログインへ戻る */}
         <div style={{ textAlign: 'center', marginTop: '24px' }}>
-          <button
-            type="button"
-            onClick={() => setShowForgotPassword(true)}
+          <Link
+            to="/login"
             style={{
-              background: 'none',
-              border: 'none',
               color: '#3B82F6',
-              cursor: 'pointer',
+              textDecoration: 'none',
               fontSize: '14px',
-              textDecoration: 'underline',
             }}
           >
-            パスワードをお忘れの場合
-          </button>
+            ログインページに戻る
+          </Link>
         </div>
-
-        {/* パスワードリセットモーダル */}
-        {showForgotPassword && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-          }}>
-            <div style={{
-              backgroundColor: 'white',
-              borderRadius: '12px',
-              padding: '24px',
-              width: '100%',
-              maxWidth: '400px',
-              margin: '16px',
-            }}>
-              <h3 style={{ marginBottom: '16px', color: '#1F2937' }}>パスワードリセット</h3>
-              <p style={{ marginBottom: '16px', fontSize: '14px', color: '#6B7280' }}>
-                登録されているメールアドレスを入力してください。パスワードリセット用のリンクをお送りします。
-              </p>
-              <form onSubmit={handleForgotPassword}>
-                <input
-                  type="email"
-                  value={forgotEmail}
-                  onChange={(e) => setForgotEmail(e.target.value)}
-                  required
-                  placeholder="mail@example.com"
-                  style={{
-                    width: '100%',
-                    padding: '12px 14px',
-                    fontSize: '16px',
-                    border: '1px solid #D1D5DB',
-                    borderRadius: '8px',
-                    marginBottom: '16px',
-                    boxSizing: 'border-box',
-                  }}
-                />
-                <div style={{ display: 'flex', gap: '12px' }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowForgotPassword(false);
-                      setForgotEmail('');
-                    }}
-                    style={{
-                      flex: 1,
-                      padding: '12px',
-                      fontSize: '14px',
-                      backgroundColor: '#F3F4F6',
-                      border: 'none',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    キャンセル
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    style={{
-                      flex: 1,
-                      padding: '12px',
-                      fontSize: '14px',
-                      backgroundColor: '#3B82F6',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                    }}
-                  >
-                    {isSubmitting ? '送信中...' : '送信'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
 };
 
-export default LoginPage;
+export default PasswordResetPage;
