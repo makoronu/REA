@@ -128,7 +128,7 @@ REA - Real Estate Automation System
         <p>パスワードリセットのリクエストを受け付けました。<br>
         以下のボタンをクリックしてパスワードを再設定してください。</p>
         <p style="margin: 30px 0;">
-            <a href="{url}" class="button">パスワードを再設定</a>
+            <a href="{url}" style="display: inline-block; padding: 12px 24px; background-color: #3B82F6; color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: bold;">パスワードを再設定</a>
         </p>
         <p>または、以下のURLをブラウザに貼り付けてください：<br>
         <a href="{url}">{url}</a></p>
@@ -206,7 +206,7 @@ REA - Real Estate Automation System
         <p>REAへのアカウント登録が完了しました。<br>
         以下のボタンをクリックしてパスワードを設定してください。</p>
         <p style="margin: 30px 0;">
-            <a href="{url}" class="button">パスワードを設定</a>
+            <a href="{url}" style="display: inline-block; padding: 12px 24px; background-color: #3B82F6; color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: bold;">パスワードを設定</a>
         </p>
         <p>または、以下のURLをブラウザに貼り付けてください：<br>
         <a href="{url}">{url}</a></p>
