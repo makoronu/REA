@@ -99,11 +99,14 @@ const Layout: React.FC<LayoutProps> = ({ children, onOpenCommandPalette }) => {
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
+  const isAdmin = (user?.role_level ?? 0) >= 80;
+
   const menuItems = [
     { path: '/properties', label: '物件一覧', icon: '🏠' },
     { path: '/properties/new', label: '新規登録', icon: '➕' },
     { path: '/import/touki', label: '登記取込', icon: '📄' },
     { path: '/settings/integrations', label: '外部連携', icon: '🔄' },
+    ...(isAdmin ? [{ path: '/settings/users', label: 'ユーザー', icon: '👤' }] : []),
     { path: '/admin/field-visibility', label: '管理', icon: '⚙️' },
   ];
 

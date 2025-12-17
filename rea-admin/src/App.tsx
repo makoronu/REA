@@ -13,6 +13,7 @@ import ZoningMapPage from './pages/ZoningMap/ZoningMapPage';
 import ZohoImportPage from './pages/Import/ZohoImportPage';
 import ToukiImportPage from './pages/Import/ToukiImportPage';
 import IntegrationsPage from './pages/Settings/IntegrationsPage';
+import UsersPage from './pages/Settings/UsersPage';
 import CommandPalette from './components/CommandPalette';
 import './styles/globals.css';
 
@@ -101,6 +102,13 @@ function AppContent() {
           <PrivateRoute>
             <Layout onOpenCommandPalette={() => setCommandPaletteOpen(true)}>
               <IntegrationsPage />
+            </Layout>
+          </PrivateRoute>
+        } />
+        <Route path="/settings/users" element={
+          <PrivateRoute minLevel={80}>
+            <Layout onOpenCommandPalette={() => setCommandPaletteOpen(true)}>
+              <UsersPage />
             </Layout>
           </PrivateRoute>
         } />
