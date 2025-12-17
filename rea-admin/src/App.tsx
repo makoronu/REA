@@ -4,6 +4,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import Layout from './components/common/Layout';
 import PrivateRoute from './components/common/PrivateRoute';
 import LoginPage from './pages/Auth/LoginPage';
+import DevLoginPage from './pages/Auth/DevLoginPage';
 import PasswordResetPage from './pages/Auth/PasswordResetPage';
 import PropertiesPage from './pages/Properties/PropertiesPage';
 import PropertyEditDynamicPage from './pages/Properties/PropertyEditDynamicPage';
@@ -36,6 +37,7 @@ function AppContent() {
       <Routes>
         {/* 公開ルート */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/dev-login" element={<DevLoginPage />} />
         <Route path="/reset-password" element={<PasswordResetPage />} />
 
         {/* 保護ルート */}

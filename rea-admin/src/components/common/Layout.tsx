@@ -1,6 +1,7 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useSaveStatusDisplay, SaveStatus } from '../../hooks/useAutoSave';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -82,6 +83,14 @@ const SaveStatusIndicator: React.FC = () => {
 
 const Layout: React.FC<LayoutProps> = ({ children, onOpenCommandPalette }) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const [showUserMenu, setShowUserMenu] = useState(false);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
 
   const isActive = (path: string) => {
     if (path === '/properties') {
@@ -192,8 +201,107 @@ const Layout: React.FC<LayoutProps> = ({ children, onOpenCommandPalette }) => {
           ))}
         </nav>
 
-        {/* 右側: 保存ステータス */}
-        <SaveStatusIndicator />
+        {/* 右側: 保存ステータス + ユーザー情報 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <SaveStatusIndicator />
+
+          {/* テナント名 + ユーザーメニュー */}
+          {user && (
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '6px 12px',
+                  backgroundColor: '#F3F4F6',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                }}
+              >
+                <span style={{ fontWeight: 600, color: '#1F2937' }}>
+                  {user.organization_name}
+                </span>
+                <span style={{ color: '#6B7280' }}>|</span>
+                <span style={{ color: '#374151' }}>{user.name}</span>
+                <svg
+                  style={{ width: '16px', height: '16px', color: '#6B7280' }}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {/* ドロップダウンメニュー */}
+              {showUserMenu && (
+                <>
+                  <div
+                    style={{
+                      position: 'fixed',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      zIndex: 999,
+                    }}
+                    onClick={() => setShowUserMenu(false)}
+                  />
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '100%',
+                      right: 0,
+                      marginTop: '4px',
+                      backgroundColor: 'white',
+                      border: '1px solid #E5E7EB',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                      minWidth: '200px',
+                      zIndex: 1000,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <div style={{ padding: '12px 16px', borderBottom: '1px solid #E5E7EB' }}>
+                      <div style={{ fontSize: '12px', color: '#6B7280' }}>ログイン中</div>
+                      <div style={{ fontWeight: 600, color: '#1F2937' }}>{user.email}</div>
+                      <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                        {user.role_name}
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleLogout}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        fontSize: '14px',
+                        color: '#DC2626',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                      }}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#FEF2F2'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                      <svg style={{ width: '16px', height: '16px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                      </svg>
+                      ログアウト
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </header>
 
       {/* メインコンテンツ */}
