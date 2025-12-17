@@ -61,7 +61,9 @@ export const UsersPage: React.FC = () => {
       setRoles(rolesData);
 
       if (rolesData.length > 0 && newUser.role_id === 0) {
-        setNewUser(prev => ({ ...prev, role_id: rolesData[0].id }));
+        // デフォルトは一般ユーザー（最もレベルの低いロール）
+        const defaultRole = rolesData[rolesData.length - 1];
+        setNewUser(prev => ({ ...prev, role_id: defaultRole.id }));
       }
     } catch (err: any) {
       setError(err.message);
