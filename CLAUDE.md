@@ -17,11 +17,11 @@
 
 | 項目 | 内容 |
 |------|------|
-| 作業中 | HOMES入稿（Phase 1: CSV仕様確認・マッピング）|
-| 完了 | チラシ・マイソク基盤、データ設計正規化、ZOHOインポート |
+| 作業中 | なし |
+| 完了 | **Docker→ローカル移行完了**、チラシ・マイソク基盤、データ設計正規化、ZOHOインポート |
 | 残り | HOMES入稿完成、ZOHO画像同期、定期同期 |
-| 最終更新 | 2025-12-16 |
-| 備考 | ROADMAP更新済み。master_optionsに46カテゴリのホームズコード登録済み |
+| 最終更新 | 2025-12-17 |
+| 備考 | **DB: Postgres.app（ポート5432）に移行完了**。Dockerは使用しない。master_optionsに46カテゴリのホームズコード登録済み |
 
 ### メタ駆動マッピングシステム
 
@@ -274,8 +274,8 @@ const categories = await fetch('/api/v1/geo/facility-categories');
 ### ローカル環境（Mac + Claude Code）
 
 ```bash
-# 1. Docker起動
-/usr/local/bin/docker compose up -d postgres redis
+# 1. Postgres.app起動確認（メニューバーの象アイコンで確認）
+# ※ Dockerは使わない
 
 # 2. FastAPI起動
 cd ~/my_programing/REA/rea-api && PYTHONPATH=~/my_programing/REA python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8005
@@ -284,18 +284,10 @@ cd ~/my_programing/REA/rea-api && PYTHONPATH=~/my_programing/REA python -m uvico
 cd ~/my_programing/REA/rea-admin && npm run dev
 
 # 4. DB接続確認
-cd ~/my_programing/REA && PYTHONPATH=~/my_programing/REA python -c "from shared.database import READatabase; db = READatabase(); print('✅ 成功' if db else '❌ 失敗')"
+cd ~/my_programing/REA && PYTHONPATH=~/my_programing/REA python -c "from shared.database import READatabase; print(READatabase.health_check())"
 ```
 
-### Codespaces環境
-
-```bash
-docker-compose up -d postgres redis
-cd rea-api && export $(grep -v '^#' /workspaces/REA/.env | xargs) && PYTHONPATH=/workspaces/REA python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8005
-cd rea-admin && npm run dev
-```
-
-**Codespaces注意**: VS Code下部「PORTS」タブで5173, 8005を**Public**に設定
+**ポート**: PostgreSQL=5432（Postgres.app）、FastAPI=8005、フロント=5173
 
 ---
 
@@ -690,21 +682,15 @@ git push origin main
 ### バックアップコマンド
 
 ```bash
-# ローカル環境
-/usr/local/bin/docker compose exec -T postgres pg_dump -U rea_user real_estate_db > ~/my_programing/REA/backups/backup_$(date +%Y%m%d_%H%M%S).sql
-
-# Codespaces
-docker compose exec -T postgres pg_dump -U rea_user real_estate_db > /workspaces/REA/backups/backup_$(date +%Y%m%d_%H%M%S).sql
+# Postgres.app（ローカル）
+/Applications/Postgres.app/Contents/Versions/latest/bin/pg_dump -h localhost -p 5432 -U yaguchimakoto real_estate_db > ~/my_programing/REA/backups/backup_$(date +%Y%m%d_%H%M%S).sql
 ```
 
 ### 復元コマンド
 
 ```bash
-# ローカル環境
-cat ~/my_programing/REA/backups/backup_YYYYMMDD_HHMMSS.sql | /usr/local/bin/docker compose exec -T postgres psql -U rea_user real_estate_db
-
-# Codespaces
-cat /workspaces/REA/backups/backup_YYYYMMDD_HHMMSS.sql | docker compose exec -T postgres psql -U rea_user real_estate_db
+# Postgres.app（ローカル）
+/Applications/Postgres.app/Contents/Versions/latest/bin/psql -h localhost -p 5432 -U yaguchimakoto -d real_estate_db < ~/my_programing/REA/backups/backup_YYYYMMDD_HHMMSS.sql
 ```
 
 ### バックアップを取るタイミング（必須）
@@ -735,22 +721,18 @@ find ~/my_programing/REA/backups -name "backup_*.sql" -mtime +7 -delete
 
 **バックエンド（.env）**
 ```
-DATABASE_URL=postgresql://rea_user:rea_password@localhost:5433/real_estate_db
+# Postgres.app（ローカル）
+DATABASE_URL=postgresql://yaguchimakoto@localhost:5432/real_estate_db
 DB_HOST=localhost
-DB_PORT=5433
+DB_PORT=5432
 DB_NAME=real_estate_db
-DB_USER=rea_user
-DB_PASSWORD=rea_password
-REDIS_URL=redis://localhost:6379
+DB_USER=yaguchimakoto
+DB_PASSWORD=
 ```
 
 **フロントエンド（rea-admin/.env）**
 ```
-# ローカル
 VITE_API_URL=http://localhost:8005
-
-# Codespaces
-# VITE_API_URL=https://${CODESPACE_NAME}-8005.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}
 ```
 
 ---
