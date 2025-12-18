@@ -184,6 +184,31 @@ for key, value in land_dict.items():
             result[key] = value
 ```
 
+### 失敗事例: display_order重複問題（2025-12-18）
+
+**問題**: 物件編集画面のグループ表示順序がおかしい
+
+**原因**:
+- display_orderがグループをまたいで重複（所在地グループも価格グループも10から始まる等）
+- グループ自体の順序を制御する仕組みがなかった
+
+**対策**:
+1. `group_order`カラムを追加（グループの表示順序）
+2. `display_order`はグループ内の相対順序（各グループ内で1から連番）
+3. **column_labels変更後は必ずチェックスクリプト実行**
+
+**チェックスクリプト（必須）**:
+```bash
+PYTHONPATH=/Users/yaguchimakoto/my_programing/REA python3 scripts/check_column_labels.py
+```
+
+**column_labels追加時のルール**:
+| 項目 | 必須値 |
+|------|--------|
+| group_order | 既存グループと同じ値 or 新グループなら連番 |
+| display_order | そのグループ内で最大値+1 |
+| group_name | 既存グループ名を正確に（typo注意） |
+
 ---
 
 ## 最重要原則：メタデータ駆動ファースト
