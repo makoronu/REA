@@ -16,6 +16,7 @@ import { BusStopsField } from './BusStopsField';
 import { NearbyFacilitiesField } from './NearbyFacilitiesField';
 import { ZoningMapField } from './ZoningMapField';
 import { API_URL } from '../../config';
+import { parseOptions } from '../../utils/options';
 
 interface FieldFactoryProps {
   column: ColumnWithLabel;
@@ -44,45 +45,6 @@ const selectStyle: React.CSSProperties = {
   backgroundPosition: 'right 0 center',
   backgroundSize: '20px',
   paddingRight: '28px',
-};
-
-// ENUM値をパースする関数
-// optionsは文字列（カンマ区切り）またはオブジェクト配列の両方に対応
-const parseEnumValues = (options: any): { value: string; label: string; group?: string }[] => {
-  if (!options) return [];
-
-  // 配列の場合（property_types等から取得したオブジェクト配列）
-  if (Array.isArray(options)) {
-    return options.map(opt => {
-      if (typeof opt === 'object' && opt !== null) {
-        return {
-          value: opt.value || opt.id || '',
-          label: opt.label || opt.name || opt.value || '',
-          group: opt.group || opt.group_name,
-        };
-      }
-      // 文字列配列の場合
-      return { value: String(opt), label: String(opt) };
-    });
-  }
-
-  // 文字列の場合（従来のカンマ区切り形式）
-  if (typeof options === 'string') {
-    const items = options.split(',').map(item => item.trim());
-    return items.map(option => {
-      // "1:売主" 形式の場合、valueはコード部分（"1"）、labelはコロン以降（"売主"）
-      // これにより、DBはINTEGER型でコードのみを格納できる
-      const colonIndex = option.indexOf(':');
-      if (colonIndex > 0) {
-        const code = option.substring(0, colonIndex).trim();
-        const label = option.substring(colonIndex + 1).trim();
-        return { value: code, label: label || option };
-      }
-      return { value: option, label: option };
-    });
-  }
-
-  return [];
 };
 
 // 郵便番号フィールド - 住所自動入力機能付き
@@ -252,7 +214,7 @@ export const FieldFactory: React.FC<FieldFactoryProps> = ({ column, disabled = f
 
     // input_typeがradioの場合は先にradioを返す
     if (inputType === 'radio' && enumSource) {
-      const radioOptions = parseEnumValues(enumSource);
+      const radioOptions = parseOptions(enumSource);
       return (
         <Controller
           name={column.column_name}
@@ -304,7 +266,7 @@ export const FieldFactory: React.FC<FieldFactoryProps> = ({ column, disabled = f
 
     // input_typeがmulti_selectの場合は先にmulti_selectを返す
     if (inputType === 'multi_select' && enumSource) {
-      const multiOptions = parseEnumValues(enumSource);
+      const multiOptions = parseOptions(enumSource);
       return (
         <Controller
           name={column.column_name}
@@ -372,7 +334,7 @@ export const FieldFactory: React.FC<FieldFactoryProps> = ({ column, disabled = f
         !isMasterRef &&
         inputType !== 'radio' &&
         inputType !== 'multi_select') {
-      const enumOptions = parseEnumValues(enumSource);
+      const enumOptions = parseOptions(enumSource);
       if (enumOptions.length > 0) {
         // グループがあるかチェック
         const hasGroups = enumOptions.some(opt => opt.group);
@@ -520,7 +482,7 @@ export const FieldFactory: React.FC<FieldFactoryProps> = ({ column, disabled = f
         );
 
       case 'radio':
-        const radioOptions = parseEnumValues(column.options);
+        const radioOptions = parseOptions(column.options);
         // 「未選択」オプションを先頭に追加
         const radioOptionsWithEmpty = [{ value: '', label: '未選択' }, ...radioOptions];
         return (
@@ -574,7 +536,7 @@ export const FieldFactory: React.FC<FieldFactoryProps> = ({ column, disabled = f
         );
 
       case 'multi_select':
-        const multiOptions = parseEnumValues(column.options);
+        const multiOptions = parseOptions(column.options);
         return (
           <Controller
             name={column.column_name}

@@ -31,3 +31,86 @@ export const parseJapanesePrice = (text: string): number | null => {
   if (match[2] === '億') value *= YEN_OKU;
   return value;
 };
+
+// === タブグループ定義 ===
+// DynamicFormで使用するタブとグループ名のマッピング
+// 変更はここのみで全体に反映される
+
+/**
+ * タブグループ定義
+ *
+ * 各タブに含めるグループ名の配列
+ * group_name は column_labels テーブルの値と一致させること
+ */
+export const TAB_GROUPS: {
+  location: readonly string[];
+  basicInfo: readonly string[];
+  priceDeal: readonly string[];
+  management: readonly string[];
+  excluded: readonly string[];
+  regulationFromLandInfo: readonly string[];
+} = {
+  /** 所在地・周辺情報タブ */
+  location: ['所在地', '学区', '電車・鉄道', 'バス', '周辺施設'],
+
+  /** 基本情報タブ */
+  basicInfo: ['物件種別', '基本情報', 'キャッチコピー'],
+
+  /** 価格・取引タブ */
+  priceDeal: ['価格情報', '契約条件', '元請会社', '引渡・掲載'],
+
+  /** 管理・費用タブ */
+  management: ['月額費用', '費用情報', '管理情報', '備考', 'ZOHO連携'],
+
+  /** 除外グループ（ヘッダーや専用タブで表示） */
+  excluded: ['ステータス', 'システム'],
+
+  /** 法令制限タブで表示（land_infoから除外） */
+  regulationFromLandInfo: ['法規制（自動取得）', 'ハザード情報（自動取得）'],
+};
+
+/**
+ * タブ情報定義
+ */
+export const TAB_INFO = {
+  location: {
+    tableName: 'properties_location',
+    label: '所在地・周辺情報',
+    icon: '📍',
+  },
+  basicInfo: {
+    tableName: 'properties_basic',
+    label: '基本情報',
+    icon: '🏠',
+  },
+  priceDeal: {
+    tableName: 'properties_price',
+    label: '価格・取引',
+    icon: '💰',
+  },
+  management: {
+    tableName: 'properties_management',
+    label: '管理・費用',
+    icon: '📋',
+  },
+  landInfo: {
+    tableName: 'land_info',
+    label: '土地情報',
+    icon: '🗺️',
+  },
+  buildingInfo: {
+    tableName: 'building_info',
+    label: '建物情報',
+    icon: '🏗️',
+  },
+  regulation: {
+    tableName: 'properties_regulation',
+    label: '法令制限',
+    icon: '📜',
+  },
+  registry: {
+    tableName: 'properties_registry',
+    label: '登記情報',
+    icon: '📑',
+  },
+} as const;

@@ -23,5 +23,12 @@ module.exports = {
       { allowConstantExport: true },
     ],
     '@typescript-eslint/no-non-null-assertion': 'off',
+    // any型禁止（コンパイル時に検出）
+    '@typescript-eslint/no-explicit-any': 'error',
+    // 暗黙のany禁止
+    '@typescript-eslint/no-unsafe-assignment': 'warn',
+    '@typescript-eslint/no-unsafe-member-access': 'warn',
+    '@typescript-eslint/no-unsafe-call': 'warn',
+    '@typescript-eslint/no-unsafe-return': 'warn',
   },
 }

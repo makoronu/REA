@@ -9,6 +9,8 @@ import Select from 'react-select';
 import { API_URL } from '../../config';
 import { RegulationMap } from '../regulations/RegulationMap';
 import { metadataService } from '../../services/metadataService';
+import { parseOptions } from '../../utils/options';
+import { OptionType } from '../../types/metadata';
 
 interface RegulationData {
   use_area?: {
@@ -28,11 +30,6 @@ interface RegulationData {
   location_optimization?: Record<string, string>;
   district_plan?: Record<string, string>;
   planned_road?: Record<string, string>;
-}
-
-interface OptionType {
-  value: string;
-  label: string;
 }
 
 // 用途地域コードマッピング（API自動取得用）
@@ -70,26 +67,18 @@ export const RegulationTab: React.FC = () => {
       try {
         const columns = await metadataService.getTableColumnsWithLabels('land_info');
 
-        // 用途地域の選択肢
+        // 用途地域の選択肢（共通パース関数を使用）
         const useDistrictCol = columns.find(c => c.column_name === 'use_district');
         if (useDistrictCol?.options) {
-          try {
-            const opts = JSON.parse(useDistrictCol.options);
-            setUseDistrictOptions(opts.map((o: any) => ({ value: o.value, label: o.label })));
-          } catch (e) {
-            console.error('用途地域オプションのパースエラー:', e);
-          }
+          const opts = parseOptions(useDistrictCol.options);
+          setUseDistrictOptions(opts);
         }
 
-        // 都市計画の選択肢
+        // 都市計画の選択肢（共通パース関数を使用）
         const cityPlanningCol = columns.find(c => c.column_name === 'city_planning');
         if (cityPlanningCol?.options) {
-          try {
-            const opts = JSON.parse(cityPlanningCol.options);
-            setCityPlanningOptions(opts.map((o: any) => ({ value: o.value, label: o.label })));
-          } catch (e) {
-            console.error('都市計画オプションのパースエラー:', e);
-          }
+          const opts = parseOptions(cityPlanningCol.options);
+          setCityPlanningOptions(opts);
         }
       } catch (error) {
         console.error('メタデータ取得エラー:', error);

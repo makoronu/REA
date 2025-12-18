@@ -6,7 +6,7 @@ import { useAutoSave } from '../../hooks/useAutoSave';
 import { ColumnWithLabel, metadataService } from '../../services/metadataService';
 import { SelectableListModal, SelectableItem, Category } from '../common/SelectableListModal';
 import { API_URL } from '../../config';
-import { AUTO_SAVE_DELAY_MS } from '../../constants';
+import { AUTO_SAVE_DELAY_MS, TAB_GROUPS } from '../../constants';
 import { RegulationTab } from './RegulationTab';
 import { RegistryTab } from '../registry/RegistryTab';
 
@@ -1146,17 +1146,11 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
       tables.find(table => table.table_name === tableName)
     ).filter(table => table !== undefined);
 
-    // 所在地・周辺情報タブに含めるグループ名
-    const locationGroups = ['所在地', '学区', '電車・鉄道', 'バス', '周辺施設'];
-
-    // 基本情報タブに含めるグループ名
-    const basicInfoGroups = ['物件種別', '基本情報', 'キャッチコピー'];
-
-    // 価格・取引タブに含めるグループ名
-    const priceDealGroups = ['価格情報', '契約条件', '元請会社', '引渡・掲載'];
-
-    // 管理・費用タブに含めるグループ名
-    const managementGroups = ['月額費用', '費用情報', '管理情報', '備考', 'ZOHO連携'];
+    // タブグループ定義（constants.tsで一元管理）
+    const locationGroups = TAB_GROUPS.location;
+    const basicInfoGroups = TAB_GROUPS.basicInfo;
+    const priceDealGroups = TAB_GROUPS.priceDeal;
+    const managementGroups = TAB_GROUPS.management;
 
     // 現在選択されている物件種別
     const currentPropertyType = formData.property_type;
@@ -1240,16 +1234,12 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
         if (table.table_name === 'properties' && locationGroups.includes(col.group_name || '')) {
           return false;
         }
-        // ステータスグループはヘッダーで表示するので除外
-        if (col.group_name === 'ステータス') {
-          return false;
-        }
-        // システムグループは表示しない（id, created_at, updated_at, property_id）
-        if (col.group_name === 'システム') {
+        // 除外グループ（ステータス、システム）はヘッダーで表示
+        if (TAB_GROUPS.excluded.includes(col.group_name || '')) {
           return false;
         }
         // land_infoの法規制・ハザードグループは法令制限タブで表示するので除外
-        if (table.table_name === 'land_info' && (col.group_name === '法規制（自動取得）' || col.group_name === 'ハザード情報（自動取得）')) {
+        if (table.table_name === 'land_info' && TAB_GROUPS.regulationFromLandInfo.includes(col.group_name || '')) {
           return false;
         }
         // 物件種別によるフィルタリング

@@ -604,13 +604,16 @@ def _guess_input_type(data_type: str) -> str:
     return type_mapping.get(data_type.lower(), "text")
 
 
-def _get_master_options_cache(db: Session) -> Dict[str, str]:
+def _get_master_options_cache(db: Session) -> Dict[str, List[Dict[str, str]]]:
     """
     master_optionsからREAソースの選択肢をカテゴリ別に取得
-    フロントエンドが期待する形式（コード:ラベル,コード:ラベル...）で返す
+    JSON配列形式で返す（統一フォーマット）
 
     Returns:
-        Dict[category_code, "1:ラベル1,2:ラベル2,..."]
+        Dict[category_code, [{"value": "1", "label": "ラベル1"}, ...]]
+
+    重要: 文字列形式（"1:ラベル1,2:ラベル2"）は廃止
+    全ての選択肢はJSON配列形式で返すこと
     """
     query = text("""
         SELECT
@@ -625,17 +628,16 @@ def _get_master_options_cache(db: Session) -> Dict[str, str]:
     """)
     result = db.execute(query)
 
-    # カテゴリごとにグループ化
-    options_by_category: Dict[str, list] = {}
+    # カテゴリごとにJSON配列形式でグループ化
+    options_by_category: Dict[str, List[Dict[str, str]]] = {}
     for row in result:
         if row.category_code not in options_by_category:
             options_by_category[row.category_code] = []
         # option_code は "rea_1" 形式なので、数字部分のみ抽出
         code = row.option_code.replace("rea_", "")
-        options_by_category[row.category_code].append(f"{code}:{row.option_value}")
+        options_by_category[row.category_code].append({
+            "value": code,
+            "label": row.option_value
+        })
 
-    # カンマ区切り文字列に変換
-    return {
-        category: ",".join(options)
-        for category, options in options_by_category.items()
-    }
+    return options_by_category
