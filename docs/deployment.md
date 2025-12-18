@@ -29,7 +29,14 @@
 - [ ] Nginx設定
 - [ ] SSL証明書（Let's Encrypt）
 
+## Nginx設定
+
+- 設定ファイル: `/etc/nginx/sites-available/rea`
+- フロントエンド: `/opt/REA/rea-admin/dist`
+- API: `proxy_pass http://127.0.0.1:8005`
+- キャッシュ制御: HTML・APIはno-cache、静的アセットは長期キャッシュ
+
 ## 備考
 
 - VPS再構築済み（2025-12-17）
-- デプロイはログイン機能完成後
+- APIキャッシュ制御追加（2025-12-18）
