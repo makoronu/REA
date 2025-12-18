@@ -249,6 +249,7 @@ def get_table_columns_with_labels(
                 cl.max_length,
                 cl.visible_for,
                 cl.master_category_code,
+                cl.group_order,
                 -- 主キー判定
                 CASE
                     WHEN pk.column_name IS NOT NULL THEN true
@@ -269,6 +270,7 @@ def get_table_columns_with_labels(
             WHERE c.table_schema = 'public'
             AND c.table_name = :table_name
             ORDER BY
+                COALESCE(cl.group_order, 999),
                 COALESCE(cl.display_order, c.ordinal_position),
                 c.ordinal_position
         """
@@ -317,6 +319,7 @@ def get_table_columns_with_labels(
                 "is_searchable": False,  # 存在しない
                 "is_display_list": False,  # 存在しない
                 "group_name": row.group_name or "基本情報",
+                "group_order": row.group_order if row.group_order is not None else 999,
                 "placeholder": None,  # 存在しない
                 "help_text": row.description,  # descriptionを流用
                 "default_value": None,  # 存在しない
@@ -340,7 +343,8 @@ def get_table_columns_with_labels(
                 cl.max_length,
                 cl.data_type,
                 cl.visible_for,
-                cl.master_category_code
+                cl.master_category_code,
+                cl.group_order
             FROM column_labels cl
             WHERE cl.table_name = :table_name
             AND cl.column_name NOT IN (
@@ -348,7 +352,7 @@ def get_table_columns_with_labels(
                 FROM information_schema.columns c
                 WHERE c.table_schema = 'public' AND c.table_name = :table_name
             )
-            ORDER BY cl.display_order
+            ORDER BY cl.group_order, cl.display_order
         """
         )
 
@@ -379,6 +383,7 @@ def get_table_columns_with_labels(
                 "is_searchable": False,
                 "is_display_list": False,
                 "group_name": row.group_name or "その他",
+                "group_order": row.group_order if row.group_order is not None else 999,
                 "placeholder": None,
                 "help_text": row.description,
                 "default_value": None,
@@ -387,6 +392,9 @@ def get_table_columns_with_labels(
                 "visible_for": row.visible_for,  # 物件種別による表示制御
             }
             columns.append(column_info)
+
+        # 実カラムと仮想カラムを合わせてgroup_order, display_orderでソート
+        columns.sort(key=lambda c: (c.get('group_order', 999), c.get('display_order', 999)))
 
         return columns
 
