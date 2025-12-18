@@ -4,6 +4,14 @@
 
 ---
 
+## 必須ルール（逸脱防止）
+
+1. **各小工程の冒頭で「現在位置: X/Y.md」を出力せよ**
+2. **問題発生時 → 即停止 → ユーザーに報告 → 指示を待て**
+3. **デプロイ完了後 → 必ず `4_retrospective/_main.md` へ進め（振り返り必須）**
+
+---
+
 ## 実行順序
 
 ### 1. 準備（中プロンプト）
@@ -57,8 +65,8 @@ afplay /System/Library/Sounds/Glass.aiff
 【本番URL】
 https://realestateautomation.net/
 
-【確認事項】
-本番で動作確認してください
+【次のステップ】
+→ 4_retrospective/_main.md（振り返り必須）
 ━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -68,3 +76,4 @@ https://realestateautomation.net/
 
 - 検証中に問題発見 → 即停止 → 報告
 - ロールバック必要 → emergency.md参照
+
