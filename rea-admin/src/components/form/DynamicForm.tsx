@@ -1239,6 +1239,10 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
         if (col.group_name === 'システム') {
           return false;
         }
+        // land_infoの法規制・ハザードグループは法令制限タブで表示するので除外
+        if (table.table_name === 'land_info' && (col.group_name === '法規制（自動取得）' || col.group_name === 'ハザード情報（自動取得）')) {
+          return false;
+        }
         // 物件種別によるフィルタリング
         return isFieldVisibleForPropertyType(col.visible_for, currentPropertyType, col.column_name);
       });
