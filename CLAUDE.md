@@ -74,6 +74,7 @@ cd ~/my_programing/REA && PYTHONPATH=~/my_programing/REA python -c "from shared.
 3. テーブル構造未確認でAPI実装
 4. PYTHONPATH未設定でimport
 5. 1関数100行超え / ネスト4段以上
+6. **手動デプロイ禁止** → `./scripts/deploy.sh` を使え
 
 ---
 
