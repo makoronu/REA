@@ -38,6 +38,16 @@
 
 ## 環境差異（ローカル vs 本番）
 
+### パス
+
+| 項目 | ローカル | 本番 |
+|------|---------|------|
+| プロジェクトルート | `~/my_programing/REA` | `/opt/REA` |
+| PYTHONPATH | `~/my_programing/REA` | `/opt/REA` |
+| Python実行 | `python3` | `/opt/REA/venv/bin/python3` |
+| pip | `pip3` | `/opt/REA/venv/bin/pip` |
+| フロントエンドビルド | `npm run dev` | `npm run build` → dist配信 |
+
 ### 環境変数（.env）
 
 | 項目 | ローカル | 本番 |
