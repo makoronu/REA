@@ -20,9 +20,11 @@ interface FieldVisibility {
   japanese_label: string;
   visible_for: string[] | null;
   group_name: string;
+  group_order: number;
+  display_order: number;
 }
 
-// テーブル表示名
+// テーブル表示名（将来的にはAPIから取得）
 const TABLE_LABELS: Record<string, string> = {
   properties: '物件基本情報',
   building_info: '建物情報',
@@ -30,17 +32,7 @@ const TABLE_LABELS: Record<string, string> = {
   amenities: '設備・周辺環境',
 };
 
-// グループ表示順
-const GROUP_ORDER = [
-  '基本情報', '価格情報', '契約条件', '元請会社', '管理情報',
-  '所在地', '学区', '電車・鉄道', 'バス', '周辺施設',
-  '建物基本', '面積', '居住情報', '駐車場',
-  '土地詳細', '接道',
-  '設備', '交通', 'リフォーム', 'エコ性能',
-  'システム',
-];
-
-// 物件種別グループの表示順
+// 物件種別グループの表示順（将来的にはAPIから取得）
 const TYPE_GROUP_ORDER = ['居住用', '事業用', '投資用', 'その他'];
 
 const FieldVisibilityPage: React.FC = () => {
@@ -77,17 +69,21 @@ const FieldVisibilityPage: React.FC = () => {
         if (fvRes.ok) {
           const fvData = await fvRes.json();
           setFields(fvData);
-          // 最初のグループを選択
+          // 最初のグループを選択（group_orderでソート）
           if (fvData.length > 0) {
-            const groups: string[] = Array.from(new Set<string>(fvData.map((f: FieldVisibility) => f.group_name || 'その他')));
-            const sorted = groups.sort((a: string, b: string) => {
-              const aIdx = GROUP_ORDER.indexOf(a);
-              const bIdx = GROUP_ORDER.indexOf(b);
-              if (aIdx === -1 && bIdx === -1) return a.localeCompare(b);
-              if (aIdx === -1) return 1;
-              if (bIdx === -1) return -1;
-              return aIdx - bIdx;
+            // グループ名とその最小group_orderを取得
+            const groupOrders = new Map<string, number>();
+            fvData.forEach((f: FieldVisibility) => {
+              const group = f.group_name || 'その他';
+              const existing = groupOrders.get(group);
+              if (existing === undefined || f.group_order < existing) {
+                groupOrders.set(group, f.group_order);
+              }
             });
+            // group_orderでソート
+            const sorted = Array.from(groupOrders.entries())
+              .sort((a, b) => a[1] - b[1])
+              .map(([name]) => name);
             setSelectedFieldGroup(sorted[0] || null);
           }
         }
@@ -102,26 +98,24 @@ const FieldVisibilityPage: React.FC = () => {
     fetchData();
   }, [selectedTable]);
 
-  // フィールドをグループ化
+  // フィールドをグループ化（group_order情報も保持）
   const groupedFields = fields.reduce((acc, f) => {
     const group = f.group_name || 'その他';
-    if (!acc[group]) acc[group] = [];
-    acc[group].push(f);
+    if (!acc[group]) acc[group] = { fields: [], minOrder: f.group_order };
+    acc[group].fields.push(f);
+    if (f.group_order < acc[group].minOrder) {
+      acc[group].minOrder = f.group_order;
+    }
     return acc;
-  }, {} as Record<string, FieldVisibility[]>);
+  }, {} as Record<string, { fields: FieldVisibility[], minOrder: number }>);
 
-  // グループをソート
-  const sortedGroups = Object.keys(groupedFields).sort((a, b) => {
-    const aIdx = GROUP_ORDER.indexOf(a);
-    const bIdx = GROUP_ORDER.indexOf(b);
-    if (aIdx === -1 && bIdx === -1) return a.localeCompare(b);
-    if (aIdx === -1) return 1;
-    if (bIdx === -1) return -1;
-    return aIdx - bIdx;
-  });
+  // グループをgroup_orderでソート
+  const sortedGroups = Object.entries(groupedFields)
+    .sort((a, b) => a[1].minOrder - b[1].minOrder)
+    .map(([name]) => name);
 
   // 表示するフィールド
-  const displayFields = selectedFieldGroup ? (groupedFields[selectedFieldGroup] || []) : [];
+  const displayFields = selectedFieldGroup ? (groupedFields[selectedFieldGroup]?.fields || []) : [];
 
   // フィールドのvisible_for変更
   const handleToggle = (field: FieldVisibility, typeId: string) => {
@@ -355,7 +349,7 @@ const FieldVisibilityPage: React.FC = () => {
               fontSize: '12px',
             }}
           >
-            {group} ({groupedFields[group]?.length || 0})
+            {group} ({groupedFields[group]?.fields.length || 0})
           </button>
         ))}
       </div>

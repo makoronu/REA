@@ -93,18 +93,22 @@ def get_field_visibility(
     try:
         if table_name:
             query = text("""
-                SELECT table_name, column_name, japanese_label, visible_for, group_name
+                SELECT table_name, column_name, japanese_label, visible_for, group_name,
+                       COALESCE(group_order, 999) as group_order,
+                       COALESCE(display_order, 999) as display_order
                 FROM column_labels
                 WHERE table_name = :table_name
-                ORDER BY display_order, column_name
+                ORDER BY group_order, display_order, column_name
             """)
             result = db.execute(query, {"table_name": table_name})
         else:
             query = text("""
-                SELECT table_name, column_name, japanese_label, visible_for, group_name
+                SELECT table_name, column_name, japanese_label, visible_for, group_name,
+                       COALESCE(group_order, 999) as group_order,
+                       COALESCE(display_order, 999) as display_order
                 FROM column_labels
                 WHERE table_name IN ('properties', 'building_info', 'land_info', 'amenities')
-                ORDER BY table_name, display_order, column_name
+                ORDER BY table_name, group_order, display_order, column_name
             """)
             result = db.execute(query)
 
@@ -115,6 +119,8 @@ def get_field_visibility(
                 "japanese_label": row.japanese_label,
                 "visible_for": row.visible_for,
                 "group_name": row.group_name,
+                "group_order": row.group_order,
+                "display_order": row.display_order,
             }
             for row in result
         ]
