@@ -1235,6 +1235,10 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
         if (col.group_name === 'ステータス') {
           return false;
         }
+        // システムグループは表示しない（id, created_at, updated_at, property_id）
+        if (col.group_name === 'システム') {
+          return false;
+        }
         // 物件種別によるフィルタリング
         return isFieldVisibleForPropertyType(col.visible_for, currentPropertyType, col.column_name);
       });
