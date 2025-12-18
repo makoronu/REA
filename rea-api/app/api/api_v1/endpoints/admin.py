@@ -38,8 +38,15 @@ class PropertyTypeInfo(BaseModel):
 # ========================================
 
 def _execute_visibility_update(db: Session, update: FieldVisibilityUpdate) -> None:
-    """単一のフィールド表示設定を更新（共通処理）"""
-    if update.visible_for is None or len(update.visible_for) == 0:
+    """単一のフィールド表示設定を更新（共通処理）
+
+    visible_for の意味:
+    - None: 未設定（全種別表示）
+    - []: 空配列（どの種別にも表示しない）
+    - ['mansion', ...]: 指定種別のみ表示
+    """
+    if update.visible_for is None:
+        # None → NULL（未設定状態、全種別表示）
         query = text("""
             UPDATE column_labels
             SET visible_for = NULL
@@ -50,6 +57,7 @@ def _execute_visibility_update(db: Session, update: FieldVisibilityUpdate) -> No
             "column_name": update.column_name,
         })
     else:
+        # 空配列または値あり → そのまま保存
         query = text("""
             UPDATE column_labels
             SET visible_for = :visible_for
