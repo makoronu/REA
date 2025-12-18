@@ -1,3 +1,4 @@
+// Build: 2025-12-18T13:35
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { propertyService } from '../../services/propertyService';
@@ -193,6 +194,7 @@ const PropertiesPage = () => {
   }, []);
 
   const fetchProperties = useCallback(async () => {
+    console.log('[REA Debug] fetchProperties called', { currentPage, filters, sortBy, sortOrder });
     try {
       setLoading(true);
       const params: PropertySearchParams = {
@@ -208,10 +210,13 @@ const PropertiesPage = () => {
       if (filters.price_min) params.sale_price_min = parseFloat(filters.price_min) * 10000;
       if (filters.price_max) params.sale_price_max = parseFloat(filters.price_max) * 10000;
 
+      console.log('[REA Debug] API params:', params);
       const data = await propertyService.getProperties(params);
+      console.log('[REA Debug] API response:', { count: data?.length, first: data?.[0]?.property_name });
       setProperties(data);
       setTotalItems(data.length >= ITEMS_PER_PAGE ? (currentPage * ITEMS_PER_PAGE) + 1 : (currentPage - 1) * ITEMS_PER_PAGE + data.length);
     } catch (err) {
+      console.error('[REA Debug] API error:', err);
       setError('物件データの取得に失敗しました');
       console.error(err);
     } finally {

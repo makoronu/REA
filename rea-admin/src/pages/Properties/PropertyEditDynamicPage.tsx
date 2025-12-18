@@ -217,7 +217,7 @@ export const PropertyEditDynamicPage: React.FC = () => {
       {/* 動的フォーム（全タブ統合済み） */}
       <div className="bg-white shadow rounded-lg p-6">
         <PropertyFullForm
-          key={isNew ? 'new' : `edit-${id}`}
+          key={isNew ? 'new' : `edit-${id}-${property ? 'loaded' : 'loading'}`}
           onSubmit={handleSubmit}
           defaultValues={property || {
             sales_status: '準備中',
