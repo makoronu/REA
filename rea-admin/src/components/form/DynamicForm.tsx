@@ -1149,6 +1149,15 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
     // 所在地・周辺情報タブに含めるグループ名
     const locationGroups = ['所在地', '学区', '電車・鉄道', 'バス', '周辺施設'];
 
+    // 基本情報タブに含めるグループ名
+    const basicInfoGroups = ['物件種別', '基本情報', 'キャッチコピー'];
+
+    // 価格・取引タブに含めるグループ名
+    const priceDealGroups = ['価格情報', '契約条件', '元請会社', '引渡・掲載'];
+
+    // 管理・費用タブに含めるグループ名
+    const managementGroups = ['月額費用', '費用情報', '管理情報', '備考', 'ZOHO連携'];
+
     // 現在選択されている物件種別
     const currentPropertyType = formData.property_type;
     const propertiesColumns = allColumns?.['properties'] || [];
@@ -1262,20 +1271,74 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
         if (locationTabData) {
           tabGroups.push(locationTabData);
         }
-        // 基本・取引情報タブを追加（フィールドがある場合）
-        if (Object.keys(grouped).length > 0) {
+
+        // グループを3つのタブに分割
+
+        // 1. 基本情報タブ
+        const basicInfoColumns = filteredColumns.filter(col =>
+          basicInfoGroups.includes(col.group_name || '')
+        );
+        if (basicInfoColumns.length > 0) {
+          const basicInfoGrouped = basicInfoColumns.reduce((acc, column) => {
+            const groupName = column.group_name || '基本情報';
+            if (!acc[groupName]) acc[groupName] = [];
+            acc[groupName].push(column);
+            return acc;
+          }, {} as Record<string, ColumnWithLabel[]>);
+
           tabGroups.push({
-            tableName: 'properties',
-            tableLabel: '基本・取引情報',
+            tableName: 'properties_basic',
+            tableLabel: '基本情報',
             tableIcon: '🏠',
-            groups: grouped
+            groups: basicInfoGrouped
           });
         }
-        // 法令制限タブを追加（基本・取引情報の直後）
+
+        // 2. 価格・取引タブ
+        const priceDealColumns = filteredColumns.filter(col =>
+          priceDealGroups.includes(col.group_name || '')
+        );
+        if (priceDealColumns.length > 0) {
+          const priceDealGrouped = priceDealColumns.reduce((acc, column) => {
+            const groupName = column.group_name || '価格情報';
+            if (!acc[groupName]) acc[groupName] = [];
+            acc[groupName].push(column);
+            return acc;
+          }, {} as Record<string, ColumnWithLabel[]>);
+
+          tabGroups.push({
+            tableName: 'properties_price',
+            tableLabel: '価格・取引',
+            tableIcon: '💰',
+            groups: priceDealGrouped
+          });
+        }
+
+        // 3. 管理・費用タブ
+        const managementColumns = filteredColumns.filter(col =>
+          managementGroups.includes(col.group_name || '')
+        );
+        if (managementColumns.length > 0) {
+          const managementGrouped = managementColumns.reduce((acc, column) => {
+            const groupName = column.group_name || '管理情報';
+            if (!acc[groupName]) acc[groupName] = [];
+            acc[groupName].push(column);
+            return acc;
+          }, {} as Record<string, ColumnWithLabel[]>);
+
+          tabGroups.push({
+            tableName: 'properties_management',
+            tableLabel: '管理・費用',
+            tableIcon: '📋',
+            groups: managementGrouped
+          });
+        }
+
+        // 法令制限タブを追加
         tabGroups.push({
           tableName: 'regulations',
           tableLabel: '法令制限',
-          tableIcon: '📋',
+          tableIcon: '⚖️',
           groups: {} // 特殊タブ：RegulationTabコンポーネントを使用
         });
         return;
