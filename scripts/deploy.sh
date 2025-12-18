@@ -54,9 +54,14 @@ echo_info "4/7 本番DBバックアップ..."
 ssh $SERVER "mkdir -p $BACKUP_DIR && sudo -u postgres pg_dump real_estate_db > $BACKUP_DIR/backup_$TIMESTAMP.sql"
 echo_info "バックアップ: $BACKUP_DIR/backup_$TIMESTAMP.sql"
 
-# 5. 本番コード更新
+# 5. 本番コード更新（設定ファイルを保護）
 echo_info "5/7 本番コード更新..."
-ssh $SERVER "cd $REMOTE_DIR && git pull origin main"
+ssh $SERVER "cd $REMOTE_DIR && \
+    cp -f rea-admin/.env.production /tmp/env_production_backup 2>/dev/null || true && \
+    cp -f .env /tmp/env_backup 2>/dev/null || true && \
+    git pull origin main && \
+    cp -f /tmp/env_production_backup rea-admin/.env.production 2>/dev/null || true && \
+    cp -f /tmp/env_backup .env 2>/dev/null || true"
 
 # 6. フロントエンドビルド
 echo_info "6/7 フロントエンドビルド..."
