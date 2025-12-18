@@ -1,12 +1,14 @@
 /**
  * 法令制限タブ
  *
- * 用途地域・都市計画・ハザード情報をMAP表示し、自動取得・登録する
+ * 用途地域・都市計画・ハザード情報をMAP表示し、自動取得・手動編集する
  */
-import React, { useState, useCallback } from 'react';
-import { useFormContext } from 'react-hook-form';
+import React, { useState, useCallback, useEffect } from 'react';
+import { useFormContext, Controller } from 'react-hook-form';
+import Select from 'react-select';
 import { API_URL } from '../../config';
 import { RegulationMap } from '../regulations/RegulationMap';
+import { metadataService } from '../../services/metadataService';
 
 interface RegulationData {
   use_area?: {
@@ -28,7 +30,12 @@ interface RegulationData {
   planned_road?: Record<string, string>;
 }
 
-// 用途地域コードマッピング
+interface OptionType {
+  value: string;
+  label: string;
+}
+
+// 用途地域コードマッピング（API自動取得用）
 const USE_DISTRICT_MAP: Record<string, number> = {
   '第一種低層住居専用地域': 1,
   '第二種低層住居専用地域': 2,
@@ -46,20 +53,50 @@ const USE_DISTRICT_MAP: Record<string, number> = {
 };
 
 export const RegulationTab: React.FC = () => {
-  const { setValue, watch } = useFormContext();
+  const { setValue, watch, control, register } = useFormContext();
   const [isLoading, setIsLoading] = useState(false);
   const [regulationData, setRegulationData] = useState<RegulationData | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [useDistrictOptions, setUseDistrictOptions] = useState<OptionType[]>([]);
+  const [cityPlanningOptions, setCityPlanningOptions] = useState<OptionType[]>([]);
 
   const lat = watch('latitude');
   const lng = watch('longitude');
   const hasCoordinates = lat && lng && !isNaN(Number(lat)) && !isNaN(Number(lng));
 
-  // 現在の値を取得
-  const currentUseDistrict = watch('use_district');
-  const currentBuildingCoverage = watch('building_coverage_ratio');
-  const currentFloorArea = watch('floor_area_ratio');
-  const currentCityPlanning = watch('city_planning');
+  // メタデータから選択肢を取得
+  useEffect(() => {
+    const loadOptions = async () => {
+      try {
+        const columns = await metadataService.getTableColumnsWithLabels('land_info');
+
+        // 用途地域の選択肢
+        const useDistrictCol = columns.find(c => c.column_name === 'use_district');
+        if (useDistrictCol?.options) {
+          try {
+            const opts = JSON.parse(useDistrictCol.options);
+            setUseDistrictOptions(opts.map((o: any) => ({ value: o.value, label: o.label })));
+          } catch (e) {
+            console.error('用途地域オプションのパースエラー:', e);
+          }
+        }
+
+        // 都市計画の選択肢
+        const cityPlanningCol = columns.find(c => c.column_name === 'city_planning');
+        if (cityPlanningCol?.options) {
+          try {
+            const opts = JSON.parse(cityPlanningCol.options);
+            setCityPlanningOptions(opts.map((o: any) => ({ value: o.value, label: o.label })));
+          } catch (e) {
+            console.error('都市計画オプションのパースエラー:', e);
+          }
+        }
+      } catch (error) {
+        console.error('メタデータ取得エラー:', error);
+      }
+    };
+    loadOptions();
+  }, []);
 
   // 法令制限を自動取得
   const handleFetchRegulations = useCallback(async () => {
@@ -124,51 +161,154 @@ export const RegulationTab: React.FC = () => {
     setTimeout(() => setMessage(null), 3000);
   }, [regulationData, setValue]);
 
-  // 用途地域名を取得
-  const getUseDistrictName = (code: number): string => {
-    const entry = Object.entries(USE_DISTRICT_MAP).find(([_, c]) => c === code);
-    return entry ? entry[0] : '未設定';
+  // 複数選択の値をパース
+  const parseMultiValue = (value: any): string[] => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value.map(String);
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) return parsed.map(String);
+      } catch {
+        return value.split(',').filter(Boolean);
+      }
+    }
+    return [String(value)];
   };
 
-  // 都市計画名を取得
-  const getCityPlanningName = (code: number): string => {
-    const map: Record<number, string> = {
-      1: '市街化区域',
-      2: '市街化調整区域',
-      3: '非線引き都市計画区域',
-      4: '都市計画区域外',
-    };
-    return map[code] || '未設定';
+  // 複数選択用のreact-selectスタイル
+  const selectStyles = {
+    control: (base: any) => ({
+      ...base,
+      minHeight: '38px',
+      borderColor: '#D1D5DB',
+      '&:hover': { borderColor: '#9CA3AF' },
+    }),
+    multiValue: (base: any) => ({
+      ...base,
+      backgroundColor: '#E5E7EB',
+    }),
+    multiValueLabel: (base: any) => ({
+      ...base,
+      color: '#374151',
+    }),
   };
 
   return (
     <div>
-      {/* 現在の登録値 */}
+      {/* 手動編集フォーム */}
       <div style={{
         padding: '16px',
         backgroundColor: '#F9FAFB',
         borderRadius: '8px',
         marginBottom: '16px',
+        border: '1px solid #E5E7EB',
       }}>
-        <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: '#374151' }}>
-          現在の登録値
+        <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '16px', color: '#374151' }}>
+          法令制限情報（手動編集可）
         </h4>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', fontSize: '13px' }}>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+          {/* 用途地域（複数選択） */}
           <div>
-            <span style={{ color: '#6B7280' }}>用途地域: </span>
-            <strong>{currentUseDistrict ? getUseDistrictName(currentUseDistrict) : '未設定'}</strong>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '4px' }}>
+              用途地域
+            </label>
+            <Controller
+              name="use_district"
+              control={control}
+              render={({ field }) => {
+                const currentValues = parseMultiValue(field.value);
+                const selectedOptions = useDistrictOptions.filter(opt =>
+                  currentValues.includes(opt.value)
+                );
+                return (
+                  <Select
+                    isMulti
+                    options={useDistrictOptions}
+                    value={selectedOptions}
+                    onChange={(selected) => {
+                      const values = selected ? selected.map((s: OptionType) => s.value) : [];
+                      field.onChange(values.length > 0 ? values : null);
+                    }}
+                    placeholder="選択してください（複数可）"
+                    styles={selectStyles}
+                    noOptionsMessage={() => '選択肢がありません'}
+                  />
+                );
+              }}
+            />
           </div>
+
+          {/* 都市計画（複数選択） */}
           <div>
-            <span style={{ color: '#6B7280' }}>都市計画: </span>
-            <strong>{currentCityPlanning ? getCityPlanningName(currentCityPlanning) : '未設定'}</strong>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '4px' }}>
+              都市計画
+            </label>
+            <Controller
+              name="city_planning"
+              control={control}
+              render={({ field }) => {
+                const currentValues = parseMultiValue(field.value);
+                const selectedOptions = cityPlanningOptions.filter(opt =>
+                  currentValues.includes(opt.value)
+                );
+                return (
+                  <Select
+                    isMulti
+                    options={cityPlanningOptions}
+                    value={selectedOptions}
+                    onChange={(selected) => {
+                      const values = selected ? selected.map((s: OptionType) => s.value) : [];
+                      field.onChange(values.length > 0 ? values : null);
+                    }}
+                    placeholder="選択してください（複数可）"
+                    styles={selectStyles}
+                    noOptionsMessage={() => '選択肢がありません'}
+                  />
+                );
+              }}
+            />
           </div>
+
+          {/* 建ぺい率 */}
           <div>
-            <span style={{ color: '#6B7280' }}>建ぺい率: </span>
-            <strong>{currentBuildingCoverage ? `${currentBuildingCoverage}%` : '未設定'}</strong>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '4px' }}>
+              建ぺい率（%）
+            </label>
+            <input
+              type="number"
+              step="0.1"
+              {...register('building_coverage_ratio')}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1px solid #D1D5DB',
+                borderRadius: '6px',
+                fontSize: '14px',
+              }}
+              placeholder="例: 60"
+            />
           </div>
+
+          {/* 容積率 */}
           <div>
-            <span style={{ color: '#6B7280' }}>容積率: </span>
-            <strong>{currentFloorArea ? `${currentFloorArea}%` : '未設定'}</strong>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '4px' }}>
+              容積率（%）
+            </label>
+            <input
+              type="number"
+              step="0.1"
+              {...register('floor_area_ratio')}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1px solid #D1D5DB',
+                borderRadius: '6px',
+                fontSize: '14px',
+              }}
+              placeholder="例: 200"
+            />
           </div>
         </div>
       </div>
