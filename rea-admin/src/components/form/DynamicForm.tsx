@@ -957,8 +957,10 @@ const isFieldVisibleForPropertyType = (
   if (columnName === 'property_type' || columnName === 'is_new_construction') return true;
   // 種別未選択なら他のフィールドは非表示
   if (!propertyType) return false;
-  // visible_forがnull/undefined/空配列なら全種別表示
-  if (visibleFor === null || visibleFor === undefined || visibleFor.length === 0) return true;
+  // visible_forがnull/undefinedなら全種別表示（未設定状態）
+  if (visibleFor === null || visibleFor === undefined) return true;
+  // 空配列なら非表示（ユーザーが全チェックを外した）
+  if (visibleFor.length === 0) return false;
   // 種別が含まれているか
   return visibleFor.includes(propertyType);
 };
