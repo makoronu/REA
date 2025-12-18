@@ -24,6 +24,9 @@ ALLOWED_TABLES: Set[str] = {
     "m_facilities", "m_stations", "m_postal_codes",
 }
 
+# 表示順序のデフォルト値（システム/非表示グループ用）
+DEFAULT_ORDER: int = 999
+
 
 @router.get("/tables", response_model=List[Dict[str, Any]])
 def get_all_tables(db: Session = Depends(dependencies.get_db)) -> List[Dict[str, Any]]:
@@ -319,7 +322,7 @@ def get_table_columns_with_labels(
                 "is_searchable": False,  # 存在しない
                 "is_display_list": False,  # 存在しない
                 "group_name": row.group_name or "基本情報",
-                "group_order": row.group_order if row.group_order is not None else 999,
+                "group_order": row.group_order if row.group_order is not None else DEFAULT_ORDER,
                 "placeholder": None,  # 存在しない
                 "help_text": row.description,  # descriptionを流用
                 "default_value": None,  # 存在しない
@@ -371,19 +374,19 @@ def get_table_columns_with_labels(
                 "numeric_precision": None,
                 "is_nullable": True,
                 "column_default": None,
-                "ordinal_position": row.display_order or 999,
+                "ordinal_position": row.display_order or DEFAULT_ORDER,
                 "is_primary_key": False,
                 "label_ja": row.japanese_label or row.column_name,
                 "label_en": row.column_name,
                 "description": row.description,
                 "input_type": row.input_type or "text",
                 "validation_rules": None,
-                "display_order": row.display_order or 999,
+                "display_order": row.display_order or DEFAULT_ORDER,
                 "is_required": row.is_required or False,
                 "is_searchable": False,
                 "is_display_list": False,
                 "group_name": row.group_name or "その他",
-                "group_order": row.group_order if row.group_order is not None else 999,
+                "group_order": row.group_order if row.group_order is not None else DEFAULT_ORDER,
                 "placeholder": None,
                 "help_text": row.description,
                 "default_value": None,
@@ -394,7 +397,7 @@ def get_table_columns_with_labels(
             columns.append(column_info)
 
         # 実カラムと仮想カラムを合わせてgroup_order, display_orderでソート
-        columns.sort(key=lambda c: (c.get('group_order', 999), c.get('display_order', 999)))
+        columns.sort(key=lambda c: (c.get('group_order', DEFAULT_ORDER), c.get('display_order', DEFAULT_ORDER)))
 
         return columns
 
