@@ -327,6 +327,13 @@ cd ~/my_programing/REA && PYTHONPATH=~/my_programing/REA python -c "from shared.
 
 **ポート**: PostgreSQL=5432（Postgres.app）、FastAPI=8005、フロント=5173
 
+### テストアカウント（ローカル環境）
+
+| 用途 | Email | Password | Role |
+|------|-------|----------|------|
+| 本番兼用 | info@shirokuma2103.com | Sh1r09matk | 一般ユーザー |
+| テスト管理者 | 4690kb@gmail.com | Test1234! | 会社管理者 |
+
 ---
 
 ## プロジェクト構成
