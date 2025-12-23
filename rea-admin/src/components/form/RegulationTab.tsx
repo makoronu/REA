@@ -194,6 +194,144 @@ export const RegulationTab: React.FC = () => {
 
   return (
     <div>
+      {/* MAP表示（座標がある場合）*/}
+      {hasCoordinates && (
+        <RegulationMap lat={Number(lat)} lng={Number(lng)} />
+      )}
+
+      {/* 緯度経度がない場合 */}
+      {!hasCoordinates && (
+        <div style={{
+          padding: '40px 20px',
+          backgroundColor: '#F9FAFB',
+          borderRadius: '8px',
+          border: '2px dashed #D1D5DB',
+          textAlign: 'center',
+          marginBottom: '16px',
+        }}>
+          <div style={{ fontSize: '32px', marginBottom: '12px' }}>📍</div>
+          <div style={{ fontSize: '14px', color: '#6B7280', marginBottom: '8px' }}>
+            法令制限情報を取得するには
+          </div>
+          <div style={{ fontSize: '13px', color: '#9CA3AF' }}>
+            「所在地・周辺情報」タブで緯度・経度を入力してください
+          </div>
+        </div>
+      )}
+
+      {/* 自動取得・登録ボタン */}
+      <div style={{
+        display: 'flex',
+        gap: '12px',
+        marginTop: '16px',
+        marginBottom: '16px',
+      }}>
+        <button
+          type="button"
+          onClick={handleFetchRegulations}
+          disabled={!hasCoordinates || isLoading}
+          style={{
+            padding: '10px 20px',
+            fontSize: '14px',
+            fontWeight: 600,
+            backgroundColor: hasCoordinates ? '#3B82F6' : '#D1D5DB',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: hasCoordinates && !isLoading ? 'pointer' : 'not-allowed',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
+        >
+          {isLoading ? (
+            <>
+              <span style={{ animation: 'spin 1s linear infinite' }}>⏳</span>
+              取得中...
+            </>
+          ) : (
+            <>🔍 法令制限を自動取得</>
+          )}
+        </button>
+
+        {regulationData?.use_area && (
+          <button
+            type="button"
+            onClick={handleRegister}
+            style={{
+              padding: '10px 20px',
+              fontSize: '14px',
+              fontWeight: 600,
+              backgroundColor: '#10B981',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+            }}
+          >
+            ✅ 登録
+          </button>
+        )}
+      </div>
+
+      {/* メッセージ */}
+      {message && (
+        <div style={{
+          padding: '12px 16px',
+          marginBottom: '16px',
+          borderRadius: '8px',
+          backgroundColor: message.type === 'success' ? '#D1FAE5' : '#FEE2E2',
+          color: message.type === 'success' ? '#065F46' : '#991B1B',
+          fontSize: '13px',
+        }}>
+          {message.text}
+        </div>
+      )}
+
+      {/* 取得結果表示 */}
+      {regulationData?.use_area && (
+        <div style={{
+          padding: '16px',
+          backgroundColor: '#EFF6FF',
+          borderRadius: '8px',
+          marginBottom: '16px',
+          border: '1px solid #BFDBFE',
+        }}>
+          <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: '#1E40AF' }}>
+            取得結果（登録前プレビュー）
+          </h4>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', fontSize: '13px' }}>
+            <div>用途地域: <strong>{regulationData.use_area['用途地域'] || '-'}</strong></div>
+            <div>建ぺい率: <strong>{regulationData.use_area['建ぺい率'] || '-'}</strong></div>
+            <div>容積率: <strong>{regulationData.use_area['容積率'] || '-'}</strong></div>
+            <div>市区町村: <strong>{regulationData.use_area['市区町村'] || '-'}</strong></div>
+          </div>
+
+          {/* ハザード情報 */}
+          {(regulationData.flood || regulationData.landslide || regulationData.tsunami || regulationData.storm_surge) && (
+            <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #BFDBFE' }}>
+              <h5 style={{ fontSize: '13px', fontWeight: 600, color: '#DC2626', marginBottom: '8px' }}>
+                ⚠️ ハザード情報
+              </h5>
+              <div style={{ fontSize: '12px', color: '#991B1B' }}>
+                {regulationData.flood && Object.keys(regulationData.flood).length > 0 && (
+                  <div>洪水: {Object.values(regulationData.flood).join(', ')}</div>
+                )}
+                {regulationData.landslide && Object.keys(regulationData.landslide).length > 0 && (
+                  <div>土砂災害: {Object.values(regulationData.landslide).join(', ')}</div>
+                )}
+                {regulationData.tsunami && Object.keys(regulationData.tsunami).length > 0 && (
+                  <div>津波: {Object.values(regulationData.tsunami).join(', ')}</div>
+                )}
+                {regulationData.storm_surge && Object.keys(regulationData.storm_surge).length > 0 && (
+                  <div>高潮: {Object.values(regulationData.storm_surge).join(', ')}</div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* 手動編集フォーム */}
       <div style={{
         padding: '16px',
@@ -443,143 +581,6 @@ export const RegulationTab: React.FC = () => {
           }}
         />
       </div>
-
-      {/* 自動取得・登録ボタン */}
-      <div style={{
-        display: 'flex',
-        gap: '12px',
-        marginBottom: '16px',
-      }}>
-        <button
-          type="button"
-          onClick={handleFetchRegulations}
-          disabled={!hasCoordinates || isLoading}
-          style={{
-            padding: '10px 20px',
-            fontSize: '14px',
-            fontWeight: 600,
-            backgroundColor: hasCoordinates ? '#3B82F6' : '#D1D5DB',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: hasCoordinates && !isLoading ? 'pointer' : 'not-allowed',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-          }}
-        >
-          {isLoading ? (
-            <>
-              <span style={{ animation: 'spin 1s linear infinite' }}>⏳</span>
-              取得中...
-            </>
-          ) : (
-            <>🔍 法令制限を自動取得</>
-          )}
-        </button>
-
-        {regulationData?.use_area && (
-          <button
-            type="button"
-            onClick={handleRegister}
-            style={{
-              padding: '10px 20px',
-              fontSize: '14px',
-              fontWeight: 600,
-              backgroundColor: '#10B981',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-            }}
-          >
-            ✅ 登録
-          </button>
-        )}
-      </div>
-
-      {/* メッセージ */}
-      {message && (
-        <div style={{
-          padding: '12px 16px',
-          marginBottom: '16px',
-          borderRadius: '8px',
-          backgroundColor: message.type === 'success' ? '#D1FAE5' : '#FEE2E2',
-          color: message.type === 'success' ? '#065F46' : '#991B1B',
-          fontSize: '13px',
-        }}>
-          {message.text}
-        </div>
-      )}
-
-      {/* 取得結果表示 */}
-      {regulationData?.use_area && (
-        <div style={{
-          padding: '16px',
-          backgroundColor: '#EFF6FF',
-          borderRadius: '8px',
-          marginBottom: '16px',
-          border: '1px solid #BFDBFE',
-        }}>
-          <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: '#1E40AF' }}>
-            取得結果（登録前プレビュー）
-          </h4>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', fontSize: '13px' }}>
-            <div>用途地域: <strong>{regulationData.use_area['用途地域'] || '-'}</strong></div>
-            <div>建ぺい率: <strong>{regulationData.use_area['建ぺい率'] || '-'}</strong></div>
-            <div>容積率: <strong>{regulationData.use_area['容積率'] || '-'}</strong></div>
-            <div>市区町村: <strong>{regulationData.use_area['市区町村'] || '-'}</strong></div>
-          </div>
-
-          {/* ハザード情報 */}
-          {(regulationData.flood || regulationData.landslide || regulationData.tsunami || regulationData.storm_surge) && (
-            <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #BFDBFE' }}>
-              <h5 style={{ fontSize: '13px', fontWeight: 600, color: '#DC2626', marginBottom: '8px' }}>
-                ⚠️ ハザード情報
-              </h5>
-              <div style={{ fontSize: '12px', color: '#991B1B' }}>
-                {regulationData.flood && Object.keys(regulationData.flood).length > 0 && (
-                  <div>洪水: {Object.values(regulationData.flood).join(', ')}</div>
-                )}
-                {regulationData.landslide && Object.keys(regulationData.landslide).length > 0 && (
-                  <div>土砂災害: {Object.values(regulationData.landslide).join(', ')}</div>
-                )}
-                {regulationData.tsunami && Object.keys(regulationData.tsunami).length > 0 && (
-                  <div>津波: {Object.values(regulationData.tsunami).join(', ')}</div>
-                )}
-                {regulationData.storm_surge && Object.keys(regulationData.storm_surge).length > 0 && (
-                  <div>高潮: {Object.values(regulationData.storm_surge).join(', ')}</div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* 緯度経度がない場合 */}
-      {!hasCoordinates && (
-        <div style={{
-          padding: '40px 20px',
-          backgroundColor: '#F9FAFB',
-          borderRadius: '8px',
-          border: '2px dashed #D1D5DB',
-          textAlign: 'center',
-          marginBottom: '16px',
-        }}>
-          <div style={{ fontSize: '32px', marginBottom: '12px' }}>📍</div>
-          <div style={{ fontSize: '14px', color: '#6B7280', marginBottom: '8px' }}>
-            法令制限情報を取得するには
-          </div>
-          <div style={{ fontSize: '13px', color: '#9CA3AF' }}>
-            「所在地・周辺情報」タブで緯度・経度を入力してください
-          </div>
-        </div>
-      )}
-
-      {/* MAP表示 */}
-      {hasCoordinates && (
-        <RegulationMap lat={Number(lat)} lng={Number(lng)} />
-      )}
     </div>
   );
 };
