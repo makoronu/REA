@@ -2,6 +2,7 @@
  * 法令制限タブ
  *
  * 用途地域・都市計画・ハザード情報をMAP表示し、自動取得・手動編集する
+ * 重要事項説明書の法令チェック項目も管理
  */
 import React, { useState, useCallback, useEffect } from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
@@ -11,6 +12,14 @@ import { RegulationMap } from '../regulations/RegulationMap';
 import { metadataService } from '../../services/metadataService';
 import { parseOptions } from '../../utils/options';
 import { OptionType } from '../../types/metadata';
+import { LEGAL_REGULATION_CATEGORIES } from '../../constants/legalRegulations';
+
+// 防火地域の選択肢
+const FIRE_PREVENTION_OPTIONS: OptionType[] = [
+  { value: '1', label: '防火地域' },
+  { value: '2', label: '準防火地域' },
+  { value: '3', label: '指定なし' },
+];
 
 interface RegulationData {
   use_area?: {
@@ -299,7 +308,140 @@ export const RegulationTab: React.FC = () => {
               placeholder="例: 200"
             />
           </div>
+
+          {/* 防火地域 */}
+          <div>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '4px' }}>
+              防火地域
+            </label>
+            <Controller
+              name="fire_prevention_area"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  options={FIRE_PREVENTION_OPTIONS}
+                  value={FIRE_PREVENTION_OPTIONS.find(opt => opt.value === field.value) || null}
+                  onChange={(selected) => field.onChange(selected?.value || null)}
+                  placeholder="選択してください"
+                  isClearable
+                  styles={selectStyles}
+                />
+              )}
+            />
+          </div>
+
+          {/* 高度地区 */}
+          <div>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '4px' }}>
+              高度地区
+            </label>
+            <input
+              type="text"
+              {...register('height_district')}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1px solid #D1D5DB',
+                borderRadius: '6px',
+                fontSize: '14px',
+              }}
+              placeholder="例: 第1種高度地区"
+            />
+          </div>
+
+          {/* 景観地区 */}
+          <div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 500, color: '#374151', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                {...register('landscape_district')}
+                style={{ width: '16px', height: '16px' }}
+              />
+              景観地区
+            </label>
+          </div>
+
+          {/* 地区計画 */}
+          <div>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '4px' }}>
+              地区計画
+            </label>
+            <input
+              type="text"
+              {...register('district_plan_name')}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1px solid #D1D5DB',
+                borderRadius: '6px',
+                fontSize: '14px',
+              }}
+              placeholder="地区計画名を入力"
+            />
+          </div>
         </div>
+      </div>
+
+      {/* 法令制限チェックリスト */}
+      <div style={{
+        padding: '16px',
+        backgroundColor: '#FFFBEB',
+        borderRadius: '8px',
+        marginBottom: '16px',
+        border: '1px solid #FCD34D',
+      }}>
+        <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: '#92400E' }}>
+          重要事項説明書 法令制限（該当するものをチェック）
+        </h4>
+        <Controller
+          name="legal_regulations_checked"
+          control={control}
+          defaultValue={[]}
+          render={({ field }) => {
+            const checkedItems: string[] = Array.isArray(field.value) ? field.value : [];
+            const toggleItem = (item: string) => {
+              const newValue = checkedItems.includes(item)
+                ? checkedItems.filter(i => i !== item)
+                : [...checkedItems, item];
+              field.onChange(newValue);
+            };
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {LEGAL_REGULATION_CATEGORIES.map((category) => (
+                  <div key={category.name}>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#78350F', marginBottom: '8px', borderBottom: '1px solid #FCD34D', paddingBottom: '4px' }}>
+                      {category.name}
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '4px 16px' }}>
+                      {category.items.map((item) => (
+                        <label
+                          key={item}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: '6px',
+                            fontSize: '12px',
+                            color: '#374151',
+                            cursor: 'pointer',
+                            padding: '2px 0',
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checkedItems.includes(item)}
+                            onChange={() => toggleItem(item)}
+                            style={{ width: '14px', height: '14px', marginTop: '1px', flexShrink: 0 }}
+                          />
+                          <span style={{ lineHeight: '1.3' }}>{item}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          }}
+        />
       </div>
 
       {/* 自動取得・登録ボタン */}
