@@ -239,12 +239,20 @@ export const RegulationMap: React.FC<RegulationMapProps> = ({ lat, lng }) => {
 
     mapInstanceRef.current = map;
 
-    // 初期レイヤーを読み込み
+    // タブ内での表示時にサイズを再計算
     setTimeout(() => {
+      map.invalidateSize();
       activeLayers.forEach(code => fetchLayerData(code));
-    }, 500);
+    }, 100);
+
+    // ResizeObserverでコンテナサイズ変化を検出
+    const resizeObserver = new ResizeObserver(() => {
+      map.invalidateSize();
+    });
+    resizeObserver.observe(mapContainerRef.current);
 
     return () => {
+      resizeObserver.disconnect();
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
