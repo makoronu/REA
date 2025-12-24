@@ -1,4 +1,4 @@
-// Build: 2025-12-25 - Ultimate Properties Page
+// Build: 2025-12-25T08 - World-Class Properties Page
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { propertyService } from '../../services/propertyService';
@@ -616,14 +616,14 @@ const PropertiesPage = () => {
   // レンダリング
   // ============================================
   return (
-    <div className="min-h-screen bg-[#FAFAFA]" ref={containerRef}>
-      {/* ヘッダー */}
-      <div className="flex justify-between items-center mb-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100" ref={containerRef}>
+      {/* ヘッダー - World-Class Design */}
+      <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-semibold text-[#1A1A1A]">物件一覧</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">物件一覧</h1>
           {selectedIds.size > 0 && (
-            <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
-              {selectedIds.size}件選択中
+            <span className="px-3 py-1 bg-blue-500/10 text-blue-600 rounded-full text-sm font-semibold backdrop-blur-sm">
+              {selectedIds.size}件選択
             </span>
           )}
         </div>
@@ -631,15 +631,15 @@ const PropertiesPage = () => {
           {selectedIds.size > 0 && (
             <>
               <div className="relative group">
-                <button className="px-3 py-2 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600">
-                  一括ステータス変更
+                <button className="px-3 py-2 text-sm font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors">
+                  ステータス変更
                 </button>
-                <div className="absolute right-0 mt-1 w-40 bg-white rounded-lg shadow-lg border opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                <div className="absolute right-0 mt-1 w-40 bg-white/95 backdrop-blur-sm rounded-xl shadow-xl border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden">
                   {SALES_STATUS_OPTIONS.map(status => (
                     <button
                       key={status}
                       onClick={() => handleBulkStatusChange('sales_status', status)}
-                      className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
+                      className="block w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors"
                     >
                       {status}
                     </button>
@@ -648,22 +648,22 @@ const PropertiesPage = () => {
               </div>
               <button
                 onClick={handleBulkDelete}
-                className="px-3 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600"
+                className="px-3 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
               >
-                一括削除
+                削除
               </button>
             </>
           )}
           <button
             onClick={handleHomesExport}
             disabled={exporting || properties.length === 0}
-            className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 disabled:opacity-50"
+            className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-lg shadow-sm shadow-emerald-200 hover:shadow-md hover:shadow-emerald-200 disabled:opacity-50 transition-all"
           >
-            {exporting ? '出力中...' : `HOMES出力${selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}`}
+            {exporting ? '出力中...' : 'HOMES出力'}
           </button>
           <button
             onClick={() => navigate('/properties/new')}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+            className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-sm shadow-blue-200 hover:shadow-md hover:shadow-blue-200 transition-all"
           >
             + 新規登録
           </button>
@@ -671,7 +671,7 @@ const PropertiesPage = () => {
       </div>
 
       {/* ビュータブ + ツールバー */}
-      <div className="bg-white rounded-xl shadow-sm mb-4">
+      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-gray-100/50 mb-4">
         {/* ビュータブ */}
         <div className="flex items-center border-b border-gray-100 px-2">
           <div className="flex gap-1 overflow-x-auto py-2">
@@ -781,18 +781,16 @@ const PropertiesPage = () => {
         {/* ツールバー */}
         <div className="px-4 py-3 border-b border-gray-100">
           <div className="flex items-center gap-3 flex-wrap">
-            {/* 検索 */}
-            <div className="relative">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+            {/* 検索 - 洗練されたミニマルデザイン */}
+            <div className="relative group">
               <input
                 type="text"
                 value={filters.search}
                 onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                placeholder="物件名・番号で検索..."
-                className="pl-10 pr-4 py-2 w-56 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="検索..."
+                className="w-48 px-3 py-2 text-sm bg-gray-50 border-0 rounded-lg placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all"
               />
+              <kbd className="absolute right-2 top-1/2 -translate-y-1/2 hidden sm:inline-flex px-1.5 py-0.5 text-[10px] font-medium text-gray-400 bg-gray-100 rounded">⌘K</kbd>
             </div>
 
             {/* フィルターチップ */}
@@ -977,7 +975,7 @@ const PropertiesPage = () => {
 
       {/* テーブル / カード表示 */}
       {viewMode === 'table' ? (
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-gray-100/50 overflow-hidden">
           <div className="overflow-x-auto">
             <table ref={tableRef} className="min-w-full">
               <thead className="sticky top-0 bg-white z-10 shadow-sm">
@@ -1184,7 +1182,7 @@ const PropertiesPage = () => {
 
       {/* ページネーション */}
       {!loading && properties.length > 0 && (
-        <div className="flex items-center justify-between mt-4 bg-white px-4 py-3 rounded-xl shadow-sm">
+        <div className="flex items-center justify-between mt-4 bg-white/80 backdrop-blur-sm px-4 py-3 rounded-2xl shadow-sm border border-gray-100/50">
           <div className="text-sm text-gray-500">
             全 {totalItems.toLocaleString()} 件中 {((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, totalItems)} 件
           </div>
