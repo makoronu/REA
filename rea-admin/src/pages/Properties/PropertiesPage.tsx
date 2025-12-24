@@ -91,8 +91,7 @@ const DEFAULT_VIEWS: SavedView[] = [
   { id: 'published', name: '公開中', columns: DEFAULT_COLUMNS, filters: { ...DEFAULT_FILTERS, publication_status: '公開' }, sortBy: 'id', sortOrder: 'desc' },
 ];
 
-const SALES_STATUS_OPTIONS = ['販売中', '成約済', '取下げ', '商談中'];
-const PUBLICATION_STATUS_OPTIONS = ['公開', '非公開'];
+// メタデータ駆動: ステータスオプションはAPIから取得（filterOptionsを使用）
 
 // ============================================
 // ユーティリティ
@@ -379,10 +378,22 @@ const PropertiesPage = () => {
     };
   }, []);
 
+  // ステータス連動ロジック: 販売ステータス変更時に公開ステータスも連動
   const handleStatusChange = async (id: number, field: string, value: string) => {
     try {
-      await propertyService.updateProperty(id, { [field]: value });
-      setProperties(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p));
+      const updates: Record<string, string> = { [field]: value };
+
+      // 販売ステータス → 公開ステータス連動
+      if (field === 'sales_status') {
+        if (value === '販売中') {
+          updates.publication_status = '公開';
+        } else if (['成約済み', '取下げ', '販売終了'].includes(value)) {
+          updates.publication_status = '非公開';
+        }
+      }
+
+      await propertyService.updateProperty(id, updates);
+      setProperties(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
       closeContextMenu();
     } catch (err) {
       console.error('ステータス更新エラー:', err);
@@ -425,16 +436,28 @@ const PropertiesPage = () => {
   // ============================================
   // 一括操作
   // ============================================
+  // 一括ステータス変更（連動ロジック適用）
   const handleBulkStatusChange = async (field: string, value: string) => {
     if (selectedIds.size === 0) return;
     if (!confirm(`${selectedIds.size}件の物件を「${value}」に変更しますか？`)) return;
 
     try {
+      const updates: Record<string, string> = { [field]: value };
+
+      // 販売ステータス → 公開ステータス連動
+      if (field === 'sales_status') {
+        if (value === '販売中') {
+          updates.publication_status = '公開';
+        } else if (['成約済み', '取下げ', '販売終了'].includes(value)) {
+          updates.publication_status = '非公開';
+        }
+      }
+
       await Promise.all(
-        Array.from(selectedIds).map(id => propertyService.updateProperty(id, { [field]: value }))
+        Array.from(selectedIds).map(id => propertyService.updateProperty(id, updates))
       );
       setProperties(prev => prev.map(p =>
-        selectedIds.has(p.id) ? { ...p, [field]: value } : p
+        selectedIds.has(p.id) ? { ...p, ...updates } : p
       ));
       setSelectedIds(new Set());
     } catch (err) {
@@ -443,18 +466,21 @@ const PropertiesPage = () => {
     }
   };
 
-  const handleBulkDelete = async () => {
+  // 論理削除: 「取下げ」ステータスに変更（物理削除禁止）
+  const handleBulkArchive = async () => {
     if (selectedIds.size === 0) return;
-    if (!confirm(`${selectedIds.size}件の物件を削除しますか？この操作は取り消せません。`)) return;
+    if (!confirm(`${selectedIds.size}件の物件を「取下げ」にしますか？`)) return;
 
     try {
-      await Promise.all(Array.from(selectedIds).map(id => propertyService.deleteProperty(id)));
-      setProperties(prev => prev.filter(p => !selectedIds.has(p.id)));
+      const updates = { sales_status: '取下げ', publication_status: '非公開' };
+      await Promise.all(Array.from(selectedIds).map(id => propertyService.updateProperty(id, updates)));
+      setProperties(prev => prev.map(p =>
+        selectedIds.has(p.id) ? { ...p, ...updates } : p
+      ));
       setSelectedIds(new Set());
-      setTotalItems(prev => prev - selectedIds.size);
     } catch (err) {
-      console.error('一括削除エラー:', err);
-      alert('一括削除に失敗しました');
+      console.error('一括取下げエラー:', err);
+      alert('一括取下げに失敗しました');
     }
   };
 
@@ -502,7 +528,7 @@ const PropertiesPage = () => {
           break;
         case 'Delete':
         case 'Backspace':
-          if (selectedIds.size > 0) handleBulkDelete();
+          if (selectedIds.size > 0) handleBulkArchive();
           break;
         case 'a':
           if (e.metaKey || e.ctrlKey) {
@@ -635,22 +661,22 @@ const PropertiesPage = () => {
                   ステータス変更
                 </button>
                 <div className="absolute right-0 mt-1 w-40 bg-white/95 backdrop-blur-sm rounded-xl shadow-xl border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden">
-                  {SALES_STATUS_OPTIONS.map(status => (
+                  {filterOptions.sales_status.map(opt => (
                     <button
-                      key={status}
-                      onClick={() => handleBulkStatusChange('sales_status', status)}
+                      key={opt.value}
+                      onClick={() => handleBulkStatusChange('sales_status', opt.value)}
                       className="block w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors"
                     >
-                      {status}
+                      {opt.label}
                     </button>
                   ))}
                 </div>
               </div>
               <button
-                onClick={handleBulkDelete}
-                className="px-3 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
+                onClick={handleBulkArchive}
+                className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
               >
-                削除
+                取下げ
               </button>
             </>
           )}
@@ -1233,34 +1259,34 @@ const PropertiesPage = () => {
             {contextMenu.property.property_name || `物件 #${contextMenu.property.id}`}
           </div>
 
-          {/* 販売ステータス変更 */}
+          {/* 販売ステータス変更 - メタデータ駆動 */}
           <div className="py-1">
             <div className="px-4 py-1 text-xs text-gray-400 uppercase">販売ステータス</div>
-            {SALES_STATUS_OPTIONS.map(status => (
+            {filterOptions.sales_status.map(opt => (
               <button
-                key={status}
-                onClick={() => handleStatusChange(contextMenu.propertyId!, 'sales_status', status)}
+                key={opt.value}
+                onClick={() => handleStatusChange(contextMenu.propertyId!, 'sales_status', opt.value)}
                 className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-50
-                  ${contextMenu.property?.sales_status === status ? 'text-blue-600 font-medium' : ''}`}
+                  ${contextMenu.property?.sales_status === opt.value ? 'text-blue-600 font-medium' : ''}`}
               >
-                {status}
-                {contextMenu.property?.sales_status === status && ' ✓'}
+                {opt.label}
+                {contextMenu.property?.sales_status === opt.value && ' ✓'}
               </button>
             ))}
           </div>
 
-          {/* 公開ステータス変更 */}
+          {/* 公開ステータス変更 - メタデータ駆動 */}
           <div className="py-1 border-t">
             <div className="px-4 py-1 text-xs text-gray-400 uppercase">公開状態</div>
-            {PUBLICATION_STATUS_OPTIONS.map(status => (
+            {filterOptions.publication_status.map(opt => (
               <button
-                key={status}
-                onClick={() => handleStatusChange(contextMenu.propertyId!, 'publication_status', status)}
+                key={opt.value}
+                onClick={() => handleStatusChange(contextMenu.propertyId!, 'publication_status', opt.value)}
                 className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-50
-                  ${contextMenu.property?.publication_status === status ? 'text-blue-600 font-medium' : ''}`}
+                  ${contextMenu.property?.publication_status === opt.value ? 'text-blue-600 font-medium' : ''}`}
               >
-                {status}
-                {contextMenu.property?.publication_status === status && ' ✓'}
+                {opt.label}
+                {contextMenu.property?.publication_status === opt.value && ' ✓'}
               </button>
             ))}
           </div>
@@ -1287,21 +1313,23 @@ const PropertiesPage = () => {
             </button>
             <button
               onClick={async () => {
-                if (confirm('この物件を削除しますか？')) {
+                if (confirm('この物件を「取下げ」にしますか？')) {
                   try {
-                    await propertyService.deleteProperty(contextMenu.propertyId!);
-                    setProperties(prev => prev.filter(p => p.id !== contextMenu.propertyId));
-                    setTotalItems(prev => prev - 1);
+                    const updates = { sales_status: '取下げ', publication_status: '非公開' };
+                    await propertyService.updateProperty(contextMenu.propertyId!, updates);
+                    setProperties(prev => prev.map(p =>
+                      p.id === contextMenu.propertyId ? { ...p, ...updates } : p
+                    ));
                   } catch (err) {
-                    console.error('削除エラー:', err);
-                    alert('削除に失敗しました');
+                    console.error('取下げエラー:', err);
+                    alert('取下げに失敗しました');
                   }
                 }
                 closeContextMenu();
               }}
-              className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+              className="block w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
             >
-              削除
+              取下げ
             </button>
           </div>
         </div>
