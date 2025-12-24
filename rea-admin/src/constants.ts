@@ -3,6 +3,37 @@
  * マジックナンバーは全てここで一元管理（DRY原則）
  */
 
+// === 販売ステータス ===
+export const SALES_STATUS = {
+  SELLING: '販売中',
+  SOLD: '成約済み',
+  WITHDRAWN: '取下げ',
+  ENDED: '販売終了',
+  NEGOTIATING: '商談中',
+  PREPARING: '販売準備',
+} as const;
+
+// 販売中とみなすステータス
+export const ACTIVE_SALES_STATUSES = [SALES_STATUS.SELLING] as const;
+// 非公開にすべきステータス
+export const INACTIVE_SALES_STATUSES = [
+  SALES_STATUS.SOLD,
+  SALES_STATUS.WITHDRAWN,
+  SALES_STATUS.ENDED,
+] as const;
+
+// === 公開ステータス ===
+export const PUBLICATION_STATUS = {
+  PUBLIC: '公開',
+  PRIVATE: '非公開',
+} as const;
+
+// === ページ設定 ===
+export const PAGE_CONFIG = {
+  ITEMS_PER_PAGE: 20,
+  DEBOUNCE_MS: 300,
+} as const;
+
 // === 日本円単位 ===
 export const YEN_MAN = 10000;          // 万
 export const YEN_OKU = 100000000;      // 億

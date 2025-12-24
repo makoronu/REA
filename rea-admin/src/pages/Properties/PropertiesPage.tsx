@@ -1,10 +1,17 @@
-// Build: 2025-12-25T08 - World-Class Properties Page
+// Build: 2025-12-25T09 - World-Class Properties Page (Protocol Compliant)
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { propertyService } from '../../services/propertyService';
 import { metadataService } from '../../services/metadataService';
 import { Property, PropertySearchParams } from '../../types/property';
-import { formatPrice } from '../../constants';
+import {
+  formatPrice,
+  SALES_STATUS,
+  PUBLICATION_STATUS,
+  ACTIVE_SALES_STATUSES,
+  INACTIVE_SALES_STATUSES,
+  PAGE_CONFIG,
+} from '../../constants';
 
 // ============================================
 // 型定義
@@ -53,10 +60,10 @@ type ViewMode = 'table' | 'card' | 'gallery';
 type RowDensity = 'compact' | 'normal' | 'comfortable';
 
 // ============================================
-// 定数
+// 定数（PAGE_CONFIGから取得）
 // ============================================
-const ITEMS_PER_PAGE = 20;
-const DEBOUNCE_MS = 300;
+const ITEMS_PER_PAGE = PAGE_CONFIG.ITEMS_PER_PAGE;
+const DEBOUNCE_MS = PAGE_CONFIG.DEBOUNCE_MS;
 const VIEWS_STORAGE_KEY = 'rea_property_views';
 
 const ALL_COLUMNS: ColumnDef[] = [
@@ -383,12 +390,12 @@ const PropertiesPage = () => {
     try {
       const updates: Record<string, string> = { [field]: value };
 
-      // 販売ステータス → 公開ステータス連動
+      // 販売ステータス → 公開ステータス連動（定数使用）
       if (field === 'sales_status') {
-        if (value === '販売中') {
-          updates.publication_status = '公開';
-        } else if (['成約済み', '取下げ', '販売終了'].includes(value)) {
-          updates.publication_status = '非公開';
+        if ((ACTIVE_SALES_STATUSES as readonly string[]).includes(value)) {
+          updates.publication_status = PUBLICATION_STATUS.PUBLIC;
+        } else if ((INACTIVE_SALES_STATUSES as readonly string[]).includes(value)) {
+          updates.publication_status = PUBLICATION_STATUS.PRIVATE;
         }
       }
 
@@ -436,7 +443,7 @@ const PropertiesPage = () => {
   // ============================================
   // 一括操作
   // ============================================
-  // 一括ステータス変更（連動ロジック適用）
+  // 一括ステータス変更（連動ロジック適用・定数使用）
   const handleBulkStatusChange = async (field: string, value: string) => {
     if (selectedIds.size === 0) return;
     if (!confirm(`${selectedIds.size}件の物件を「${value}」に変更しますか？`)) return;
@@ -444,12 +451,12 @@ const PropertiesPage = () => {
     try {
       const updates: Record<string, string> = { [field]: value };
 
-      // 販売ステータス → 公開ステータス連動
+      // 販売ステータス → 公開ステータス連動（定数使用）
       if (field === 'sales_status') {
-        if (value === '販売中') {
-          updates.publication_status = '公開';
-        } else if (['成約済み', '取下げ', '販売終了'].includes(value)) {
-          updates.publication_status = '非公開';
+        if ((ACTIVE_SALES_STATUSES as readonly string[]).includes(value)) {
+          updates.publication_status = PUBLICATION_STATUS.PUBLIC;
+        } else if ((INACTIVE_SALES_STATUSES as readonly string[]).includes(value)) {
+          updates.publication_status = PUBLICATION_STATUS.PRIVATE;
         }
       }
 
@@ -466,13 +473,13 @@ const PropertiesPage = () => {
     }
   };
 
-  // 論理削除: 「取下げ」ステータスに変更（物理削除禁止）
+  // 論理削除: 「取下げ」ステータスに変更（物理削除禁止・定数使用）
   const handleBulkArchive = async () => {
     if (selectedIds.size === 0) return;
-    if (!confirm(`${selectedIds.size}件の物件を「取下げ」にしますか？`)) return;
+    if (!confirm(`${selectedIds.size}件の物件を「${SALES_STATUS.WITHDRAWN}」にしますか？`)) return;
 
     try {
-      const updates = { sales_status: '取下げ', publication_status: '非公開' };
+      const updates = { sales_status: SALES_STATUS.WITHDRAWN, publication_status: PUBLICATION_STATUS.PRIVATE };
       await Promise.all(Array.from(selectedIds).map(id => propertyService.updateProperty(id, updates)));
       setProperties(prev => prev.map(p =>
         selectedIds.has(p.id) ? { ...p, ...updates } : p
@@ -1248,88 +1255,69 @@ const PropertiesPage = () => {
         </div>
       )}
 
-      {/* コンテキストメニュー */}
+      {/* コンテキストメニュー - コンパクト設計 */}
       {contextMenu.visible && contextMenu.property && (
         <div
-          className="fixed bg-white rounded-xl shadow-2xl border py-2 z-[9999] min-w-[200px]"
+          className="fixed bg-white/95 backdrop-blur-sm rounded-xl shadow-2xl border border-gray-100 py-1 z-[9999] min-w-[180px]"
           style={{ left: contextMenu.x, top: contextMenu.y }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="px-4 py-2 border-b text-sm font-medium text-gray-700 truncate max-w-[250px]">
-            {contextMenu.property.property_name || `物件 #${contextMenu.property.id}`}
+          {/* ヘッダー */}
+          <div className="px-3 py-2 border-b border-gray-100">
+            <div className="text-xs text-gray-400">#{contextMenu.property.id}</div>
+            <div className="text-sm font-medium text-gray-800 truncate max-w-[200px]">
+              {contextMenu.property.property_name || '物件'}
+            </div>
           </div>
 
-          {/* 販売ステータス変更 - メタデータ駆動 */}
+          {/* クイックアクション */}
           <div className="py-1">
-            <div className="px-4 py-1 text-xs text-gray-400 uppercase">販売ステータス</div>
-            {filterOptions.sales_status.map(opt => (
-              <button
-                key={opt.value}
-                onClick={() => handleStatusChange(contextMenu.propertyId!, 'sales_status', opt.value)}
-                className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-50
-                  ${contextMenu.property?.sales_status === opt.value ? 'text-blue-600 font-medium' : ''}`}
-              >
-                {opt.label}
-                {contextMenu.property?.sales_status === opt.value && ' ✓'}
-              </button>
-            ))}
-          </div>
-
-          {/* 公開ステータス変更 - メタデータ駆動 */}
-          <div className="py-1 border-t">
-            <div className="px-4 py-1 text-xs text-gray-400 uppercase">公開状態</div>
-            {filterOptions.publication_status.map(opt => (
-              <button
-                key={opt.value}
-                onClick={() => handleStatusChange(contextMenu.propertyId!, 'publication_status', opt.value)}
-                className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-50
-                  ${contextMenu.property?.publication_status === opt.value ? 'text-blue-600 font-medium' : ''}`}
-              >
-                {opt.label}
-                {contextMenu.property?.publication_status === opt.value && ' ✓'}
-              </button>
-            ))}
-          </div>
-
-          {/* その他操作 */}
-          <div className="py-1 border-t">
             <button
-              onClick={() => {
-                navigate(`/properties/${contextMenu.propertyId}/edit`);
-                closeContextMenu();
-              }}
-              className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
+              onClick={() => { navigate(`/properties/${contextMenu.propertyId}/edit`); closeContextMenu(); }}
+              className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
             >
-              編集画面を開く
+              <span className="text-gray-400">✏️</span> 編集
             </button>
             <button
-              onClick={() => {
-                window.open(`/properties/${contextMenu.propertyId}/edit`, '_blank');
-                closeContextMenu();
-              }}
-              className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
+              onClick={() => { window.open(`/properties/${contextMenu.propertyId}/edit`, '_blank'); closeContextMenu(); }}
+              className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
             >
-              新しいタブで開く
+              <span className="text-gray-400">↗️</span> 新タブで開く
+            </button>
+          </div>
+
+          {/* ステータス変更（主要なものだけ） */}
+          <div className="py-1 border-t border-gray-100">
+            <div className="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase">ステータス</div>
+            <button
+              onClick={() => handleStatusChange(contextMenu.propertyId!, 'sales_status', SALES_STATUS.SELLING)}
+              className={`flex items-center gap-2 w-full text-left px-3 py-1.5 text-sm hover:bg-green-50 ${contextMenu.property?.sales_status === SALES_STATUS.SELLING ? 'text-green-600 font-medium bg-green-50' : ''}`}
+            >
+              <span className="w-2 h-2 rounded-full bg-green-500"></span> 販売中
             </button>
             <button
-              onClick={async () => {
-                if (confirm('この物件を「取下げ」にしますか？')) {
-                  try {
-                    const updates = { sales_status: '取下げ', publication_status: '非公開' };
-                    await propertyService.updateProperty(contextMenu.propertyId!, updates);
-                    setProperties(prev => prev.map(p =>
-                      p.id === contextMenu.propertyId ? { ...p, ...updates } : p
-                    ));
-                  } catch (err) {
-                    console.error('取下げエラー:', err);
-                    alert('取下げに失敗しました');
-                  }
-                }
-                closeContextMenu();
-              }}
-              className="block w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+              onClick={() => handleStatusChange(contextMenu.propertyId!, 'sales_status', SALES_STATUS.SOLD)}
+              className={`flex items-center gap-2 w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 ${contextMenu.property?.sales_status === SALES_STATUS.SOLD ? 'text-blue-600 font-medium bg-blue-50' : ''}`}
             >
-              取下げ
+              <span className="w-2 h-2 rounded-full bg-blue-500"></span> 成約済み
+            </button>
+            <button
+              onClick={() => handleStatusChange(contextMenu.propertyId!, 'sales_status', SALES_STATUS.WITHDRAWN)}
+              className={`flex items-center gap-2 w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 ${contextMenu.property?.sales_status === SALES_STATUS.WITHDRAWN ? 'text-gray-600 font-medium bg-gray-100' : ''}`}
+            >
+              <span className="w-2 h-2 rounded-full bg-gray-400"></span> 取下げ
+            </button>
+          </div>
+
+          {/* 公開切替 */}
+          <div className="py-1 border-t border-gray-100">
+            <button
+              onClick={() => handleStatusChange(contextMenu.propertyId!, 'publication_status',
+                contextMenu.property?.publication_status === PUBLICATION_STATUS.PUBLIC ? PUBLICATION_STATUS.PRIVATE : PUBLICATION_STATUS.PUBLIC)}
+              className="flex items-center justify-between w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+            >
+              <span>{contextMenu.property?.publication_status === PUBLICATION_STATUS.PUBLIC ? '🌐 公開中' : '🔒 非公開'}</span>
+              <span className="text-xs text-gray-400">切替</span>
             </button>
           </div>
         </div>
