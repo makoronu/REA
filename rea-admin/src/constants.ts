@@ -30,9 +30,12 @@ export const PUBLICATION_STATUS = {
 
 // === ページ設定 ===
 export const PAGE_CONFIG = {
-  ITEMS_PER_PAGE: 20,
+  DEFAULT_PAGE_SIZE: 20,
   DEBOUNCE_MS: 300,
 } as const;
+
+// 表示件数オプション
+export const PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
 
 // === 日本円単位 ===
 export const YEN_MAN = 10000;          // 万

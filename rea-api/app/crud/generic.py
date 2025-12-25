@@ -220,11 +220,14 @@ class GenericCRUD:
         skip: int = 0,
         limit: int = 100,
         filters: Optional[Dict[str, Any]] = None,
+        range_filters: Optional[Dict[str, Any]] = None,
         sort_by: str = "id",
         sort_order: str = "desc",
     ) -> List[Dict[str, Any]]:
         """
         一覧取得（フィルタリング・ソート対応）
+
+        range_filters: 範囲フィルタ（例: {"sale_price__gte": 1000, "sale_price__lte": 5000}）
         """
         self._validate_table(table_name)
 
@@ -240,10 +243,10 @@ class GenericCRUD:
         # クエリ構築
         query = f"SELECT * FROM {table_name}"
         params: Dict[str, Any] = {}
+        conditions = []
 
         # フィルタリング
         if filters:
-            conditions = []
             for i, (key, value) in enumerate(filters.items()):
                 if key in valid_columns and value is not None:
                     param_name = f"filter_{i}"
@@ -253,8 +256,25 @@ class GenericCRUD:
                         conditions.append(f"{key} = :{param_name}")
                     params[param_name] = value
 
-            if conditions:
-                query += " WHERE " + " AND ".join(conditions)
+        # 範囲フィルタリング（sale_price__gte, sale_price__lte など）
+        if range_filters:
+            for i, (key, value) in enumerate(range_filters.items()):
+                if value is not None:
+                    if "__gte" in key:
+                        col_name = key.replace("__gte", "")
+                        if col_name in valid_columns:
+                            param_name = f"range_{i}"
+                            conditions.append(f"{col_name} >= :{param_name}")
+                            params[param_name] = value
+                    elif "__lte" in key:
+                        col_name = key.replace("__lte", "")
+                        if col_name in valid_columns:
+                            param_name = f"range_{i}"
+                            conditions.append(f"{col_name} <= :{param_name}")
+                            params[param_name] = value
+
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
 
         # ソート
         query += f" ORDER BY {sort_by} {sort_order}"
@@ -463,9 +483,12 @@ class GenericCRUD:
         search_columns: Optional[List[str]] = None,
         skip: int = 0,
         limit: int = 100,
+        range_filters: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
         """
         全文検索（指定カラムまたはテキストカラム全てを対象）
+
+        range_filters: 範囲フィルタ（例: {"sale_price__gte": 1000, "sale_price__lte": 5000}）
         """
         self._validate_table(table_name)
 
@@ -492,17 +515,39 @@ class GenericCRUD:
             return []
 
         # OR検索クエリ構築
-        conditions = [f"{col} ILIKE :search" for col in target_columns]
+        search_conditions = [f"{col} ILIKE :search" for col in target_columns]
+        params = {"search": f"%{search_term}%", "skip": skip, "limit": limit}
+
+        # 範囲フィルタリング
+        range_conditions = []
+        if range_filters:
+            for i, (key, value) in enumerate(range_filters.items()):
+                if value is not None:
+                    if "__gte" in key:
+                        col_name = key.replace("__gte", "")
+                        if col_name in valid_columns:
+                            param_name = f"range_{i}"
+                            range_conditions.append(f"{col_name} >= :{param_name}")
+                            params[param_name] = value
+                    elif "__lte" in key:
+                        col_name = key.replace("__lte", "")
+                        if col_name in valid_columns:
+                            param_name = f"range_{i}"
+                            range_conditions.append(f"{col_name} <= :{param_name}")
+                            params[param_name] = value
+
+        # クエリ構築
+        where_clause = f"({' OR '.join(search_conditions)})"
+        if range_conditions:
+            where_clause += f" AND {' AND '.join(range_conditions)}"
+
         query = f"""
             SELECT * FROM {table_name}
-            WHERE {' OR '.join(conditions)}
+            WHERE {where_clause}
             ORDER BY id DESC
             OFFSET :skip LIMIT :limit
         """
 
-        result = self.db.execute(
-            text(query),
-            {"search": f"%{search_term}%", "skip": skip, "limit": limit}
-        )
+        result = self.db.execute(text(query), params)
 
         return [dict(row._mapping) for row in result]

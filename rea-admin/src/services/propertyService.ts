@@ -33,6 +33,8 @@ export const propertyService = {
     if (params?.sort_order) queryParams.append('sort_order', params.sort_order);
     if (params?.skip !== undefined) queryParams.append('skip', params.skip.toString());
     if (params?.limit !== undefined) queryParams.append('limit', params.limit.toString());
+    if (params?.sale_price_min !== undefined) queryParams.append('sale_price_min', params.sale_price_min.toString());
+    if (params?.sale_price_max !== undefined) queryParams.append('sale_price_max', params.sale_price_max.toString());
 
     const response = await api.get(`/properties/?${queryParams.toString()}`);
 

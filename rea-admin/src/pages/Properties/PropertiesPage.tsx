@@ -1,4 +1,4 @@
-// Build: 2025-12-25T09 - World-Class Properties Page (Protocol Compliant)
+// Build: 2025-12-25T16 - Linear/Notion-Grade Design (No Borders, No Gradients)
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { propertyService } from '../../services/propertyService';
@@ -11,6 +11,7 @@ import {
   ACTIVE_SALES_STATUSES,
   INACTIVE_SALES_STATUSES,
   PAGE_CONFIG,
+  PAGE_SIZE_OPTIONS,
 } from '../../constants';
 
 // ============================================
@@ -60,11 +61,13 @@ type ViewMode = 'table' | 'card' | 'gallery';
 type RowDensity = 'compact' | 'normal' | 'comfortable';
 
 // ============================================
-// 定数（PAGE_CONFIGから取得）
+// 定数・ストレージキー
 // ============================================
-const ITEMS_PER_PAGE = PAGE_CONFIG.ITEMS_PER_PAGE;
 const DEBOUNCE_MS = PAGE_CONFIG.DEBOUNCE_MS;
 const VIEWS_STORAGE_KEY = 'rea_property_views';
+const PAGE_SIZE_KEY = 'rea_page_size';
+const VISIBLE_COLUMNS_KEY = 'rea_visible_columns';
+const SCROLL_POSITION_KEY = 'rea_scroll_position';
 
 const ALL_COLUMNS: ColumnDef[] = [
   { key: 'id', label: 'ID', sortable: true, width: 70, minWidth: 50 },
@@ -147,10 +150,19 @@ const PropertiesPage = () => {
     } catch { return DEFAULT_VIEWS; }
   });
   const [activeViewId, setActiveViewId] = useState('all');
-  const [visibleColumns, setVisibleColumns] = useState<string[]>(DEFAULT_COLUMNS);
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(VISIBLE_COLUMNS_KEY);
+      return saved ? JSON.parse(saved) : DEFAULT_COLUMNS;
+    } catch { return DEFAULT_COLUMNS; }
+  });
   const [columnWidths] = useState<Record<string, number>>({});
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [rowDensity, setRowDensity] = useState<RowDensity>('normal');
+  const [pageSize, setPageSize] = useState<number>(() => {
+    const saved = localStorage.getItem(PAGE_SIZE_KEY);
+    return saved ? parseInt(saved, 10) : PAGE_CONFIG.DEFAULT_PAGE_SIZE;
+  });
 
   // フィルター・ソート
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
@@ -179,6 +191,9 @@ const PropertiesPage = () => {
   // インライン編集
   const [editingCell, setEditingCell] = useState<{ id: number; key: string } | null>(null);
   const [editValue, setEditValue] = useState<string>('');
+
+  // ステータスドロップダウン（クリックで即切替）
+  const [statusDropdown, setStatusDropdown] = useState<{ id: number; field: string; x: number; y: number } | null>(null);
 
   // Refs
   const tableRef = useRef<HTMLTableElement>(null);
@@ -249,8 +264,8 @@ const PropertiesPage = () => {
       setLoading(true);
       setError(null);
       const params: PropertySearchParams = {
-        skip: (currentPage - 1) * ITEMS_PER_PAGE,
-        limit: ITEMS_PER_PAGE,
+        skip: (currentPage - 1) * pageSize,
+        limit: pageSize,
         sort_by: sortBy,
         sort_order: sortOrder,
       };
@@ -270,7 +285,7 @@ const PropertiesPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, debouncedSearch, filters.property_type, filters.sales_status, filters.publication_status, filters.price_min, filters.price_max, sortBy, sortOrder]);
+  }, [currentPage, pageSize, debouncedSearch, filters.property_type, filters.sales_status, filters.publication_status, filters.price_min, filters.price_max, sortBy, sortOrder]);
 
   useEffect(() => {
     fetchProperties();
@@ -293,6 +308,27 @@ const PropertiesPage = () => {
     localStorage.setItem(VIEWS_STORAGE_KEY, JSON.stringify(views));
   }, [views]);
 
+  // pageSize永続化
+  useEffect(() => {
+    localStorage.setItem(PAGE_SIZE_KEY, pageSize.toString());
+  }, [pageSize]);
+
+  // visibleColumns永続化
+  useEffect(() => {
+    localStorage.setItem(VISIBLE_COLUMNS_KEY, JSON.stringify(visibleColumns));
+  }, [visibleColumns]);
+
+  // スクロール位置復元（マウント時）
+  useEffect(() => {
+    const savedScroll = sessionStorage.getItem(SCROLL_POSITION_KEY);
+    if (savedScroll) {
+      setTimeout(() => {
+        window.scrollTo(0, parseInt(savedScroll, 10));
+        sessionStorage.removeItem(SCROLL_POSITION_KEY);
+      }, 100);
+    }
+  }, []);
+
   const saveCurrentView = () => {
     if (!newViewName.trim()) return;
     const newView: SavedView = {
@@ -313,6 +349,14 @@ const PropertiesPage = () => {
     if (DEFAULT_VIEWS.some(v => v.id === viewId)) return;
     setViews(views.filter(v => v.id !== viewId));
     if (activeViewId === viewId) setActiveViewId('all');
+  };
+
+  // ============================================
+  // 編集ページ遷移（スクロール位置保存）
+  // ============================================
+  const navigateToEdit = (id: number) => {
+    sessionStorage.setItem(SCROLL_POSITION_KEY, window.scrollY.toString());
+    navigate(`/properties/${id}/edit`);
   };
 
   // ============================================
@@ -373,9 +417,15 @@ const PropertiesPage = () => {
   };
 
   useEffect(() => {
-    const handleClick = () => closeContextMenu();
+    const handleClick = () => {
+      closeContextMenu();
+      setStatusDropdown(null);
+    };
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeContextMenu();
+      if (e.key === 'Escape') {
+        closeContextMenu();
+        setStatusDropdown(null);
+      }
     };
     document.addEventListener('click', handleClick);
     document.addEventListener('keydown', handleKeyDown);
@@ -384,6 +434,14 @@ const PropertiesPage = () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
+
+  // ステータスドロップダウンを開く
+  const openStatusDropdown = (e: React.MouseEvent, id: number, field: string) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const rect = (e.target as HTMLElement).getBoundingClientRect();
+    setStatusDropdown({ id, field, x: rect.left, y: rect.bottom + 4 });
+  };
 
   // ステータス連動ロジック: 販売ステータス変更時に公開ステータスも連動
   const handleStatusChange = async (id: number, field: string, value: string) => {
@@ -518,7 +576,7 @@ const PropertiesPage = () => {
           break;
         case 'Enter':
           if (focusedIndex >= 0 && properties[focusedIndex]) {
-            navigate(`/properties/${properties[focusedIndex].id}/edit`);
+            navigateToEdit(properties[focusedIndex].id);
           }
           break;
         case ' ':
@@ -638,7 +696,7 @@ const PropertiesPage = () => {
     return [filters.search, filters.property_type, filters.sales_status, filters.publication_status, filters.price_min, filters.price_max].filter(Boolean).length;
   }, [filters]);
 
-  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(totalItems / pageSize);
 
   // ============================================
   // 行の高さ
@@ -649,7 +707,7 @@ const PropertiesPage = () => {
   // レンダリング
   // ============================================
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100" ref={containerRef}>
+    <div className="min-h-screen bg-gray-50" ref={containerRef}>
       {/* ヘッダー - World-Class Design */}
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-4">
@@ -664,15 +722,15 @@ const PropertiesPage = () => {
           {selectedIds.size > 0 && (
             <>
               <div className="relative group">
-                <button className="px-3 py-2 text-sm font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors">
+                <button className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
                   ステータス変更
                 </button>
-                <div className="absolute right-0 mt-1 w-40 bg-white/95 backdrop-blur-sm rounded-xl shadow-xl border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden">
+                <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 py-1">
                   {filterOptions.sales_status.map(opt => (
                     <button
                       key={opt.value}
                       onClick={() => handleBulkStatusChange('sales_status', opt.value)}
-                      className="block w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors"
+                      className="block w-full text-left px-4 py-1.5 text-sm hover:bg-gray-100 whitespace-nowrap"
                     >
                       {opt.label}
                     </button>
@@ -681,7 +739,7 @@ const PropertiesPage = () => {
               </div>
               <button
                 onClick={handleBulkArchive}
-                className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
+                className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 取下げ
               </button>
@@ -690,13 +748,13 @@ const PropertiesPage = () => {
           <button
             onClick={handleHomesExport}
             disabled={exporting || properties.length === 0}
-            className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-lg shadow-sm shadow-emerald-200 hover:shadow-md hover:shadow-emerald-200 disabled:opacity-50 transition-all"
+            className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg disabled:opacity-50 transition-colors"
           >
             {exporting ? '出力中...' : 'HOMES出力'}
           </button>
           <button
             onClick={() => navigate('/properties/new')}
-            className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-sm shadow-blue-200 hover:shadow-md hover:shadow-blue-200 transition-all"
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
           >
             + 新規登録
           </button>
@@ -704,7 +762,7 @@ const PropertiesPage = () => {
       </div>
 
       {/* ビュータブ + ツールバー */}
-      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-gray-100/50 mb-4">
+      <div className="bg-white rounded-lg mb-4">
         {/* ビュータブ */}
         <div className="flex items-center border-b border-gray-100 px-2">
           <div className="flex gap-1 overflow-x-auto py-2">
@@ -732,7 +790,7 @@ const PropertiesPage = () => {
               </svg>
             </button>
             {showViewMenu && (
-              <div className="absolute right-0 top-full mt-1 w-64 bg-white rounded-xl shadow-lg border p-3 z-50">
+              <div className="absolute right-0 top-full mt-1 w-64 bg-white rounded-lg shadow-lg ring-1 ring-gray-200 p-3 z-50">
                 <div className="text-xs font-semibold text-gray-500 uppercase mb-2">ビューを保存</div>
                 <div className="flex gap-2 mb-3">
                   <input
@@ -783,7 +841,7 @@ const PropertiesPage = () => {
               </svg>
             </button>
             {showSettingsMenu && (
-              <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-lg border p-3 z-50">
+              <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg ring-1 ring-gray-200 p-3 z-50">
                 <div className="text-xs font-semibold text-gray-500 uppercase mb-2">行の高さ</div>
                 {(['compact', 'normal', 'comfortable'] as RowDensity[]).map(density => (
                   <button
@@ -868,98 +926,20 @@ const PropertiesPage = () => {
             <div className="relative">
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 border border-dashed border-gray-300 rounded-lg hover:bg-gray-50"
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <span>+</span> フィルター
                 {activeFilterCount > 0 && (
                   <span className="ml-1 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full">{activeFilterCount}</span>
                 )}
               </button>
-              {showFilters && (
-                <div className="absolute top-full left-0 mt-1 w-72 bg-white rounded-xl shadow-lg border p-4 z-50">
-                  {/* 物件種別 */}
-                  <div className="mb-3">
-                    <div className="text-xs text-gray-500 mb-2">物件種別</div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {filterOptions.property_type_simple.map(opt => (
-                        <button
-                          key={opt.value}
-                          onClick={() => setFilters({ ...filters, property_type: filters.property_type === opt.value ? '' : opt.value })}
-                          className={`px-2.5 py-1 text-xs rounded-md border ${filters.property_type === opt.value ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 hover:bg-gray-50'}`}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  {/* ステータス */}
-                  <div className="mb-3">
-                    <div className="text-xs text-gray-500 mb-2">販売状態</div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {filterOptions.sales_status.map(opt => (
-                        <button
-                          key={opt.value}
-                          onClick={() => setFilters({ ...filters, sales_status: filters.sales_status === opt.value ? '' : opt.value })}
-                          className={`px-2.5 py-1 text-xs rounded-md border ${filters.sales_status === opt.value ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-200 hover:bg-gray-50'}`}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  {/* 公開状態 */}
-                  <div className="mb-3">
-                    <div className="text-xs text-gray-500 mb-2">公開状態</div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {filterOptions.publication_status.map(opt => (
-                        <button
-                          key={opt.value}
-                          onClick={() => setFilters({ ...filters, publication_status: filters.publication_status === opt.value ? '' : opt.value })}
-                          className={`px-2.5 py-1 text-xs rounded-md border ${filters.publication_status === opt.value ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-gray-200 hover:bg-gray-50'}`}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  {/* 価格 */}
-                  <div className="mb-3">
-                    <div className="text-xs text-gray-500 mb-2">価格（万円）</div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        value={filters.price_min}
-                        onChange={(e) => setFilters({ ...filters, price_min: e.target.value })}
-                        placeholder="下限"
-                        className="w-20 px-2 py-1.5 text-sm border rounded-md"
-                      />
-                      <span className="text-gray-400">〜</span>
-                      <input
-                        type="number"
-                        value={filters.price_max}
-                        onChange={(e) => setFilters({ ...filters, price_max: e.target.value })}
-                        placeholder="上限"
-                        className="w-20 px-2 py-1.5 text-sm border rounded-md"
-                      />
-                    </div>
-                  </div>
-                  {activeFilterCount > 0 && (
-                    <button
-                      onClick={() => setFilters(DEFAULT_FILTERS)}
-                      className="w-full py-2 text-sm text-red-600 bg-red-50 rounded-lg hover:bg-red-100"
-                    >
-                      すべてクリア
-                    </button>
-                  )}
-                </div>
-              )}
             </div>
 
             {/* 列選択 */}
             <div className="relative ml-auto">
               <button
                 onClick={() => setShowColumnPicker(!showColumnPicker)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
@@ -967,7 +947,7 @@ const PropertiesPage = () => {
                 列
               </button>
               {showColumnPicker && (
-                <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-xl shadow-lg border p-3 z-50">
+                <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-lg shadow-lg ring-1 ring-gray-200 p-3 z-50">
                   <div className="text-xs font-semibold text-gray-500 uppercase mb-2">表示する列</div>
                   <div className="max-h-60 overflow-y-auto">
                     {ALL_COLUMNS.map(col => (
@@ -1006,12 +986,122 @@ const PropertiesPage = () => {
         </div>
       </div>
 
+      {/* フィルターパネル（モーダル風） */}
+      {showFilters && (
+        <>
+          {/* オーバーレイ */}
+          <div
+            className="fixed inset-0 bg-black/20 z-40 animate-in fade-in duration-200"
+            onClick={() => setShowFilters(false)}
+          />
+          {/* パネル */}
+          <div className="relative z-50 bg-white rounded-2xl shadow-xl mb-6 p-6 space-y-6 animate-in fade-in slide-in-from-top-2 duration-200">
+            {/* 物件種別 */}
+            <div>
+              <div className="text-sm font-medium text-gray-900 mb-3">物件種別</div>
+              <div className="flex flex-wrap gap-2">
+                {filterOptions.property_type_simple.map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setFilters({ ...filters, property_type: filters.property_type === opt.value ? '' : opt.value })}
+                    className={`px-4 py-2 text-sm rounded-full transition-colors
+                      ${filters.property_type === opt.value ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 販売状態 */}
+            <div>
+              <div className="text-sm font-medium text-gray-900 mb-3">販売状態</div>
+              <div className="flex flex-wrap gap-2">
+                {filterOptions.sales_status.map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setFilters({ ...filters, sales_status: filters.sales_status === opt.value ? '' : opt.value })}
+                    className={`px-4 py-2 text-sm rounded-full transition-colors
+                      ${filters.sales_status === opt.value ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 公開状態 */}
+            <div>
+              <div className="text-sm font-medium text-gray-900 mb-3">公開状態</div>
+              <div className="flex flex-wrap gap-2">
+                {filterOptions.publication_status.map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setFilters({ ...filters, publication_status: filters.publication_status === opt.value ? '' : opt.value })}
+                    className={`px-4 py-2 text-sm rounded-full transition-colors
+                      ${filters.publication_status === opt.value ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 価格帯 */}
+            <div>
+              <div className="text-sm font-medium text-gray-900 mb-3">価格帯</div>
+              <div className="flex items-center gap-3">
+                <select
+                  value={filters.price_min}
+                  onChange={(e) => setFilters({ ...filters, price_min: e.target.value })}
+                  className="py-2 px-4 text-sm bg-gray-100 rounded-full cursor-pointer border-0 outline-none appearance-none"
+                >
+                  <option value="">下限なし</option>
+                  {[500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 6000, 7000, 8000, 9000, 10000].map(v => (
+                    <option key={v} value={v}>{v >= 10000 ? `${v / 10000}億` : `${v}万`}</option>
+                  ))}
+                </select>
+                <span className="text-gray-400">〜</span>
+                <select
+                  value={filters.price_max}
+                  onChange={(e) => setFilters({ ...filters, price_max: e.target.value })}
+                  className="py-2 px-4 text-sm bg-gray-100 rounded-full cursor-pointer border-0 outline-none appearance-none"
+                >
+                  <option value="">上限なし</option>
+                  {[500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 6000, 7000, 8000, 9000, 10000].map(v => (
+                    <option key={v} value={v}>{v >= 10000 ? `${v / 10000}億` : `${v}万`}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* フッター */}
+            <div className="pt-4 flex justify-between items-center">
+              {activeFilterCount > 0 ? (
+                <button
+                  onClick={() => setFilters(DEFAULT_FILTERS)}
+                  className="text-sm text-gray-500 hover:text-gray-900 transition-colors"
+                >
+                  クリア
+                </button>
+              ) : <div />}
+              <button
+                onClick={() => setShowFilters(false)}
+                className="px-6 py-2 text-sm font-medium text-white bg-gray-900 rounded-full hover:bg-gray-800 transition-colors"
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* テーブル / カード表示 */}
       {viewMode === 'table' ? (
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-gray-100/50 overflow-hidden">
+        <div className="bg-white rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table ref={tableRef} className="min-w-full">
-              <thead className="sticky top-0 bg-white z-10 shadow-sm">
+              <thead className="sticky top-0 bg-gray-50 z-10">
                 <tr className="border-b border-gray-200">
                   <th className="px-3 py-3 w-10">
                     <input
@@ -1049,7 +1139,7 @@ const PropertiesPage = () => {
               <tbody>
                 {loading ? (
                   [...Array(8)].map((_, i) => (
-                    <tr key={i} className="animate-pulse border-b border-gray-50">
+                    <tr key={i} className="animate-pulse">
                       <td className="px-3 py-3"><div className="w-4 h-4 bg-gray-200 rounded"></div></td>
                       {visibleColumns.map((_, j) => (
                         <td key={j} className="px-3 py-3"><div className="h-4 bg-gray-200 rounded w-full"></div></td>
@@ -1078,11 +1168,11 @@ const PropertiesPage = () => {
                   properties.map((property, index) => (
                     <tr
                       key={property.id}
-                      className={`border-b border-gray-50 transition-colors cursor-pointer
+                      className={`transition-colors cursor-pointer
                         ${selectedIds.has(property.id) ? 'bg-blue-50' : ''}
-                        ${focusedIndex === index ? 'ring-2 ring-inset ring-blue-400' : ''}
+                        ${focusedIndex === index ? 'bg-blue-50' : ''}
                         hover:bg-gray-50`}
-                      onClick={() => navigate(`/properties/${property.id}/edit`)}
+                      onClick={() => navigateToEdit(property.id)}
                       onContextMenu={(e) => handleContextMenu(e, property)}
                     >
                       <td className={`px-3 ${rowPadding}`} onClick={(e) => e.stopPropagation()}>
@@ -1124,15 +1214,21 @@ const PropertiesPage = () => {
                                 className="w-full px-2 py-1 border rounded text-sm focus:ring-2 focus:ring-blue-500"
                               />
                             ) : key === 'sales_status' ? (
-                              <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full
-                                ${value === '販売中' ? 'bg-green-50 text-green-700' : value === '成約済' ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
+                              <button
+                                onClick={(e) => openStatusDropdown(e, property.id, 'sales_status')}
+                                className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-gray-300 transition-all
+                                  ${value === '販売中' ? 'bg-green-50 text-green-700' : value === '成約済み' ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-600'}`}
+                              >
                                 {value}
-                              </span>
+                              </button>
                             ) : key === 'publication_status' ? (
-                              <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full
-                                ${value === '公開' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                              <button
+                                onClick={(e) => openStatusDropdown(e, property.id, 'publication_status')}
+                                className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-gray-300 transition-all
+                                  ${value === '公開' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'}`}
+                              >
                                 {value}
-                              </span>
+                              </button>
                             ) : key === 'property_name' ? (
                               <span className="line-clamp-1 text-gray-900">{value}</span>
                             ) : key === 'sale_price' ? (
@@ -1145,7 +1241,7 @@ const PropertiesPage = () => {
                       })}
                       <td className={`px-3 ${rowPadding} text-right whitespace-nowrap`} onClick={(e) => e.stopPropagation()}>
                         <button
-                          onClick={() => navigate(`/properties/${property.id}/edit`)}
+                          onClick={() => navigateToEdit(property.id)}
                           className="px-2 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded"
                         >
                           編集
@@ -1172,7 +1268,7 @@ const PropertiesPage = () => {
           ) : properties.map(property => (
             <div
               key={property.id}
-              onClick={() => navigate(`/properties/${property.id}/edit`)}
+              onClick={() => navigateToEdit(property.id)}
               onContextMenu={(e) => handleContextMenu(e, property)}
               className={`bg-white rounded-xl p-4 shadow-sm cursor-pointer transition-all hover:shadow-md
                 ${selectedIds.has(property.id) ? 'ring-2 ring-blue-500' : ''}`}
@@ -1215,39 +1311,50 @@ const PropertiesPage = () => {
 
       {/* ページネーション */}
       {!loading && properties.length > 0 && (
-        <div className="flex items-center justify-between mt-4 bg-white/80 backdrop-blur-sm px-4 py-3 rounded-2xl shadow-sm border border-gray-100/50">
-          <div className="text-sm text-gray-500">
-            全 {totalItems.toLocaleString()} 件中 {((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, totalItems)} 件
+        <div className="flex items-center justify-between mt-4 bg-white px-4 py-3 rounded-lg">
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-gray-500">
+              全 {totalItems.toLocaleString()} 件中 {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, totalItems)} 件
+            </span>
+            <select
+              value={pageSize}
+              onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+              className="px-2 py-1 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 cursor-pointer transition-colors"
+            >
+              {PAGE_SIZE_OPTIONS.map(size => (
+                <option key={size} value={size}>{size}件</option>
+              ))}
+            </select>
           </div>
-          <div className="flex gap-1">
+          <div className="flex items-center gap-1">
             <button
               onClick={() => setCurrentPage(1)}
               disabled={currentPage === 1}
-              className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 disabled:opacity-40 hover:bg-gray-50"
+              className="px-3 py-1.5 text-sm text-gray-600 rounded-lg disabled:opacity-40 hover:bg-gray-100 transition-colors"
             >
               最初
             </button>
             <button
               onClick={() => setCurrentPage(currentPage - 1)}
               disabled={currentPage === 1}
-              className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 disabled:opacity-40 hover:bg-gray-50"
+              className="px-3 py-1.5 text-sm text-gray-600 rounded-lg disabled:opacity-40 hover:bg-gray-100 transition-colors"
             >
               前へ
             </button>
-            <span className="px-3 py-1.5 text-sm text-gray-500">
+            <span className="px-3 py-1.5 text-sm text-gray-700 font-medium">
               {currentPage} / {totalPages || 1}
             </span>
             <button
               onClick={() => setCurrentPage(currentPage + 1)}
               disabled={currentPage >= totalPages}
-              className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 disabled:opacity-40 hover:bg-gray-50"
+              className="px-3 py-1.5 text-sm text-gray-600 rounded-lg disabled:opacity-40 hover:bg-gray-100 transition-colors"
             >
               次へ
             </button>
             <button
               onClick={() => setCurrentPage(totalPages)}
               disabled={currentPage >= totalPages}
-              className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 disabled:opacity-40 hover:bg-gray-50"
+              className="px-3 py-1.5 text-sm text-gray-600 rounded-lg disabled:opacity-40 hover:bg-gray-100 transition-colors"
             >
               最後
             </button>
@@ -1255,71 +1362,129 @@ const PropertiesPage = () => {
         </div>
       )}
 
-      {/* コンテキストメニュー - コンパクト設計 */}
+      {/* コンテキストメニュー */}
       {contextMenu.visible && contextMenu.property && (
         <div
-          className="fixed bg-white/95 backdrop-blur-sm rounded-xl shadow-2xl border border-gray-100 py-1 z-[9999] min-w-[180px]"
+          className="fixed bg-white rounded-lg shadow-lg py-1 z-[9999]"
           style={{ left: contextMenu.x, top: contextMenu.y }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* ヘッダー */}
-          <div className="px-3 py-2 border-b border-gray-100">
+          <div className="px-3 py-1.5 border-b border-gray-100">
             <div className="text-xs text-gray-400">#{contextMenu.property.id}</div>
             <div className="text-sm font-medium text-gray-800 truncate max-w-[200px]">
               {contextMenu.property.property_name || '物件'}
             </div>
           </div>
 
-          {/* クイックアクション */}
+          {/* メインアクション */}
           <div className="py-1">
             <button
-              onClick={() => { navigate(`/properties/${contextMenu.propertyId}/edit`); closeContextMenu(); }}
-              className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+              onClick={() => { navigateToEdit(contextMenu.propertyId!); closeContextMenu(); }}
+              className="flex items-center justify-between gap-4 w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 whitespace-nowrap"
             >
-              <span className="text-gray-400">✏️</span> 編集
+              編集
+              <kbd className="text-xs text-gray-400">Enter</kbd>
             </button>
             <button
               onClick={() => { window.open(`/properties/${contextMenu.propertyId}/edit`, '_blank'); closeContextMenu(); }}
-              className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+              className="flex items-center justify-between gap-4 w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 whitespace-nowrap"
             >
-              <span className="text-gray-400">↗️</span> 新タブで開く
+              新タブで開く
+              <kbd className="text-xs text-gray-400">⌘↵</kbd>
             </button>
           </div>
 
-          {/* ステータス変更（主要なものだけ） */}
+          {/* コピー */}
           <div className="py-1 border-t border-gray-100">
-            <div className="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase">ステータス</div>
             <button
-              onClick={() => handleStatusChange(contextMenu.propertyId!, 'sales_status', SALES_STATUS.SELLING)}
-              className={`flex items-center gap-2 w-full text-left px-3 py-1.5 text-sm hover:bg-green-50 ${contextMenu.property?.sales_status === SALES_STATUS.SELLING ? 'text-green-600 font-medium bg-green-50' : ''}`}
+              onClick={() => {
+                navigator.clipboard.writeText(`${contextMenu.property?.property_name} - ${contextMenu.property?.sale_price ? formatPrice(contextMenu.property.sale_price) : ''}`);
+                closeContextMenu();
+              }}
+              className="flex items-center justify-between gap-4 w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 whitespace-nowrap"
             >
-              <span className="w-2 h-2 rounded-full bg-green-500"></span> 販売中
+              物件名をコピー
+              <kbd className="text-xs text-gray-400">⌘C</kbd>
             </button>
             <button
-              onClick={() => handleStatusChange(contextMenu.propertyId!, 'sales_status', SALES_STATUS.SOLD)}
-              className={`flex items-center gap-2 w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 ${contextMenu.property?.sales_status === SALES_STATUS.SOLD ? 'text-blue-600 font-medium bg-blue-50' : ''}`}
+              onClick={() => {
+                navigator.clipboard.writeText(`${window.location.origin}/properties/${contextMenu.propertyId}/edit`);
+                closeContextMenu();
+              }}
+              className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 whitespace-nowrap"
             >
-              <span className="w-2 h-2 rounded-full bg-blue-500"></span> 成約済み
-            </button>
-            <button
-              onClick={() => handleStatusChange(contextMenu.propertyId!, 'sales_status', SALES_STATUS.WITHDRAWN)}
-              className={`flex items-center gap-2 w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 ${contextMenu.property?.sales_status === SALES_STATUS.WITHDRAWN ? 'text-gray-600 font-medium bg-gray-100' : ''}`}
-            >
-              <span className="w-2 h-2 rounded-full bg-gray-400"></span> 取下げ
+              URLをコピー
             </button>
           </div>
 
-          {/* 公開切替 */}
+          {/* クローズ */}
           <div className="py-1 border-t border-gray-100">
             <button
-              onClick={() => handleStatusChange(contextMenu.propertyId!, 'publication_status',
-                contextMenu.property?.publication_status === PUBLICATION_STATUS.PUBLIC ? PUBLICATION_STATUS.PRIVATE : PUBLICATION_STATUS.PUBLIC)}
-              className="flex items-center justify-between w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+              onClick={() => {
+                handleStatusChange(contextMenu.propertyId!, 'sales_status', SALES_STATUS.SOLD);
+                closeContextMenu();
+              }}
+              className="flex items-center gap-2 w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 whitespace-nowrap"
             >
-              <span>{contextMenu.property?.publication_status === PUBLICATION_STATUS.PUBLIC ? '🌐 公開中' : '🔒 非公開'}</span>
-              <span className="text-xs text-gray-400">切替</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+              成約済み
+            </button>
+            <button
+              onClick={() => {
+                handleStatusChange(contextMenu.propertyId!, 'sales_status', SALES_STATUS.ENDED);
+                closeContextMenu();
+              }}
+              className="flex items-center gap-2 w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 whitespace-nowrap"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+              販売終了
             </button>
           </div>
+        </div>
+      )}
+
+      {/* ステータスドロップダウン（クリックで即切替・メタデータ駆動） */}
+      {statusDropdown && (
+        <div
+          className="fixed bg-white rounded-lg shadow-lg py-1 z-[9999]"
+          style={{ left: statusDropdown.x, top: statusDropdown.y }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {statusDropdown.field === 'sales_status' ? (
+            filterOptions.sales_status.map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => {
+                  handleStatusChange(statusDropdown.id, 'sales_status', opt.value);
+                  setStatusDropdown(null);
+                }}
+                className={`flex items-center gap-2 w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 transition-colors whitespace-nowrap
+                  ${properties.find(p => p.id === statusDropdown.id)?.sales_status === opt.value ? 'bg-blue-50 text-blue-700' : ''}`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${
+                  opt.value === SALES_STATUS.SELLING ? 'bg-green-500' :
+                  opt.value === SALES_STATUS.SOLD ? 'bg-blue-500' : 'bg-gray-400'
+                }`}></span>
+                {opt.label}
+              </button>
+            ))
+          ) : (
+            filterOptions.publication_status.map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => {
+                  handleStatusChange(statusDropdown.id, 'publication_status', opt.value);
+                  setStatusDropdown(null);
+                }}
+                className={`flex items-center gap-2 w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 transition-colors whitespace-nowrap
+                  ${properties.find(p => p.id === statusDropdown.id)?.publication_status === opt.value ? 'bg-blue-50 text-blue-700' : ''}`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${opt.value === PUBLICATION_STATUS.PUBLIC ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+                {opt.label}
+              </button>
+            ))
+          )}
         </div>
       )}
 

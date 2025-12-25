@@ -28,6 +28,8 @@ def read_properties(
     property_type: Optional[str] = Query(None, description="物件種別"),
     sales_status: Optional[str] = Query(None, description="販売状況"),
     publication_status: Optional[str] = Query(None, description="公開状態"),
+    sale_price_min: Optional[int] = Query(None, description="最低価格（円）"),
+    sale_price_max: Optional[int] = Query(None, description="最高価格（円）"),
     sort_by: Optional[str] = Query("id", description="ソート対象カラム"),
     sort_order: Optional[str] = Query("desc", description="ソート順序（asc/desc）"),
     db: Session = Depends(get_db),
@@ -47,6 +49,13 @@ def read_properties(
     if publication_status:
         filters["publication_status"] = publication_status
 
+    # 価格範囲フィルタ
+    range_filters: Dict[str, Any] = {}
+    if sale_price_min is not None:
+        range_filters["sale_price__gte"] = sale_price_min
+    if sale_price_max is not None:
+        range_filters["sale_price__lte"] = sale_price_max
+
     # 汎用検索
     if search:
         # 検索は別メソッドで処理
@@ -56,6 +65,7 @@ def read_properties(
             search_columns=["property_name", "company_property_number"],
             skip=skip,
             limit=limit,
+            range_filters=range_filters if range_filters else None,
         )
     else:
         results = crud.get_list(
@@ -63,6 +73,7 @@ def read_properties(
             skip=skip,
             limit=limit,
             filters=filters if filters else None,
+            range_filters=range_filters if range_filters else None,
             sort_by=sort_by or "id",
             sort_order=sort_order or "desc",
         )
