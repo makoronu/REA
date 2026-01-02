@@ -32,6 +32,7 @@
 
 ### 3. テスト（中プロンプト）
 ```
+→ 3_test/local_test.md   ← サーバー起動・基本確認
 → 3_test/selenium.md     ← 問題あれば即停止
 → 3_test/doc_update.md
 ```
