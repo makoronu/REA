@@ -186,7 +186,7 @@ class GenericCRUD:
             location_dict = dict(location._mapping)
             # 住所関連カラムはproperty_locationsの値で上書き
             address_columns = ['postal_code', 'prefecture', 'city', 'address',
-                               'address_detail', 'latitude', 'longitude', 'geom']
+                               'address_detail', 'latitude', 'longitude']
             for key in address_columns:
                 if key in location_dict and location_dict[key] is not None:
                     result[key] = location_dict[key]
@@ -358,7 +358,7 @@ class GenericCRUD:
         """
         # 住所関連カラム（property_locationsに保存）
         address_columns = {'postal_code', 'prefecture', 'city', 'address',
-                          'address_detail', 'latitude', 'longitude', 'geom'}
+                          'address_detail', 'latitude', 'longitude'}
 
         # 各テーブルのカラムを取得
         table_columns: Dict[str, Set[str]] = {}

@@ -10,6 +10,10 @@ from typing import Any, Dict, List, Optional
 
 from app.core.database import get_db
 from app.crud.generic import GenericCRUD
+from app.services.publication_validator import (
+    validate_for_publication,
+    format_validation_error,
+)
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -156,13 +160,31 @@ def update_property(
     """
     物件更新（全テーブル対応）
     メタデータ駆動: データを適切なテーブルに振り分け
+
+    公開時バリデーション:
+    publication_statusが「公開」「会員公開」に変更される場合、
+    required_for_publicationで設定された必須項目をチェック
     """
     crud = GenericCRUD(db)
 
-    # 存在確認
-    existing = crud.get("properties", property_id)
-    if existing is None:
+    # 存在確認 & 現在データ取得（全テーブル）
+    existing_full = crud.get_full(property_id)
+    if existing_full is None:
         raise HTTPException(status_code=404, detail="Property not found")
+
+    # 公開時バリデーション
+    new_publication_status = property_data.get("publication_status")
+    if new_publication_status:
+        # 現在データと更新データをマージ
+        merged_data = {**existing_full, **property_data}
+        current_status = existing_full.get("publication_status")
+
+        is_valid, missing_fields = validate_for_publication(
+            db, merged_data, new_publication_status, current_status
+        )
+        if not is_valid:
+            error_msg = format_validation_error(missing_fields, new_publication_status)
+            raise HTTPException(status_code=400, detail=error_msg)
 
     try:
         result = crud.update_full(property_id, property_data)
