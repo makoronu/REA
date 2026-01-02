@@ -7,7 +7,10 @@ ZOHO CRM 連携エンドポイント
 - 共通DB操作を関数化
 """
 import json
+import logging
 from typing import List, Optional
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Query
 from fastapi.responses import HTMLResponse
@@ -359,8 +362,8 @@ async def import_properties(request: ZohoImportRequest):
                 conn.rollback()
                 try:
                     _update_staging_status(cur, conn, zoho_id, 'failed', str(e))
-                except:
-                    pass
+                except Exception as status_err:
+                    logger.warning(f"Failed to update staging status: {status_err}")
                 errors.append({"zoho_id": zoho_id, "message": str(e)})
                 failed_count += 1
 
@@ -439,32 +442,46 @@ class ZohoSyncResult(BaseModel):
     errors: List[dict]
 
 
+def _get_table_columns(cur, table_name: str) -> list:
+    """テーブルのカラム一覧を取得"""
+    cur.execute("""
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = %s
+        ORDER BY ordinal_position
+    """, (table_name,))
+    return [row[0] for row in cur.fetchall()]
+
+
 def _get_property_full_data(cur, property_id: int) -> Optional[dict]:
     """物件の全データを取得（properties + land_info + building_info）"""
     # properties
-    cur.execute("SELECT * FROM properties WHERE id = %s", (property_id,))
+    prop_columns = _get_table_columns(cur, "properties")
+    prop_columns_str = ", ".join(prop_columns)
+    cur.execute(f"SELECT {prop_columns_str} FROM properties WHERE id = %s", (property_id,))
     prop_row = cur.fetchone()
     if not prop_row:
         return None
 
-    columns = [desc[0] for desc in cur.description]
-    result = {"properties": dict(zip(columns, prop_row))}
+    result = {"properties": dict(zip(prop_columns, prop_row))}
 
     # land_info
-    cur.execute("SELECT * FROM land_info WHERE property_id = %s", (property_id,))
+    land_columns = _get_table_columns(cur, "land_info")
+    land_columns_str = ", ".join(land_columns)
+    cur.execute(f"SELECT {land_columns_str} FROM land_info WHERE property_id = %s", (property_id,))
     land_row = cur.fetchone()
     if land_row:
-        columns = [desc[0] for desc in cur.description]
-        result["land_info"] = dict(zip(columns, land_row))
+        result["land_info"] = dict(zip(land_columns, land_row))
     else:
         result["land_info"] = {}
 
     # building_info
-    cur.execute("SELECT * FROM building_info WHERE property_id = %s", (property_id,))
+    building_columns = _get_table_columns(cur, "building_info")
+    building_columns_str = ", ".join(building_columns)
+    cur.execute(f"SELECT {building_columns_str} FROM building_info WHERE property_id = %s", (property_id,))
     building_row = cur.fetchone()
     if building_row:
-        columns = [desc[0] for desc in cur.description]
-        result["building_info"] = dict(zip(columns, building_row))
+        result["building_info"] = dict(zip(building_columns, building_row))
     else:
         result["building_info"] = {}
 

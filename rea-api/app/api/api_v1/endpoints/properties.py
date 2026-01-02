@@ -189,8 +189,8 @@ def update_property(
 @router.delete("/{property_id}")
 def delete_property(property_id: int, db: Session = Depends(get_db)):
     """
-    物件削除
-    関連テーブルも削除
+    物件論理削除
+    関連テーブルも論理削除
     """
     crud = GenericCRUD(db)
 
@@ -199,14 +199,14 @@ def delete_property(property_id: int, db: Session = Depends(get_db)):
     if existing is None:
         raise HTTPException(status_code=404, detail="Property not found")
 
-    # 関連テーブルを先に削除（アプリ層で明示的に削除制御）
+    # 関連テーブルを先に論理削除（deleted_atを設定）
     for table_name in ["building_info", "land_info", "property_images", "property_locations", "property_registries"]:
         db.execute(
-            text(f"DELETE FROM {table_name} WHERE property_id = :pid"),
+            text(f"UPDATE {table_name} SET deleted_at = NOW() WHERE property_id = :pid AND deleted_at IS NULL"),
             {"pid": property_id}
         )
 
-    # properties を削除
+    # properties を論理削除
     success = crud.delete("properties", property_id)
 
     if not success:

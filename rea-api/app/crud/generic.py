@@ -152,8 +152,10 @@ class GenericCRUD:
         """
         self._validate_table(table_name)
 
+        columns = self._get_db_columns(table_name)
+        columns_str = ", ".join(columns)
         result = self.db.execute(
-            text(f"SELECT * FROM {table_name} WHERE id = :id AND deleted_at IS NULL"),
+            text(f"SELECT {columns_str} FROM {table_name} WHERE id = :id AND deleted_at IS NULL"),
             {"id": id}
         ).fetchone()
 
@@ -173,8 +175,10 @@ class GenericCRUD:
             return None
 
         # property_locations を最優先で取得（住所の正規化されたソース）
+        loc_columns = self._get_db_columns("property_locations")
+        loc_columns_str = ", ".join(loc_columns)
         location = self.db.execute(
-            text("SELECT * FROM property_locations WHERE property_id = :pid AND deleted_at IS NULL"),
+            text(f"SELECT {loc_columns_str} FROM property_locations WHERE property_id = :pid AND deleted_at IS NULL"),
             {"pid": property_id}
         ).fetchone()
 
@@ -191,8 +195,10 @@ class GenericCRUD:
         related_tables = ["building_info", "land_info"]
 
         for table_name in related_tables:
+            rel_columns = self._get_db_columns(table_name)
+            rel_columns_str = ", ".join(rel_columns)
             related = self.db.execute(
-                text(f"SELECT * FROM {table_name} WHERE property_id = :pid AND deleted_at IS NULL"),
+                text(f"SELECT {rel_columns_str} FROM {table_name} WHERE property_id = :pid AND deleted_at IS NULL"),
                 {"pid": property_id}
             ).fetchone()
 
@@ -241,7 +247,8 @@ class GenericCRUD:
             sort_order = "desc"
 
         # クエリ構築
-        query = f"SELECT * FROM {table_name}"
+        columns_str = ", ".join(valid_columns)
+        query = f"SELECT {columns_str} FROM {table_name}"
         params: Dict[str, Any] = {}
         conditions = ["deleted_at IS NULL"]  # 論理削除されていないレコードのみ
 
@@ -462,15 +469,20 @@ class GenericCRUD:
             processed_data
         )
 
-    def delete(self, table_name: str, id: int) -> bool:
+    def delete(self, table_name: str, id: int, deleted_by: str = None) -> bool:
         """
-        レコード削除
+        レコード論理削除（deleted_atを設定）
         """
         self._validate_table(table_name)
 
         result = self.db.execute(
-            text(f"DELETE FROM {table_name} WHERE id = :id RETURNING id"),
-            {"id": id}
+            text(f"""
+                UPDATE {table_name}
+                SET deleted_at = NOW(), updated_by = :deleted_by
+                WHERE id = :id AND deleted_at IS NULL
+                RETURNING id
+            """),
+            {"id": id, "deleted_by": deleted_by}
         ).fetchone()
 
         self.db.commit()
@@ -541,8 +553,9 @@ class GenericCRUD:
         if range_conditions:
             where_clause += f" AND {' AND '.join(range_conditions)}"
 
+        columns_str = ", ".join(valid_columns)
         query = f"""
-            SELECT * FROM {table_name}
+            SELECT {columns_str} FROM {table_name}
             WHERE {where_clause}
             ORDER BY id DESC
             OFFSET :skip LIMIT :limit

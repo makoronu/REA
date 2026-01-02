@@ -8,6 +8,7 @@ import logging
 from typing import Optional
 import requests
 from .tile_utils import lat_lng_to_tile, find_containing_feature
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +121,7 @@ API_DEFINITIONS = {
 class ReinfLibClient:
     """不動産情報ライブラリAPIクライアント"""
 
-    BASE_URL = "https://www.reinfolib.mlit.go.jp/ex-api/external"
+    BASE_URL = settings.REINFOLIB_BASE_URL
 
     def __init__(self, api_key: Optional[str] = None):
         """

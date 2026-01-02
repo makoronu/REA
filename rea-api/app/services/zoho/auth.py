@@ -23,13 +23,15 @@ from dotenv import load_dotenv
 env_path = Path(__file__).resolve().parents[5] / ".env"  # REA/.env
 load_dotenv(env_path)
 
+from app.core.config import settings
+
 
 class ZohoAuth:
     """ZOHO OAuth 2.0 認証クラス"""
 
-    # 日本リージョンのエンドポイント
-    AUTH_URL = "https://accounts.zoho.jp/oauth/v2/auth"
-    TOKEN_URL = "https://accounts.zoho.jp/oauth/v2/token"
+    # 日本リージョンのエンドポイント（設定ファイルから取得）
+    AUTH_URL = settings.ZOHO_AUTH_URL
+    TOKEN_URL = settings.ZOHO_TOKEN_URL
 
     def __init__(self):
         self.client_id = os.getenv("ZOHO_CLIENT_ID")
@@ -126,7 +128,7 @@ class ZohoAuth:
 
     def get_api_domain(self) -> str:
         """APIドメインを取得（デフォルトは日本リージョン）"""
-        return self._api_domain or "https://www.zohoapis.jp"
+        return self._api_domain or settings.ZOHO_API_DOMAIN
 
     def is_configured(self) -> bool:
         """認証情報が設定されているかチェック"""

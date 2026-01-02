@@ -436,10 +436,10 @@ async def update_registry(registry_id: int, data: RegistryUpdate):
 
 @router.delete("/registries/{registry_id}")
 async def delete_registry(registry_id: int):
-    """登記情報を削除"""
+    """登記情報を論理削除"""
     with READatabase.cursor(commit=True) as (cur, conn):
         cur.execute(
-            "DELETE FROM property_registries WHERE id = %s RETURNING id",
+            "UPDATE property_registries SET deleted_at = NOW() WHERE id = %s AND deleted_at IS NULL RETURNING id",
             (registry_id,)
         )
         if not cur.fetchone():
@@ -545,9 +545,9 @@ async def update_kou_entry(entry_id: int, data: KouEntryCreate):
 
 @router.delete("/registries/kou/{entry_id}")
 async def delete_kou_entry(entry_id: int):
-    """甲区エントリ削除"""
+    """甲区エントリ論理削除"""
     with READatabase.cursor(commit=True) as (cur, conn):
-        cur.execute("DELETE FROM registry_kou_entries WHERE id = %s RETURNING id", (entry_id,))
+        cur.execute("UPDATE registry_kou_entries SET deleted_at = NOW() WHERE id = %s AND deleted_at IS NULL RETURNING id", (entry_id,))
         if not cur.fetchone():
             raise HTTPException(status_code=404, detail="甲区エントリが見つかりません")
         return {"status": "deleted", "id": entry_id}
@@ -653,9 +653,9 @@ async def update_otsu_entry(entry_id: int, data: OtsuEntryCreate):
 
 @router.delete("/registries/otsu/{entry_id}")
 async def delete_otsu_entry(entry_id: int):
-    """乙区エントリ削除"""
+    """乙区エントリ論理削除"""
     with READatabase.cursor(commit=True) as (cur, conn):
-        cur.execute("DELETE FROM registry_otsu_entries WHERE id = %s RETURNING id", (entry_id,))
+        cur.execute("UPDATE registry_otsu_entries SET deleted_at = NOW() WHERE id = %s AND deleted_at IS NULL RETURNING id", (entry_id,))
         if not cur.fetchone():
             raise HTTPException(status_code=404, detail="乙区エントリが見つかりません")
         return {"status": "deleted", "id": entry_id}

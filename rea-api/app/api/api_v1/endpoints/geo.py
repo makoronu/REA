@@ -8,6 +8,7 @@
 - 周辺施設検索
 """
 
+import logging
 from fastapi import APIRouter, Query, HTTPException
 from pydantic import BaseModel
 from typing import Optional
@@ -16,6 +17,10 @@ import urllib.parse
 import json
 import sys
 from pathlib import Path
+
+from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 sys.path.insert(0, str(Path(__file__).parents[5]))
 from shared.database import READatabase
@@ -219,11 +224,10 @@ async def get_nearest_stations(
 def geocode_gsi(address: str) -> Optional[dict]:
     """
     国土地理院API（無料・制限なし）
-    https://msearch.gsi.go.jp/address-search/AddressSearch?q=住所
     """
     try:
         encoded_address = urllib.parse.quote(address)
-        url = "https://msearch.gsi.go.jp/address-search/AddressSearch?q={}".format(encoded_address)
+        url = f"{settings.GSI_GEOCODE_URL}?q={encoded_address}"
 
         req = urllib.request.Request(url, headers={'User-Agent': 'REA/1.0'})
         with urllib.request.urlopen(req, timeout=10) as response:
@@ -241,7 +245,7 @@ def geocode_gsi(address: str) -> Optional[dict]:
                     'source': 'gsi'
                 }
     except Exception as e:
-        print("GSI Geocoding error: {}".format(e))
+        logger.error(f"GSI Geocoding error: {e}")
 
     return None
 
@@ -253,7 +257,7 @@ def geocode_nominatim(address: str) -> Optional[dict]:
     """
     try:
         encoded_address = urllib.parse.quote(address)
-        url = "https://nominatim.openstreetmap.org/search?q={}&format=json&limit=1&countrycodes=jp".format(encoded_address)
+        url = f"{settings.NOMINATIM_GEOCODE_URL}?q={encoded_address}&format=json&limit=1&countrycodes=jp"
 
         req = urllib.request.Request(url, headers={'User-Agent': 'REA/1.0'})
         with urllib.request.urlopen(req, timeout=10) as response:
@@ -268,7 +272,7 @@ def geocode_nominatim(address: str) -> Optional[dict]:
                 'source': 'nominatim'
             }
     except Exception as e:
-        print("Nominatim Geocoding error: {}".format(e))
+        logger.error(f"Nominatim Geocoding error: {e}")
 
     return None
 

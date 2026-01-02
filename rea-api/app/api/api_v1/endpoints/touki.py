@@ -6,11 +6,14 @@
 - カスタム例外使用
 """
 import json
+import logging
 import os
 import re
 import sys
 from datetime import date, datetime
 from typing import List, Optional
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, File, Query, UploadFile
 from pydantic import BaseModel
@@ -298,8 +301,8 @@ def save_to_touki_records(cur, import_id: int, parsed_data: dict) -> List[int]:
                     construction_date = datetime.strptime(
                         building['construction_date'], '%Y-%m-%d'
                     ).date()
-                except:
-                    pass
+                except ValueError as e:
+                    logger.warning(f"Invalid construction_date format: {building.get('construction_date')} - {e}")
 
             cur.execute("""
                 INSERT INTO touki_records (
@@ -881,9 +884,9 @@ async def apply_touki_to_property(request: ApplyToukiRequest):
                     VALUES (%s, %s, %s, %s, %s)
                 """, (request.property_id, structure_enum, br['floor_area_m2'], br['construction_date'], floors_above))
 
-        # 登記レコード削除
+        # 登記レコード論理削除（処理済み）
         for rid in request.touki_record_ids:
-            cur.execute("DELETE FROM touki_records WHERE id = %s", (rid,))
+            cur.execute("UPDATE touki_records SET deleted_at = NOW() WHERE id = %s AND deleted_at IS NULL", (rid,))
 
         return {
             "status": "success",
@@ -916,9 +919,9 @@ async def link_touki_to_property(request: LinkToukiRequest):
 
 @router.delete("/records/{record_id}")
 async def delete_touki_record(record_id: int):
-    """登記レコードを削除"""
+    """登記レコードを論理削除"""
     with READatabase.cursor(commit=True) as (cur, conn):
-        cur.execute("DELETE FROM touki_records WHERE id = %s RETURNING id", (record_id,))
+        cur.execute("UPDATE touki_records SET deleted_at = NOW() WHERE id = %s AND deleted_at IS NULL RETURNING id", (record_id,))
         if not cur.fetchone():
             raise ResourceNotFound("登記レコード", record_id)
         return {"status": "deleted"}
@@ -926,18 +929,16 @@ async def delete_touki_record(record_id: int):
 
 @router.delete("/{import_id}")
 async def delete_touki_import(import_id: int):
-    """インポートを削除"""
+    """インポートを論理削除（ファイルは保持）"""
     with READatabase.cursor(commit=True) as (cur, conn):
-        cur.execute("SELECT file_path FROM touki_imports WHERE id = %s", (import_id,))
+        cur.execute("SELECT id FROM touki_imports WHERE id = %s AND deleted_at IS NULL", (import_id,))
         row = cur.fetchone()
         if not row:
             raise ResourceNotFound("登記インポート", import_id)
 
-        file_path = row[0]
+        cur.execute("UPDATE touki_imports SET deleted_at = NOW() WHERE id = %s", (import_id,))
 
-        cur.execute("DELETE FROM touki_imports WHERE id = %s", (import_id,))
-
-        if file_path and os.path.exists(file_path):
-            os.remove(file_path)
+        # ファイルは論理削除後も保持（復元可能性のため）
+        # 物理削除が必要な場合は別途クリーンアップジョブで対応
 
         return {"status": "deleted"}
