@@ -19,10 +19,13 @@ interface FieldVisibility {
   column_name: string;
   japanese_label: string;
   visible_for: string[] | null;
+  required_for_publication: string[] | null;
   group_name: string;
   group_order: number;
   display_order: number;
 }
+
+type SettingType = 'visibility' | 'required';
 
 // テーブル表示名（将来的にはAPIから取得）
 const TABLE_LABELS: Record<string, string> = {
@@ -40,6 +43,7 @@ const FieldVisibilityPage: React.FC = () => {
   const [fields, setFields] = useState<FieldVisibility[]>([]);
   const [selectedTable, setSelectedTable] = useState<string>('properties');
   const [selectedFieldGroup, setSelectedFieldGroup] = useState<string | null>(null);
+  const [settingType, setSettingType] = useState<SettingType>('visibility');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -117,12 +121,15 @@ const FieldVisibilityPage: React.FC = () => {
   // 表示するフィールド
   const displayFields = selectedFieldGroup ? (groupedFields[selectedFieldGroup]?.fields || []) : [];
 
-  // フィールドのvisible_for変更
+  // フィールドの設定変更（settingTypeに応じて切替）
   const handleToggle = (field: FieldVisibility, typeId: string) => {
     const key = `${field.table_name}.${field.column_name}`;
+    const fieldValue = settingType === 'required'
+      ? field.required_for_publication
+      : field.visible_for;
     const currentValue: string[] | null | undefined = pendingChanges.has(key)
       ? pendingChanges.get(key)
-      : field.visible_for;
+      : fieldValue;
 
     let newValue: string[] | null;
     if (currentValue === null || currentValue === undefined) {
@@ -148,7 +155,10 @@ const FieldVisibilityPage: React.FC = () => {
       const next = new Map(prev);
       displayFields.forEach(field => {
         const key = `${field.table_name}.${field.column_name}`;
-        const currentValue: string[] | null | undefined = next.has(key) ? next.get(key) : field.visible_for;
+        const fieldValue = settingType === 'required'
+          ? field.required_for_publication
+          : field.visible_for;
+        const currentValue: string[] | null | undefined = next.has(key) ? next.get(key) : fieldValue;
 
         let newValue: string[] | null;
         if (select) {
@@ -195,19 +205,27 @@ const FieldVisibilityPage: React.FC = () => {
 
     setIsSaving(true);
     try {
-      const updates = Array.from(pendingChanges.entries()).map(([key, visible_for]) => {
+      const updates = Array.from(pendingChanges.entries()).map(([key, value]) => {
         const [table_name, column_name] = key.split('.');
-        return { table_name, column_name, visible_for };
+        // settingTypeに応じて適切なフィールドに値を設定
+        if (settingType === 'required') {
+          return { table_name, column_name, required_for_publication: value };
+        }
+        return { table_name, column_name, visible_for: value };
       });
 
-      const res = await fetch(`${API_URL}/api/v1/admin/field-visibility/bulk`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
-      });
+      const res = await fetch(
+        `${API_URL}/api/v1/admin/field-visibility/bulk?field_type=${settingType}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updates),
+        }
+      );
 
       if (res.ok) {
-        setMessage({ type: 'success', text: `${updates.length}件の設定を保存しました` });
+        const label = settingType === 'required' ? '必須設定' : '表示設定';
+        setMessage({ type: 'success', text: `${updates.length}件の${label}を保存しました` });
         setPendingChanges(new Map());
         const fvRes = await fetch(`${API_URL}/api/v1/admin/field-visibility?table_name=${selectedTable}`);
         if (fvRes.ok) {
@@ -225,10 +243,15 @@ const FieldVisibilityPage: React.FC = () => {
     }
   };
 
-  // 現在の値を取得（pending優先）
+  // 現在の値を取得（pending優先、settingTypeに応じて切替）
   const getCurrentValue = (field: FieldVisibility): string[] | null => {
     const key = `${field.table_name}.${field.column_name}`;
-    return pendingChanges.has(key) ? pendingChanges.get(key)! : field.visible_for;
+    if (pendingChanges.has(key)) {
+      return pendingChanges.get(key)!;
+    }
+    return settingType === 'required'
+      ? field.required_for_publication
+      : field.visible_for;
   };
 
   // チェック状態判定
@@ -249,11 +272,64 @@ const FieldVisibilityPage: React.FC = () => {
       {/* ヘッダー */}
       <div style={{ marginBottom: '24px' }}>
         <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#1A1A1A', margin: 0 }}>
-          フィールド表示設定
+          フィールド設定
         </h1>
         <p style={{ fontSize: '14px', color: '#6B7280', marginTop: '8px' }}>
-          物件種別ごとに表示するフィールドを設定します
+          {settingType === 'required'
+            ? '公開時に必須となるフィールドを物件種別ごとに設定します'
+            : '物件種別ごとに表示するフィールドを設定します'}
         </p>
+      </div>
+
+      {/* 設定タイプ切替タブ */}
+      <div style={{
+        display: 'flex',
+        gap: '0',
+        marginBottom: '16px',
+        borderBottom: '2px solid #E5E7EB',
+      }}>
+        <button
+          onClick={() => {
+            if (settingType !== 'visibility') {
+              setPendingChanges(new Map());
+              setSettingType('visibility');
+            }
+          }}
+          style={{
+            padding: '12px 24px',
+            border: 'none',
+            backgroundColor: 'transparent',
+            color: settingType === 'visibility' ? '#3B82F6' : '#6B7280',
+            fontWeight: settingType === 'visibility' ? 600 : 400,
+            fontSize: '14px',
+            cursor: 'pointer',
+            borderBottom: settingType === 'visibility' ? '2px solid #3B82F6' : '2px solid transparent',
+            marginBottom: '-2px',
+          }}
+        >
+          表示設定
+        </button>
+        <button
+          onClick={() => {
+            if (settingType !== 'required') {
+              setPendingChanges(new Map());
+              setSettingType('required');
+            }
+          }}
+          style={{
+            padding: '12px 24px',
+            border: 'none',
+            backgroundColor: 'transparent',
+            color: settingType === 'required' ? '#3B82F6' : '#6B7280',
+            fontWeight: settingType === 'required' ? 600 : 400,
+            fontSize: '14px',
+            cursor: 'pointer',
+            borderBottom: settingType === 'required' ? '2px solid #3B82F6' : '2px solid transparent',
+            marginBottom: '-2px',
+          }}
+        >
+          公開時必須設定
+        </button>
       </div>
 
       {/* メッセージ */}

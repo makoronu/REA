@@ -20,10 +20,11 @@ router = APIRouter()
 
 
 class FieldVisibilityUpdate(BaseModel):
-    """フィールド表示設定更新用"""
+    """フィールド設定更新用（表示/必須両対応）"""
     table_name: str
     column_name: str
     visible_for: Optional[List[str]] = None
+    required_for_publication: Optional[List[str]] = None
 
 
 class PropertyTypeInfo(BaseModel):
@@ -37,19 +38,31 @@ class PropertyTypeInfo(BaseModel):
 # 共通関数
 # ========================================
 
-def _execute_visibility_update(db: Session, update: FieldVisibilityUpdate) -> None:
-    """単一のフィールド表示設定を更新（共通処理）
+def _execute_field_settings_update(
+    db: Session, update: FieldVisibilityUpdate, field_type: str = "visibility"
+) -> None:
+    """単一のフィールド設定を更新（共通処理）
 
-    visible_for の意味:
-    - None: 未設定（全種別表示）
-    - []: 空配列（どの種別にも表示しない）
-    - ['mansion', ...]: 指定種別のみ表示
+    field_type:
+    - "visibility": visible_for を更新（表示設定）
+    - "required": required_for_publication を更新（必須設定）
+
+    値の意味（両方共通）:
+    - None: 未設定（全種別適用 or 任意）
+    - []: 空配列（どの種別にも適用しない）
+    - ['mansion', ...]: 指定種別のみ適用
     """
-    if update.visible_for is None:
-        # None → NULL（未設定状態、全種別表示）
-        query = text("""
+    if field_type == "required":
+        column_name_sql = "required_for_publication"
+        value = update.required_for_publication
+    else:
+        column_name_sql = "visible_for"
+        value = update.visible_for
+
+    if value is None:
+        query = text(f"""
             UPDATE column_labels
-            SET visible_for = NULL
+            SET {column_name_sql} = NULL
             WHERE table_name = :table_name AND column_name = :column_name
         """)
         db.execute(query, {
@@ -57,16 +70,15 @@ def _execute_visibility_update(db: Session, update: FieldVisibilityUpdate) -> No
             "column_name": update.column_name,
         })
     else:
-        # 空配列または値あり → そのまま保存
-        query = text("""
+        query = text(f"""
             UPDATE column_labels
-            SET visible_for = :visible_for
+            SET {column_name_sql} = :value
             WHERE table_name = :table_name AND column_name = :column_name
         """)
         db.execute(query, {
             "table_name": update.table_name,
             "column_name": update.column_name,
-            "visible_for": update.visible_for,
+            "value": value,
         })
 
 
@@ -97,11 +109,12 @@ def get_field_visibility(
     table_name: Optional[str] = None,
     db: Session = Depends(dependencies.get_db)
 ) -> List[Dict[str, Any]]:
-    """フィールド表示設定一覧を取得"""
+    """フィールド設定一覧を取得（表示設定・必須設定両方含む）"""
     try:
         if table_name:
             query = text("""
-                SELECT table_name, column_name, japanese_label, visible_for, group_name,
+                SELECT table_name, column_name, japanese_label, visible_for,
+                       required_for_publication, group_name,
                        COALESCE(group_order, 999) as group_order,
                        COALESCE(display_order, 999) as display_order
                 FROM column_labels
@@ -111,7 +124,8 @@ def get_field_visibility(
             result = db.execute(query, {"table_name": table_name})
         else:
             query = text("""
-                SELECT table_name, column_name, japanese_label, visible_for, group_name,
+                SELECT table_name, column_name, japanese_label, visible_for,
+                       required_for_publication, group_name,
                        COALESCE(group_order, 999) as group_order,
                        COALESCE(display_order, 999) as display_order
                 FROM column_labels
@@ -126,6 +140,7 @@ def get_field_visibility(
                 "column_name": row.column_name,
                 "japanese_label": row.japanese_label,
                 "visible_for": row.visible_for,
+                "required_for_publication": row.required_for_publication,
                 "group_name": row.group_name,
                 "group_order": row.group_order,
                 "display_order": row.display_order,
@@ -139,17 +154,27 @@ def get_field_visibility(
 @router.put("/field-visibility")
 def update_field_visibility(
     update: FieldVisibilityUpdate,
+    field_type: str = "visibility",
     db: Session = Depends(dependencies.get_db)
 ) -> Dict[str, Any]:
-    """フィールド表示設定を更新"""
+    """フィールド設定を更新
+
+    Args:
+        field_type: "visibility"（表示設定）または "required"（必須設定）
+    """
     try:
-        _execute_visibility_update(db, update)
+        _execute_field_settings_update(db, update, field_type)
         db.commit()
 
+        result_value = (
+            update.required_for_publication if field_type == "required"
+            else update.visible_for
+        )
         return {
             "success": True,
             "message": f"Updated {update.table_name}.{update.column_name}",
-            "visible_for": update.visible_for,
+            "field_type": field_type,
+            "value": result_value,
         }
     except Exception as e:
         db.rollback()
@@ -159,18 +184,24 @@ def update_field_visibility(
 @router.put("/field-visibility/bulk")
 def update_field_visibility_bulk(
     updates: List[FieldVisibilityUpdate],
+    field_type: str = "visibility",
     db: Session = Depends(dependencies.get_db)
 ) -> Dict[str, Any]:
-    """フィールド表示設定を一括更新"""
+    """フィールド設定を一括更新
+
+    Args:
+        field_type: "visibility"（表示設定）または "required"（必須設定）
+    """
     try:
         for update in updates:
-            _execute_visibility_update(db, update)
+            _execute_field_settings_update(db, update, field_type)
 
         db.commit()
 
         return {
             "success": True,
             "message": f"Updated {len(updates)} fields",
+            "field_type": field_type,
             "updated_count": len(updates),
         }
     except Exception as e:
