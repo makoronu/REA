@@ -153,7 +153,7 @@ class GenericCRUD:
         self._validate_table(table_name)
 
         result = self.db.execute(
-            text(f"SELECT * FROM {table_name} WHERE id = :id"),
+            text(f"SELECT * FROM {table_name} WHERE id = :id AND deleted_at IS NULL"),
             {"id": id}
         ).fetchone()
 
@@ -174,7 +174,7 @@ class GenericCRUD:
 
         # property_locations を最優先で取得（住所の正規化されたソース）
         location = self.db.execute(
-            text("SELECT * FROM property_locations WHERE property_id = :pid"),
+            text("SELECT * FROM property_locations WHERE property_id = :pid AND deleted_at IS NULL"),
             {"pid": property_id}
         ).fetchone()
 
@@ -192,7 +192,7 @@ class GenericCRUD:
 
         for table_name in related_tables:
             related = self.db.execute(
-                text(f"SELECT * FROM {table_name} WHERE property_id = :pid"),
+                text(f"SELECT * FROM {table_name} WHERE property_id = :pid AND deleted_at IS NULL"),
                 {"pid": property_id}
             ).fetchone()
 
@@ -243,7 +243,7 @@ class GenericCRUD:
         # クエリ構築
         query = f"SELECT * FROM {table_name}"
         params: Dict[str, Any] = {}
-        conditions = []
+        conditions = ["deleted_at IS NULL"]  # 論理削除されていないレコードのみ
 
         # フィルタリング
         if filters:
@@ -536,8 +536,8 @@ class GenericCRUD:
                             range_conditions.append(f"{col_name} <= :{param_name}")
                             params[param_name] = value
 
-        # クエリ構築
-        where_clause = f"({' OR '.join(search_conditions)})"
+        # クエリ構築（論理削除されていないレコードのみ）
+        where_clause = f"deleted_at IS NULL AND ({' OR '.join(search_conditions)})"
         if range_conditions:
             where_clause += f" AND {' AND '.join(range_conditions)}"
 
