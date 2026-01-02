@@ -16,6 +16,12 @@ deploy.shを実行
 5. サービス再起動
 6. ヘルスチェック
 
+## マイグレーションがある場合
+deploy.sh実行前に手動でマイグレーション実行:
+```bash
+ssh rea-conoha "sudo -u postgres psql -d real_estate_db -f /opt/REA/scripts/migrations/XXXX.sql"
+```
+
 ## 完了条件
 - [ ] deploy.sh成功
 

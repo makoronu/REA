@@ -11,7 +11,7 @@
 
 ## コマンド
 ```bash
-ssh rea-conoha "cat /opt/rea/rea-api/.env | head -10"
+ssh rea-conoha "cat /opt/REA/.env | head -10"
 ```
 
 ## 完了条件
