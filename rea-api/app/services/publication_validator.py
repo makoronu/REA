@@ -115,7 +115,7 @@ def get_conditional_exclusions(db: Session) -> Dict[str, Dict[str, Any]]:
 
     Returns:
         {
-            "building_coverage_ratio": {"depends_on": "use_district", "exclude_when": ["none", "指定なし"]},
+            "building_coverage_ratio": {"depends_on": "use_district", "exclude_when_option_value": ["無指定"]},
             "setback": {"depends_on": "road_info", "exclude_when_flag": "no_road_access"},
             ...
         }
@@ -138,12 +138,67 @@ def get_conditional_exclusions(db: Session) -> Dict[str, Dict[str, Any]]:
 
     # フォールバック
     return {
-        "building_coverage_ratio": {"depends_on": "use_district", "exclude_when": ["none", "指定なし"]},
-        "floor_area_ratio": {"depends_on": "use_district", "exclude_when": ["none", "指定なし"]},
+        "building_coverage_ratio": {"depends_on": "use_district", "exclude_when_option_value": ["無指定"]},
+        "floor_area_ratio": {"depends_on": "use_district", "exclude_when_option_value": ["無指定"]},
         "room_floor": {"depends_on": "property_type", "exclude_when": ["detached"]},
         "total_units": {"depends_on": "property_type", "exclude_when": ["detached"]},
         "setback": {"depends_on": "road_info", "exclude_when_flag": "no_road_access"},
     }
+
+
+def get_option_value_by_id(db: Session, option_id: int, category_code: str) -> Optional[str]:
+    """
+    マスタオプションIDから表示名を取得
+
+    Args:
+        db: DBセッション
+        option_id: マスタオプションのoption_code（整数）
+        category_code: カテゴリコード（column_labels.master_category_codeから取得）
+
+    Returns:
+        option_value（表示名）またはNone
+    """
+    try:
+        query = text("""
+            SELECT mo.option_value
+            FROM master_options mo
+            JOIN master_categories mc ON mo.category_id = mc.id
+            WHERE mc.category_code = :category_code
+              AND mo.option_code = :option_code
+              AND mo.is_active = TRUE
+        """)
+        result = db.execute(query, {
+            "category_code": category_code,
+            "option_code": str(option_id)
+        }).fetchone()
+        if result:
+            return result.option_value
+    except Exception as e:
+        logger.warning(f"Failed to get option_value for {category_code}/{option_id}: {e}")
+    return None
+
+
+def get_master_category_code(db: Session, column_name: str) -> Optional[str]:
+    """
+    カラム名からマスタカテゴリコードを取得
+
+    Returns:
+        master_category_code またはNone
+    """
+    try:
+        query = text("""
+            SELECT master_category_code
+            FROM column_labels
+            WHERE column_name = :column_name
+              AND master_category_code IS NOT NULL
+            LIMIT 1
+        """)
+        result = db.execute(query, {"column_name": column_name}).fetchone()
+        if result:
+            return result.master_category_code
+    except Exception as e:
+        logger.warning(f"Failed to get master_category_code for {column_name}: {e}")
+    return None
 
 
 def get_valid_none_text(db: Session, column_name: str) -> List[str]:
@@ -251,6 +306,7 @@ def is_valid_value(
 
 
 def should_exclude_field(
+    db: Session,
     column_name: str,
     property_data: Dict[str, Any],
     conditional_exclusions: Dict[str, Dict[str, Any]],
@@ -260,6 +316,7 @@ def should_exclude_field(
     条件付き除外の判定
 
     Args:
+        db: DBセッション
         column_name: 判定対象カラム名
         property_data: 物件データ
         conditional_exclusions: 条件付き除外ルール
@@ -283,7 +340,19 @@ def should_exclude_field(
             return True
         return False
 
-    # 値ベースの判定（exclude_when）
+    # マスタオプション表示名での判定（exclude_when_option_value）
+    if "exclude_when_option_value" in rule:
+        exclude_values = rule.get("exclude_when_option_value", [])
+        if isinstance(depends_value, int):
+            # depends_onのmaster_category_codeを取得
+            category_code = get_master_category_code(db, depends_on)
+            if category_code:
+                option_value = get_option_value_by_id(db, depends_value, category_code)
+                if option_value and option_value in exclude_values:
+                    return True
+        return False
+
+    # 値ベースの判定（exclude_when）- 後方互換性のため残す
     exclude_when = rule.get("exclude_when", [])
     if depends_value in exclude_when:
         return True
@@ -377,7 +446,7 @@ def validate_for_publication(
         column_name = field["column_name"]
 
         # 条件付き除外チェック
-        if should_exclude_field(column_name, property_data, conditional_exclusions, special_flag_keys):
+        if should_exclude_field(db, column_name, property_data, conditional_exclusions, special_flag_keys):
             continue
 
         value = property_data.get(column_name)

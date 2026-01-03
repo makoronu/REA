@@ -89,12 +89,12 @@ WHERE column_name IN ('management_fee', 'repair_reserve_fund')
   AND table_name = 'properties';
 
 -- 3-2: conditional_exclusion 設定
--- 用途地域「指定なし」→ 建ぺい率不要
-UPDATE column_labels SET conditional_exclusion = '{"depends_on": "use_district", "exclude_when": ["none", "指定なし"]}'
+-- 用途地域「無指定」→ 建ぺい率不要
+UPDATE column_labels SET conditional_exclusion = '{"depends_on": "use_district", "exclude_when_option_value": ["無指定"]}'
 WHERE column_name = 'building_coverage_ratio' AND table_name = 'land_info';
 
--- 用途地域「指定なし」→ 容積率不要
-UPDATE column_labels SET conditional_exclusion = '{"depends_on": "use_district", "exclude_when": ["none", "指定なし"]}'
+-- 用途地域「無指定」→ 容積率不要
+UPDATE column_labels SET conditional_exclusion = '{"depends_on": "use_district", "exclude_when_option_value": ["無指定"]}'
 WHERE column_name = 'floor_area_ratio' AND table_name = 'land_info';
 
 -- 戸建 → 所在階不要
