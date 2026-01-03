@@ -33,7 +33,7 @@ class UITestHelper:
     UIテスト用ヘルパークラス
 
     特徴:
-    - ヘッドレスではない（ユーザーが見える）
+    - ヘッドレスモード対応（バックグラウンド実行可能）
     - スクリーンショットを自動保存
     - 詳細なログ出力
     - テスト結果を構造化して返す
@@ -43,31 +43,37 @@ class UITestHelper:
     API_URL = "http://localhost:8005"
     SCREENSHOT_DIR = Path(__file__).parent.parent.parent / "test_screenshots"
 
-    def __init__(self, slow_mode: bool = True, slow_delay: float = 1.0):
+    def __init__(self, slow_mode: bool = True, slow_delay: float = 1.0, headless: bool = True):
         """
         Args:
-            slow_mode: Trueの場合、操作間に遅延を入れる（ユーザーが見やすい）
+            slow_mode: Trueの場合、操作間に遅延を入れる
             slow_delay: slow_mode時の遅延秒数
+            headless: Trueの場合、ヘッドレスモード（バックグラウンド実行）
         """
         self.driver: Optional[webdriver.Chrome] = None
         self.slow_mode = slow_mode
         self.slow_delay = slow_delay
+        self.headless = headless
         self.results: List[TestResult] = []
         self.SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
 
     def start(self) -> "UITestHelper":
         """ブラウザを起動"""
         options = Options()
-        # ヘッドレスではない（ユーザーに見せる）
+        # ヘッドレスモード（バックグラウンド実行）
+        if self.headless:
+            options.add_argument("--headless=new")
         options.add_argument("--window-size=1400,900")
         options.add_argument("--window-position=100,100")
         # 安定性のための設定
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
 
         self.driver = webdriver.Chrome(options=options)
         self.driver.implicitly_wait(5)
-        print(f"[UITest] Chrome起動完了")
+        mode = "ヘッドレス" if self.headless else "GUI"
+        print(f"[UITest] Chrome起動完了（{mode}モード）")
         return self
 
     def stop(self):
