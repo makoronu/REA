@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { API_URL } from '../../config';
+import { STORAGE_KEYS } from '../../constants/storage';
 
 interface User {
   id: number;
@@ -32,7 +33,7 @@ export const UsersPage: React.FC = () => {
   const [isCreating, setIsCreating] = useState(false);
 
   const getAuthHeaders = () => {
-    const token = localStorage.getItem('rea_auth_token');
+    const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
     return {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`

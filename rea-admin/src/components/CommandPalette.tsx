@@ -5,6 +5,7 @@ import { propertyService } from '../services/propertyService';
 import { metadataService } from '../services/metadataService';
 import { Property } from '../types/property';
 import { parseJapanesePrice, formatPrice } from '../constants';
+import { STORAGE_KEYS } from '../constants/storage';
 
 // フィルターオプションの型
 interface FilterOption {
@@ -93,14 +94,13 @@ const parseSearchQuery = (
   return result;
 };
 
-// ローカルストレージのキー
-const HISTORY_KEY = 'rea_search_history';
+// 検索履歴の最大件数
 const MAX_HISTORY = 10;
 
 // 検索履歴を取得
 const getSearchHistory = (): SearchHistory[] => {
   try {
-    const data = localStorage.getItem(HISTORY_KEY);
+    const data = localStorage.getItem(STORAGE_KEYS.SEARCH_HISTORY);
     return data ? JSON.parse(data) : [];
   } catch {
     return [];
@@ -112,7 +112,7 @@ const saveSearchHistory = (query: string) => {
   if (!query.trim()) return;
   const history = getSearchHistory().filter(h => h.query !== query);
   history.unshift({ query, timestamp: Date.now() });
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, MAX_HISTORY)));
+  localStorage.setItem(STORAGE_KEYS.SEARCH_HISTORY, JSON.stringify(history.slice(0, MAX_HISTORY)));
 };
 
 interface CommandPaletteProps {

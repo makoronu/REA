@@ -1,1 +1,16 @@
-# TODO: 実装予定
+# shared/config パッケージ
+from .tables import (
+    PROPERTY_TABLES,
+    METADATA_TABLES,
+    MASTER_TABLES,
+    ALL_ALLOWED_TABLES,
+    CRUD_ALLOWED_TABLES,
+)
+
+__all__ = [
+    "PROPERTY_TABLES",
+    "METADATA_TABLES",
+    "MASTER_TABLES",
+    "ALL_ALLOWED_TABLES",
+    "CRUD_ALLOWED_TABLES",
+]

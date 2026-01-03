@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_URL } from '../config';
+import { PROPERTY_FORM_TABLES } from '../constants/tables';
 
 // 型定義
 export interface TableInfo {
@@ -78,21 +79,13 @@ class MetadataService {
 
   /**
    * property系のテーブルのみ取得 - 新テーブル構造に対応
+   * テーブル名はconstants/tables.tsで一元管理
    */
   async getPropertyTables(): Promise<TableInfo[]> {
     const allTables = await this.getAllTables();
-    
-    // 新しい5テーブル構造に対応
-    const propertyTableNames = [
-      'properties',
-      'land_info', 
-      'building_info',
-      'amenities',
-      'property_images'
-    ];
-    
-    return allTables.filter(table => 
-      propertyTableNames.includes(table.table_name)
+
+    return allTables.filter(table =>
+      (PROPERTY_FORM_TABLES as readonly string[]).includes(table.table_name)
     );
   }
 

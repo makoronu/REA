@@ -13,6 +13,7 @@ import {
   PAGE_CONFIG,
   PAGE_SIZE_OPTIONS,
 } from '../../constants';
+import { STORAGE_KEYS } from '../../constants/storage';
 
 // ============================================
 // 型定義
@@ -61,13 +62,9 @@ type ViewMode = 'table' | 'card' | 'gallery';
 type RowDensity = 'compact' | 'normal' | 'comfortable';
 
 // ============================================
-// 定数・ストレージキー
+// 定数（ストレージキーはconstants/storage.tsで一元管理）
 // ============================================
 const DEBOUNCE_MS = PAGE_CONFIG.DEBOUNCE_MS;
-const VIEWS_STORAGE_KEY = 'rea_property_views';
-const PAGE_SIZE_KEY = 'rea_page_size';
-const VISIBLE_COLUMNS_KEY = 'rea_visible_columns';
-const SCROLL_POSITION_KEY = 'rea_scroll_position';
 
 const ALL_COLUMNS: ColumnDef[] = [
   { key: 'id', label: 'ID', sortable: true, width: 70, minWidth: 50 },
@@ -145,14 +142,14 @@ const PropertiesPage = () => {
   // ビュー・表示設定
   const [views, setViews] = useState<SavedView[]>(() => {
     try {
-      const saved = localStorage.getItem(VIEWS_STORAGE_KEY);
+      const saved = localStorage.getItem(STORAGE_KEYS.PROPERTY_VIEWS);
       return saved ? JSON.parse(saved) : DEFAULT_VIEWS;
     } catch { return DEFAULT_VIEWS; }
   });
   const [activeViewId, setActiveViewId] = useState('all');
   const [visibleColumns, setVisibleColumns] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem(VISIBLE_COLUMNS_KEY);
+      const saved = localStorage.getItem(STORAGE_KEYS.VISIBLE_COLUMNS);
       return saved ? JSON.parse(saved) : DEFAULT_COLUMNS;
     } catch { return DEFAULT_COLUMNS; }
   });
@@ -160,7 +157,7 @@ const PropertiesPage = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [rowDensity, setRowDensity] = useState<RowDensity>('normal');
   const [pageSize, setPageSize] = useState<number>(() => {
-    const saved = localStorage.getItem(PAGE_SIZE_KEY);
+    const saved = localStorage.getItem(STORAGE_KEYS.PAGE_SIZE);
     return saved ? parseInt(saved, 10) : PAGE_CONFIG.DEFAULT_PAGE_SIZE;
   });
 
@@ -305,26 +302,26 @@ const PropertiesPage = () => {
   }, [activeViewId, views]);
 
   useEffect(() => {
-    localStorage.setItem(VIEWS_STORAGE_KEY, JSON.stringify(views));
+    localStorage.setItem(STORAGE_KEYS.PROPERTY_VIEWS, JSON.stringify(views));
   }, [views]);
 
   // pageSize永続化
   useEffect(() => {
-    localStorage.setItem(PAGE_SIZE_KEY, pageSize.toString());
+    localStorage.setItem(STORAGE_KEYS.PAGE_SIZE, pageSize.toString());
   }, [pageSize]);
 
   // visibleColumns永続化
   useEffect(() => {
-    localStorage.setItem(VISIBLE_COLUMNS_KEY, JSON.stringify(visibleColumns));
+    localStorage.setItem(STORAGE_KEYS.VISIBLE_COLUMNS, JSON.stringify(visibleColumns));
   }, [visibleColumns]);
 
   // スクロール位置復元（マウント時）
   useEffect(() => {
-    const savedScroll = sessionStorage.getItem(SCROLL_POSITION_KEY);
+    const savedScroll = sessionStorage.getItem(STORAGE_KEYS.SCROLL_POSITION);
     if (savedScroll) {
       setTimeout(() => {
         window.scrollTo(0, parseInt(savedScroll, 10));
-        sessionStorage.removeItem(SCROLL_POSITION_KEY);
+        sessionStorage.removeItem(STORAGE_KEYS.SCROLL_POSITION);
       }, 100);
     }
   }, []);
@@ -355,7 +352,7 @@ const PropertiesPage = () => {
   // 編集ページ遷移（スクロール位置保存）
   // ============================================
   const navigateToEdit = (id: number) => {
-    sessionStorage.setItem(SCROLL_POSITION_KEY, window.scrollY.toString());
+    sessionStorage.setItem(STORAGE_KEYS.SCROLL_POSITION, window.scrollY.toString());
     navigate(`/properties/${id}/edit`);
   };
 

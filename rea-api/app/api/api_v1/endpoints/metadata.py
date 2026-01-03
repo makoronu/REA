@@ -6,6 +6,11 @@
 - master_optionsテーブル（source='rea'）から取得
 - master_category_codeでカテゴリを指定
 """
+import sys
+from pathlib import Path
+project_root = Path(__file__).resolve().parent.parent.parent.parent.parent.parent
+sys.path.insert(0, str(project_root))
+
 from typing import Any, Dict, List, Optional, Set
 
 from app.api import dependencies
@@ -14,15 +19,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import MetaData, Table, text
 from sqlalchemy.orm import Session
 
+from shared.config.tables import ALL_ALLOWED_TABLES
+
 router = APIRouter()
 
-# SQLインジェクション対策: 許可テーブルのホワイトリスト
-ALLOWED_TABLES: Set[str] = {
-    "properties", "building_info", "land_info", "property_images",
-    "property_locations", "property_registries", "amenities",
-    "column_labels", "master_categories", "master_options",
-    "m_facilities", "m_stations", "m_postal_codes",
-}
+# SQLインジェクション対策: shared/config/tables.pyで一元管理
+ALLOWED_TABLES: Set[str] = ALL_ALLOWED_TABLES
 
 # 表示順序のデフォルト値（システム/非表示グループ用）
 DEFAULT_ORDER: int = 999

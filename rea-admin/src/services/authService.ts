@@ -1,5 +1,6 @@
 // 認証サービス
 import { api } from './api';
+import { STORAGE_KEYS } from '../constants/storage';
 
 // 型定義
 export interface User {
@@ -23,26 +24,22 @@ export interface LoginResponse {
   user: User;
 }
 
-// ローカルストレージのキー
-const TOKEN_KEY = 'rea_auth_token';
-const USER_KEY = 'rea_auth_user';
-
-// トークン管理
+// トークン管理（キーはconstants/storage.tsで一元管理）
 export const getToken = (): string | null => {
-  return localStorage.getItem(TOKEN_KEY);
+  return localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
 };
 
 export const setToken = (token: string): void => {
-  localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
 };
 
 export const removeToken = (): void => {
-  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
 };
 
 // ユーザー情報管理
 export const getStoredUser = (): User | null => {
-  const userStr = localStorage.getItem(USER_KEY);
+  const userStr = localStorage.getItem(STORAGE_KEYS.AUTH_USER);
   if (!userStr) return null;
   try {
     return JSON.parse(userStr);
@@ -52,11 +49,11 @@ export const getStoredUser = (): User | null => {
 };
 
 export const setStoredUser = (user: User): void => {
-  localStorage.setItem(USER_KEY, JSON.stringify(user));
+  localStorage.setItem(STORAGE_KEYS.AUTH_USER, JSON.stringify(user));
 };
 
 export const removeStoredUser = (): void => {
-  localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(STORAGE_KEYS.AUTH_USER);
 };
 
 // API呼び出し

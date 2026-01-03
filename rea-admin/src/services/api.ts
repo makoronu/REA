@@ -1,9 +1,7 @@
 // API通信の基本設定
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
-
-// ローカルストレージのキー（authServiceと同じ）
-const TOKEN_KEY = 'rea_auth_token';
+import { STORAGE_KEYS } from '../constants/storage';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -15,7 +13,7 @@ export const api = axios.create({
 // リクエストインターセプター: JWTトークンを自動付与
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem(TOKEN_KEY);
+    const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -32,8 +30,8 @@ api.interceptors.response.use(
   (error) => {
     // 401エラーの場合、トークンを削除してログインページへ
     if (error.response?.status === 401) {
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem('rea_auth_user');
+      localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+      localStorage.removeItem(STORAGE_KEYS.AUTH_USER);
       // 現在のページがログインでなければリダイレクト
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';

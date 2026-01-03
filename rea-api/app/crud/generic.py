@@ -4,10 +4,17 @@
 column_labelsテーブルをベースに、全てのテーブルに対して
 動的にCRUD操作を行う。ハードコードなし。
 """
+import sys
+from pathlib import Path
+project_root = Path(__file__).resolve().parent.parent.parent.parent.parent
+sys.path.insert(0, str(project_root))
+
 import json
 from typing import Any, Dict, List, Optional, Set
 from sqlalchemy import text
 from sqlalchemy.orm import Session
+
+from shared.config.tables import CRUD_ALLOWED_TABLES
 
 
 def _serialize_data(data: Dict[str, Any]) -> Dict[str, Any]:
@@ -44,15 +51,8 @@ class GenericCRUD:
         crud.delete("properties", 1)
     """
 
-    # 操作を許可するテーブル（セキュリティ）
-    ALLOWED_TABLES: Set[str] = {
-        "properties",
-        "building_info",
-        "land_info",
-        "property_images",
-        "property_locations",
-        "property_registries",
-    }
+    # 操作を許可するテーブル（shared/config/tables.pyで一元管理）
+    ALLOWED_TABLES: Set[str] = CRUD_ALLOWED_TABLES
 
     # システムカラム - 廃止予定（column_labels.is_updatable=falseで管理）
     # 後方互換のため残すが、新コードは_get_updatable_columns()を使用すること
