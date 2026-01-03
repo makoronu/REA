@@ -199,41 +199,13 @@ SELECT id, '9', 'その他', 9 FROM master_categories WHERE category_code = 'roa
 ON CONFLICT (category_id, option_code) DO NOTHING;
 
 -- 間取タイプ（9件）
-INSERT INTO master_options (category_id, option_code, option_value, display_order)
-SELECT id, '10', 'R', 1 FROM master_categories WHERE category_code = 'room_type'
-ON CONFLICT (category_id, option_code) DO NOTHING;
-
-INSERT INTO master_options (category_id, option_code, option_value, display_order)
-SELECT id, '20', 'K', 2 FROM master_categories WHERE category_code = 'room_type'
-ON CONFLICT (category_id, option_code) DO NOTHING;
-
-INSERT INTO master_options (category_id, option_code, option_value, display_order)
-SELECT id, '25', 'SK', 3 FROM master_categories WHERE category_code = 'room_type'
-ON CONFLICT (category_id, option_code) DO NOTHING;
-
-INSERT INTO master_options (category_id, option_code, option_value, display_order)
-SELECT id, '30', 'DK', 4 FROM master_categories WHERE category_code = 'room_type'
-ON CONFLICT (category_id, option_code) DO NOTHING;
-
-INSERT INTO master_options (category_id, option_code, option_value, display_order)
-SELECT id, '35', 'SDK', 5 FROM master_categories WHERE category_code = 'room_type'
-ON CONFLICT (category_id, option_code) DO NOTHING;
-
-INSERT INTO master_options (category_id, option_code, option_value, display_order)
-SELECT id, '40', 'LK', 6 FROM master_categories WHERE category_code = 'room_type'
-ON CONFLICT (category_id, option_code) DO NOTHING;
-
-INSERT INTO master_options (category_id, option_code, option_value, display_order)
-SELECT id, '45', 'SLK', 7 FROM master_categories WHERE category_code = 'room_type'
-ON CONFLICT (category_id, option_code) DO NOTHING;
-
-INSERT INTO master_options (category_id, option_code, option_value, display_order)
-SELECT id, '50', 'LDK', 8 FROM master_categories WHERE category_code = 'room_type'
-ON CONFLICT (category_id, option_code) DO NOTHING;
-
-INSERT INTO master_options (category_id, option_code, option_value, display_order)
-SELECT id, '55', 'SLDK', 9 FROM master_categories WHERE category_code = 'room_type'
-ON CONFLICT (category_id, option_code) DO NOTHING;
+-- 注意: room_typeカテゴリはhomes由来で既存データあり（18件）
+-- 既存option_codeと異なるためON CONFLICTで衝突せず重複追加される問題が発生
+-- 既存データを使用するためオプション追加はスキップ
+--
+-- 既存データ確認:
+-- SELECT option_code, option_value, source FROM master_options
+-- WHERE category_id = (SELECT id FROM master_categories WHERE category_code = 'room_type');
 
 -- 防火地域（3件）
 INSERT INTO master_options (category_id, option_code, option_value, display_order)
