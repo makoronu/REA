@@ -198,6 +198,19 @@ def update_property(
     if "property_name" in property_data and property_data["property_name"] is None:
         raise HTTPException(status_code=400, detail="property_nameをnullにすることはできません")
 
+    # publication_statusがnullの場合は400エラー
+    if "publication_status" in property_data and property_data["publication_status"] is None:
+        raise HTTPException(status_code=400, detail="publication_statusをnullにすることはできません")
+
+    # publication_statusの値バリデーション
+    VALID_PUBLICATION_STATUSES = ["公開", "非公開", "会員公開"]
+    if "publication_status" in property_data and property_data["publication_status"] is not None:
+        if property_data["publication_status"] not in VALID_PUBLICATION_STATUSES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"publication_statusの値が不正です。有効な値: {', '.join(VALID_PUBLICATION_STATUSES)}"
+            )
+
     # 存在確認 & 現在データ取得（全テーブル）
     existing_full = crud.get_full(property_id)
     if existing_full is None:
