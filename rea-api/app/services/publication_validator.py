@@ -4,115 +4,211 @@
 公開ステータスが「公開」または「会員公開」に変更される際に、
 required_for_publication で設定された必須項目が入力されているかをチェック。
 
-条件付き除外ルール:
-- 用途地域「指定なし」→ 建ぺい率・容積率不要
-- 物件種別「detached」→ 所在階・総戸数不要
-- 接道情報「接道なし」→ セットバック不要
-
-特殊フラグ対応:
-- road_info: { "no_road_access": true }
-- transportation: { "no_station": true }
-- bus_stops: { "no_bus": true }
-- nearby_facilities: { "no_facilities": true }
+設定はすべてDBから読み込み（メタデータ駆動）:
+- バリデーション必要ステータス: master_options.requires_validation
+- 「なし」有効値: column_labels.valid_none_text
+- 0有効カラム: column_labels.zero_is_valid
+- 条件付き除外: column_labels.conditional_exclusion
+- 特殊フラグ: column_labels.special_flag_key
 """
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+import logging
 
-
-# 公開時にバリデーションが必要なステータス
-PUBLICATION_STATUSES_REQUIRING_VALIDATION = ["公開", "会員公開"]
-
-# 「なし」として有効なテキスト値
-VALID_NONE_VALUES = ["なし", "該当なし", "なし（学区外）"]
-
-# 0が有効値となるカラム
-ZERO_VALID_COLUMNS = ["management_fee", "repair_reserve_fund"]
-
+logger = logging.getLogger(__name__)
 
 # =============================================================================
-# 特殊フラグ判定関数
+# フォールバック用デフォルト値（DB読み込み失敗時に使用）
 # =============================================================================
 
-def is_no_road_access(value: Any) -> bool:
-    """接道なしフラグの判定"""
-    if isinstance(value, dict) and value.get("no_road_access") is True:
-        return True
-    return False
-
-
-def is_no_station(value: Any) -> bool:
-    """最寄駅なしフラグの判定"""
-    if isinstance(value, dict) and value.get("no_station") is True:
-        return True
-    return False
-
-
-def is_no_bus(value: Any) -> bool:
-    """バス路線なしフラグの判定"""
-    if isinstance(value, dict) and value.get("no_bus") is True:
-        return True
-    return False
-
-
-def is_no_facilities(value: Any) -> bool:
-    """近隣施設なしフラグの判定"""
-    if isinstance(value, dict) and value.get("no_facilities") is True:
-        return True
-    return False
-
-
-# 特殊フラグカラムとその判定関数
-SPECIAL_FLAG_COLUMNS: Dict[str, Callable[[Any], bool]] = {
-    "road_info": is_no_road_access,
-    "transportation": is_no_station,
-    "bus_stops": is_no_bus,
-    "nearby_facilities": is_no_facilities,
+_DEFAULT_PUBLICATION_STATUSES = ["公開", "会員公開"]
+_DEFAULT_VALID_NONE_VALUES = ["なし", "該当なし", "なし（学区外）"]
+_DEFAULT_ZERO_VALID_COLUMNS = {"management_fee", "repair_reserve_fund"}
+_DEFAULT_SPECIAL_FLAG_KEYS = {
+    "road_info": "no_road_access",
+    "transportation": "no_station",
+    "bus_stops": "no_bus",
+    "nearby_facilities": "no_facilities",
 }
 
 
 # =============================================================================
-# 条件付き除外ルール
+# DB設定読み込み関数
 # =============================================================================
 
-CONDITIONAL_EXCLUSIONS: Dict[str, Dict[str, Any]] = {
-    # 用途地域が「指定なし」の場合、建ぺい率・容積率は不要
-    "building_coverage_ratio": {
-        "depends_on": "use_district",
-        "exclude_when": ["none", "指定なし"],
-    },
-    "floor_area_ratio": {
-        "depends_on": "use_district",
-        "exclude_when": ["none", "指定なし"],
-    },
-    # 戸建の場合、所在階・総戸数は不要
-    "room_floor": {
-        "depends_on": "property_type",
-        "exclude_when": ["detached"],
-    },
-    "total_units": {
-        "depends_on": "property_type",
-        "exclude_when": ["detached"],
-    },
-    # 接道なしの場合、セットバックは不要
-    "setback": {
-        "depends_on": "road_info",
-        "exclude_when_func": is_no_road_access,
-    },
-}
+def get_validation_required_statuses(db: Session) -> List[str]:
+    """
+    バリデーションが必要な公開ステータス一覧を取得
+
+    Returns:
+        ["公開", "会員公開"] 等
+    """
+    try:
+        query = text("""
+            SELECT mo.option_value
+            FROM master_options mo
+            JOIN master_categories mc ON mo.category_id = mc.id
+            WHERE mc.category_code = 'publication_status'
+              AND mo.requires_validation = TRUE
+              AND mo.is_active = TRUE
+        """)
+        result = db.execute(query)
+        statuses = [row.option_value for row in result]
+        if statuses:
+            return statuses
+    except Exception as e:
+        logger.warning(f"Failed to load validation_required_statuses from DB: {e}")
+
+    return _DEFAULT_PUBLICATION_STATUSES
+
+
+def get_zero_valid_columns(db: Session) -> Set[str]:
+    """
+    0が有効値となるカラム一覧を取得
+
+    Returns:
+        {"management_fee", "repair_reserve_fund"} 等
+    """
+    try:
+        query = text("""
+            SELECT column_name
+            FROM column_labels
+            WHERE zero_is_valid = TRUE
+        """)
+        result = db.execute(query)
+        columns = {row.column_name for row in result}
+        if columns:
+            return columns
+    except Exception as e:
+        logger.warning(f"Failed to load zero_valid_columns from DB: {e}")
+
+    return _DEFAULT_ZERO_VALID_COLUMNS
+
+
+def get_special_flag_keys(db: Session) -> Dict[str, str]:
+    """
+    特殊フラグのキー名マッピングを取得
+
+    Returns:
+        {"road_info": "no_road_access", "transportation": "no_station", ...}
+    """
+    try:
+        query = text("""
+            SELECT column_name, special_flag_key
+            FROM column_labels
+            WHERE special_flag_key IS NOT NULL
+        """)
+        result = db.execute(query)
+        mapping = {row.column_name: row.special_flag_key for row in result}
+        if mapping:
+            return mapping
+    except Exception as e:
+        logger.warning(f"Failed to load special_flag_keys from DB: {e}")
+
+    return _DEFAULT_SPECIAL_FLAG_KEYS
+
+
+def get_conditional_exclusions(db: Session) -> Dict[str, Dict[str, Any]]:
+    """
+    条件付き除外ルールを取得
+
+    Returns:
+        {
+            "building_coverage_ratio": {"depends_on": "use_district", "exclude_when": ["none", "指定なし"]},
+            "setback": {"depends_on": "road_info", "exclude_when_flag": "no_road_access"},
+            ...
+        }
+    """
+    try:
+        query = text("""
+            SELECT column_name, conditional_exclusion
+            FROM column_labels
+            WHERE conditional_exclusion IS NOT NULL
+        """)
+        result = db.execute(query)
+        exclusions = {}
+        for row in result:
+            if row.conditional_exclusion:
+                exclusions[row.column_name] = row.conditional_exclusion
+        if exclusions:
+            return exclusions
+    except Exception as e:
+        logger.warning(f"Failed to load conditional_exclusions from DB: {e}")
+
+    # フォールバック
+    return {
+        "building_coverage_ratio": {"depends_on": "use_district", "exclude_when": ["none", "指定なし"]},
+        "floor_area_ratio": {"depends_on": "use_district", "exclude_when": ["none", "指定なし"]},
+        "room_floor": {"depends_on": "property_type", "exclude_when": ["detached"]},
+        "total_units": {"depends_on": "property_type", "exclude_when": ["detached"]},
+        "setback": {"depends_on": "road_info", "exclude_when_flag": "no_road_access"},
+    }
+
+
+def get_valid_none_text(db: Session, column_name: str) -> List[str]:
+    """
+    カラム別の「なし」有効値を取得
+
+    Returns:
+        ["なし", "該当なし"] 等
+    """
+    try:
+        query = text("""
+            SELECT valid_none_text
+            FROM column_labels
+            WHERE column_name = :column_name
+              AND valid_none_text IS NOT NULL
+        """)
+        result = db.execute(query, {"column_name": column_name}).fetchone()
+        if result and result.valid_none_text:
+            return result.valid_none_text
+    except Exception as e:
+        logger.warning(f"Failed to load valid_none_text for {column_name}: {e}")
+
+    return _DEFAULT_VALID_NONE_VALUES
+
+
+# =============================================================================
+# 特殊フラグ判定
+# =============================================================================
+
+def has_special_flag(value: Any, flag_key: str) -> bool:
+    """
+    特殊フラグの有無を判定
+
+    Args:
+        value: 判定対象の値（dict想定）
+        flag_key: フラグキー名（"no_road_access"等）
+
+    Returns:
+        True: フラグが設定されている
+    """
+    if isinstance(value, dict) and value.get(flag_key) is True:
+        return True
+    return False
 
 
 # =============================================================================
 # 有効値判定
 # =============================================================================
 
-def is_valid_value(value: Any, column_name: str) -> bool:
+def is_valid_value(
+    value: Any,
+    column_name: str,
+    zero_valid_columns: Set[str],
+    special_flag_keys: Dict[str, str],
+    valid_none_values: List[str],
+) -> bool:
     """
     値が有効（入力済み）かどうかを判定
 
     Args:
         value: 判定対象の値
         column_name: カラム名
+        zero_valid_columns: 0が有効なカラム集合
+        special_flag_keys: 特殊フラグキーマッピング
+        valid_none_values: 「なし」として有効なテキスト値
 
     Returns:
         True: 有効な値（入力済み）
@@ -126,23 +222,23 @@ def is_valid_value(value: Any, column_name: str) -> bool:
         if not value.strip():
             return False
         # 「なし」系テキストは有効
-        if value.strip() in VALID_NONE_VALUES:
+        if value.strip() in valid_none_values:
             return True
         return True
 
     # 数値の場合
     if isinstance(value, (int, float)):
-        # 特定カラムは0を有効値とする
-        if column_name in ZERO_VALID_COLUMNS:
+        # 0が有効なカラムはTrueを返す
+        if column_name in zero_valid_columns:
             return True
         return True
 
     # 辞書の場合（特殊フラグ対応）
     if isinstance(value, dict):
         # 特殊フラグカラムの場合
-        if column_name in SPECIAL_FLAG_COLUMNS:
-            check_func = SPECIAL_FLAG_COLUMNS[column_name]
-            if check_func(value):
+        if column_name in special_flag_keys:
+            flag_key = special_flag_keys[column_name]
+            if has_special_flag(value, flag_key):
                 return True  # 「なし」フラグは有効値
         # 通常のdict（空でなければ有効）
         return bool(value)
@@ -154,33 +250,40 @@ def is_valid_value(value: Any, column_name: str) -> bool:
     return True
 
 
-def should_exclude_field(column_name: str, property_data: Dict[str, Any]) -> bool:
+def should_exclude_field(
+    column_name: str,
+    property_data: Dict[str, Any],
+    conditional_exclusions: Dict[str, Dict[str, Any]],
+    special_flag_keys: Dict[str, str],
+) -> bool:
     """
     条件付き除外の判定
 
     Args:
         column_name: 判定対象カラム名
         property_data: 物件データ
+        conditional_exclusions: 条件付き除外ルール
+        special_flag_keys: 特殊フラグキーマッピング
 
     Returns:
         True: このフィールドはチェック対象外
         False: チェック対象
     """
-    rule = CONDITIONAL_EXCLUSIONS.get(column_name)
+    rule = conditional_exclusions.get(column_name)
     if not rule:
         return False
 
     depends_on = rule.get("depends_on")
     depends_value = property_data.get(depends_on)
 
-    # 関数ベースの判定
-    if "exclude_when_func" in rule:
-        func = rule["exclude_when_func"]
-        if callable(func) and func(depends_value):
+    # フラグベースの判定（exclude_when_flag）
+    if "exclude_when_flag" in rule:
+        flag_key = rule["exclude_when_flag"]
+        if has_special_flag(depends_value, flag_key):
             return True
         return False
 
-    # 値ベースの判定
+    # 値ベースの判定（exclude_when）
     exclude_when = rule.get("exclude_when", [])
     if depends_value in exclude_when:
         return True
@@ -240,8 +343,11 @@ def validate_for_publication(
         (is_valid, missing_fields): バリデーション結果と未入力フィールド情報のリスト
         missing_fields: [{"label": "物件名", "group": "基本情報"}, ...]
     """
+    # DBから設定を読み込み
+    validation_statuses = get_validation_required_statuses(db)
+
     # 公開/会員公開への変更でない場合はスキップ
-    if new_publication_status not in PUBLICATION_STATUSES_REQUIRING_VALIDATION:
+    if new_publication_status not in validation_statuses:
         return True, []
 
     # 既に同じ公開ステータスの場合はスキップ（ステータス変更なし）
@@ -260,19 +366,27 @@ def validate_for_publication(
         # 必須設定がない場合はOK
         return True, []
 
+    # DBから各種設定を読み込み
+    zero_valid_columns = get_zero_valid_columns(db)
+    special_flag_keys = get_special_flag_keys(db)
+    conditional_exclusions = get_conditional_exclusions(db)
+
     # 未入力フィールドをチェック
     missing_fields = []
     for field in required_fields:
         column_name = field["column_name"]
 
         # 条件付き除外チェック
-        if should_exclude_field(column_name, property_data):
+        if should_exclude_field(column_name, property_data, conditional_exclusions, special_flag_keys):
             continue
 
         value = property_data.get(column_name)
 
-        # 有効値判定（改善版）
-        if not is_valid_value(value, column_name):
+        # カラム別の「なし」有効値を取得
+        valid_none_values = get_valid_none_text(db, column_name)
+
+        # 有効値判定
+        if not is_valid_value(value, column_name, zero_valid_columns, special_flag_keys, valid_none_values):
             missing_fields.append({
                 "label": field["japanese_label"],
                 "group": field["group_name"],
