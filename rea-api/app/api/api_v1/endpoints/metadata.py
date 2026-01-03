@@ -3,7 +3,7 @@
 テーブル構造、カラム情報、ラベル情報を提供
 
 選択肢の取得:
-- master_optionsテーブル（source='rea'）から取得
+- master_optionsテーブル（source='homes'）から取得
 - master_category_codeでカテゴリを指定
 """
 import sys
@@ -227,7 +227,7 @@ def get_table_columns_with_labels(
 
     選択肢の取得:
     - property_type → property_typesテーブル
-    - その他 → master_options (source='rea') から取得（master_category_codeで指定）
+    - その他 → master_options (source='homes') から取得（master_category_codeで指定）
     """
     try:
         # master_optionsキャッシュを先に取得
@@ -294,7 +294,7 @@ def get_table_columns_with_labels(
 
             # 選択肢の取得:
             # 1. property_type → property_typesテーブル
-            # 2. その他 → master_options (source='rea')
+            # 2. その他 → master_options (source='homes')
             if row.column_name == "property_type":
                 options = property_type_options
             elif row.master_category_code and row.master_category_code in master_options_cache:
@@ -611,7 +611,7 @@ def _guess_input_type(data_type: str) -> str:
 
 def _get_master_options_cache(db: Session) -> Dict[str, List[Dict[str, str]]]:
     """
-    master_optionsからREAソースの選択肢をカテゴリ別に取得
+    master_optionsからhomesソースの選択肢をカテゴリ別に取得
     JSON配列形式で返す（統一フォーマット）
 
     Returns:
@@ -627,7 +627,7 @@ def _get_master_options_cache(db: Session) -> Dict[str, List[Dict[str, str]]]:
             mo.option_value
         FROM master_options mo
         JOIN master_categories mc ON mo.category_id = mc.id
-        WHERE mo.source = 'rea'
+        WHERE mo.source = 'homes'
         AND mo.is_active = true
         AND mo.deleted_at IS NULL
         ORDER BY mc.category_code, mo.display_order
@@ -678,6 +678,7 @@ def get_options_by_category(
             FROM master_options mo
             JOIN master_categories mc ON mo.category_id = mc.id
             WHERE mc.category_code = :category_code
+            AND mo.source = 'homes'
             AND mo.is_active = true
             AND mo.deleted_at IS NULL
             ORDER BY mo.display_order
