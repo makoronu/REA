@@ -260,6 +260,103 @@ class MetadataService {
       throw error;
     }
   }
+
+  /**
+   * カテゴリコード別にマスタオプションを取得（メタデータ駆動）
+   *
+   * @param categoryCode - カテゴリコード（road_direction, room_type等）
+   * @returns オプション配列（拡張フィールド含む）
+   */
+  async getOptionsByCategory(categoryCode: string): Promise<MasterOption[]> {
+    try {
+      const response = await axios.get<MasterOption[]>(
+        `${this.baseURL}/options/${categoryCode}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching options for ${categoryCode}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * ステータス連動設定を取得（メタデータ駆動）
+   * 販売ステータス→公開ステータスの連動ロジックに使用
+   */
+  async getStatusSettings(): Promise<StatusSettings> {
+    try {
+      const response = await axios.get<StatusSettings>(
+        `${this.baseURL}/status-settings`
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching status settings:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 全マスタカテゴリ一覧を取得
+   */
+  async getAllCategories(): Promise<MasterCategory[]> {
+    try {
+      const response = await axios.get<MasterCategory[]>(
+        `${this.baseURL}/categories`
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      throw error;
+    }
+  }
+}
+
+// マスタオプション型（拡張フィールド対応）
+export interface MasterOption {
+  value: string;
+  label: string;
+  display_order?: number;
+  is_default?: boolean;
+  allows_publication?: boolean;
+  linked_status?: string;
+  ui_color?: string;
+  shows_contractor?: boolean;
+  category_icon?: string;
+  metadata?: Record<string, any>;
+}
+
+// ステータス連動設定型
+export interface StatusSettings {
+  sales_status: {
+    default: string | null;
+    options: {
+      value: string;
+      label: string;
+      ui_color?: string;
+      allows_publication?: boolean;
+    }[];
+    publication_link: Record<string, string>;
+  };
+  publication_status: {
+    default: string | null;
+    options: {
+      value: string;
+      label: string;
+      ui_color?: string;
+    }[];
+  };
+  transaction_type: {
+    contractor_required: string[];
+  };
+}
+
+// マスタカテゴリ型
+export interface MasterCategory {
+  code: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  display_order?: number;
 }
 
 // シングルトンインスタンスをエクスポート

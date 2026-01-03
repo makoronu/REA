@@ -14,12 +14,29 @@ import { parseOptions } from '../../utils/options';
 import { OptionType } from '../../types/metadata';
 import { LEGAL_REGULATION_CATEGORIES } from '../../constants/legalRegulations';
 
-// 防火地域の選択肢
-const FIRE_PREVENTION_OPTIONS: OptionType[] = [
+// フォールバック用デフォルト値（DB読み込み失敗時）
+const DEFAULT_FIRE_PREVENTION_OPTIONS: OptionType[] = [
   { value: '1', label: '防火地域' },
   { value: '2', label: '準防火地域' },
   { value: '3', label: '指定なし' },
 ];
+
+// フォールバック用デフォルト値（用途地域マッピング）
+const DEFAULT_USE_DISTRICT_MAP: Record<string, string> = {
+  '第一種低層住居専用地域': '1',
+  '第二種低層住居専用地域': '2',
+  '第一種中高層住居専用地域': '3',
+  '第二種中高層住居専用地域': '4',
+  '第一種住居地域': '5',
+  '第二種住居地域': '6',
+  '準住居地域': '7',
+  '近隣商業地域': '8',
+  '商業地域': '9',
+  '準工業地域': '10',
+  '工業地域': '11',
+  '工業専用地域': '12',
+  '田園住居地域': '21',
+};
 
 interface RegulationData {
   use_area?: {
@@ -41,22 +58,6 @@ interface RegulationData {
   planned_road?: Record<string, string>;
 }
 
-// 用途地域コードマッピング（API自動取得用）
-const USE_DISTRICT_MAP: Record<string, number> = {
-  '第一種低層住居専用地域': 1,
-  '第二種低層住居専用地域': 2,
-  '第一種中高層住居専用地域': 3,
-  '第二種中高層住居専用地域': 4,
-  '第一種住居地域': 5,
-  '第二種住居地域': 6,
-  '準住居地域': 7,
-  '近隣商業地域': 8,
-  '商業地域': 9,
-  '準工業地域': 10,
-  '工業地域': 11,
-  '工業専用地域': 12,
-  '田園住居地域': 21,
-};
 
 export const RegulationTab: React.FC = () => {
   const { setValue, watch, control, register } = useFormContext();
@@ -65,6 +66,10 @@ export const RegulationTab: React.FC = () => {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [useDistrictOptions, setUseDistrictOptions] = useState<OptionType[]>([]);
   const [cityPlanningOptions, setCityPlanningOptions] = useState<OptionType[]>([]);
+  // メタデータ駆動: 防火地域選択肢
+  const [firePreventionOptions, setFirePreventionOptions] = useState<OptionType[]>(DEFAULT_FIRE_PREVENTION_OPTIONS);
+  // メタデータ駆動: 用途地域名→コードマッピング（API自動取得用）
+  const [useDistrictMap, setUseDistrictMap] = useState<Record<string, string>>(DEFAULT_USE_DISTRICT_MAP);
 
   const lat = watch('latitude');
   const lng = watch('longitude');
@@ -74,6 +79,7 @@ export const RegulationTab: React.FC = () => {
   useEffect(() => {
     const loadOptions = async () => {
       try {
+        // テーブルカラムから選択肢を取得
         const columns = await metadataService.getTableColumnsWithLabels('land_info');
 
         // 用途地域の選択肢（共通パース関数を使用）
@@ -81,6 +87,10 @@ export const RegulationTab: React.FC = () => {
         if (useDistrictCol?.options) {
           const opts = parseOptions(useDistrictCol.options);
           setUseDistrictOptions(opts);
+          // 用途地域名→コードマッピングを生成（API自動取得用）
+          const map: Record<string, string> = {};
+          opts.forEach(opt => { map[opt.label] = opt.value; });
+          setUseDistrictMap(map);
         }
 
         // 都市計画の選択肢（共通パース関数を使用）
@@ -88,6 +98,12 @@ export const RegulationTab: React.FC = () => {
         if (cityPlanningCol?.options) {
           const opts = parseOptions(cityPlanningCol.options);
           setCityPlanningOptions(opts);
+        }
+
+        // 防火地域の選択肢（マスタオプションから取得）
+        const firePreventionOpts = await metadataService.getOptionsByCategory('fire_prevention');
+        if (firePreventionOpts.length > 0) {
+          setFirePreventionOptions(firePreventionOpts);
         }
       } catch (error) {
         console.error('メタデータ取得エラー:', error);
@@ -134,9 +150,9 @@ export const RegulationTab: React.FC = () => {
 
     const useArea = regulationData.use_area;
 
-    // 用途地域コードを設定
+    // 用途地域コードを設定（メタデータ駆動マッピング）
     const zoneName = useArea['用途地域'] || '';
-    const useDistrictCode = USE_DISTRICT_MAP[zoneName];
+    const useDistrictCode = useDistrictMap[zoneName];
     if (useDistrictCode) {
       setValue('use_district', useDistrictCode, { shouldDirty: true });
     }
@@ -157,7 +173,7 @@ export const RegulationTab: React.FC = () => {
 
     setMessage({ type: 'success', text: '用途地域・建ぺい率・容積率を登録しました' });
     setTimeout(() => setMessage(null), 3000);
-  }, [regulationData, setValue]);
+  }, [regulationData, setValue, useDistrictMap]);
 
   // 複数選択の値をパース
   const parseMultiValue = (value: any): string[] => {
@@ -457,8 +473,8 @@ export const RegulationTab: React.FC = () => {
               control={control}
               render={({ field }) => (
                 <Select
-                  options={FIRE_PREVENTION_OPTIONS}
-                  value={FIRE_PREVENTION_OPTIONS.find(opt => opt.value === field.value) || null}
+                  options={firePreventionOptions}
+                  value={firePreventionOptions.find(opt => opt.value === field.value) || null}
                   onChange={(selected) => field.onChange(selected?.value || null)}
                   placeholder="選択してください"
                   isClearable

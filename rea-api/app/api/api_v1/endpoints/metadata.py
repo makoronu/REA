@@ -641,3 +641,243 @@ def _get_master_options_cache(db: Session) -> Dict[str, List[Dict[str, str]]]:
         })
 
     return options_by_category
+
+
+@router.get("/options/{category_code}", response_model=List[Dict[str, Any]])
+def get_options_by_category(
+    category_code: str, db: Session = Depends(dependencies.get_db)
+) -> List[Dict[str, Any]]:
+    """
+    カテゴリコード別にマスタオプションを取得（メタデータ駆動）
+
+    拡張フィールド:
+    - is_default: デフォルト値か
+    - allows_publication: 公開可能か
+    - linked_status: 連動する公開ステータス
+    - ui_color: UI表示色（Tailwindクラス）
+    - shows_contractor: 元請会社表示が必要か
+    """
+    try:
+        query = text("""
+            SELECT
+                mo.option_code,
+                mo.option_value,
+                mo.display_order,
+                mo.is_default,
+                mo.allows_publication,
+                mo.linked_status,
+                mo.ui_color,
+                mo.shows_contractor,
+                mo.metadata,
+                mc.icon as category_icon
+            FROM master_options mo
+            JOIN master_categories mc ON mo.category_id = mc.id
+            WHERE mc.category_code = :category_code
+            AND mo.is_active = true
+            ORDER BY mo.display_order
+        """)
+        result = db.execute(query, {"category_code": category_code})
+
+        options = []
+        for row in result:
+            opt = {
+                "value": row.option_code,
+                "label": row.option_value,
+                "display_order": row.display_order,
+            }
+            # 拡張フィールド（nullでなければ含める）
+            if row.is_default is not None:
+                opt["is_default"] = row.is_default
+            if row.allows_publication is not None:
+                opt["allows_publication"] = row.allows_publication
+            if row.linked_status:
+                opt["linked_status"] = row.linked_status
+            if row.ui_color:
+                opt["ui_color"] = row.ui_color
+            if row.shows_contractor is not None:
+                opt["shows_contractor"] = row.shows_contractor
+            if row.category_icon:
+                opt["category_icon"] = row.category_icon
+            # metadataがあれば展開
+            if row.metadata:
+                import json
+                meta = json.loads(row.metadata) if isinstance(row.metadata, str) else row.metadata
+                opt["metadata"] = meta
+
+            options.append(opt)
+
+        if not options:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Category '{category_code}' not found or has no options"
+            )
+
+        return options
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/status-settings", response_model=Dict[str, Any])
+def get_status_settings(db: Session = Depends(dependencies.get_db)) -> Dict[str, Any]:
+    """
+    ステータス連動設定を取得（メタデータ駆動）
+
+    フロントエンドでのステータス変更時の連動ロジックに使用
+
+    Returns:
+        {
+            "sales_status": {
+                "default": "査定中",
+                "options": [...],
+                "publication_link": {
+                    "販売中": "公開",
+                    "商談中": "公開",
+                    "成約済み": "非公開",
+                    ...
+                }
+            },
+            "publication_status": {
+                "default": "非公開",
+                "options": [...]
+            },
+            "transaction_type": {
+                "contractor_required": ["専任媒介", "一般媒介", "専属専任媒介"]
+            }
+        }
+    """
+    try:
+        result: Dict[str, Any] = {}
+
+        # 販売ステータス設定
+        sales_query = text("""
+            SELECT
+                mo.option_value,
+                mo.is_default,
+                mo.allows_publication,
+                mo.linked_status,
+                mo.ui_color,
+                mo.display_order
+            FROM master_options mo
+            JOIN master_categories mc ON mo.category_id = mc.id
+            WHERE mc.category_code = 'sales_status'
+            AND mo.is_active = true
+            ORDER BY mo.display_order
+        """)
+        sales_result = db.execute(sales_query)
+
+        sales_options = []
+        sales_default = None
+        publication_link = {}
+
+        for row in sales_result:
+            opt = {
+                "value": row.option_value,
+                "label": row.option_value,
+                "ui_color": row.ui_color,
+                "allows_publication": row.allows_publication,
+            }
+            sales_options.append(opt)
+
+            if row.is_default:
+                sales_default = row.option_value
+            if row.linked_status:
+                publication_link[row.option_value] = row.linked_status
+
+        result["sales_status"] = {
+            "default": sales_default,
+            "options": sales_options,
+            "publication_link": publication_link,
+        }
+
+        # 公開ステータス設定
+        pub_query = text("""
+            SELECT
+                mo.option_value,
+                mo.is_default,
+                mo.ui_color,
+                mo.display_order
+            FROM master_options mo
+            JOIN master_categories mc ON mo.category_id = mc.id
+            WHERE mc.category_code = 'publication_status'
+            AND mo.is_active = true
+            ORDER BY mo.display_order
+        """)
+        pub_result = db.execute(pub_query)
+
+        pub_options = []
+        pub_default = None
+
+        for row in pub_result:
+            opt = {
+                "value": row.option_value,
+                "label": row.option_value,
+                "ui_color": row.ui_color,
+            }
+            pub_options.append(opt)
+
+            if row.is_default:
+                pub_default = row.option_value
+
+        result["publication_status"] = {
+            "default": pub_default,
+            "options": pub_options,
+        }
+
+        # 取引形態設定（元請会社表示が必要な形態）
+        trans_query = text("""
+            SELECT mo.option_value
+            FROM master_options mo
+            JOIN master_categories mc ON mo.category_id = mc.id
+            WHERE mc.category_code = 'transaction_type'
+            AND mo.is_active = true
+            AND mo.shows_contractor = true
+            ORDER BY mo.display_order
+        """)
+        trans_result = db.execute(trans_query)
+        contractor_required = [row.option_value for row in trans_result]
+
+        result["transaction_type"] = {
+            "contractor_required": contractor_required,
+        }
+
+        return result
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/categories", response_model=List[Dict[str, Any]])
+def get_all_categories(db: Session = Depends(dependencies.get_db)) -> List[Dict[str, Any]]:
+    """
+    全マスタカテゴリ一覧を取得
+    """
+    try:
+        query = text("""
+            SELECT
+                category_code,
+                category_name,
+                description,
+                icon,
+                display_order
+            FROM master_categories
+            WHERE is_active = true
+            ORDER BY display_order, category_name
+        """)
+        result = db.execute(query)
+
+        return [
+            {
+                "code": row.category_code,
+                "name": row.category_name,
+                "description": row.description,
+                "icon": row.icon,
+                "display_order": row.display_order,
+            }
+            for row in result
+        ]
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

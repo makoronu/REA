@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_URL } from '../../config';
+import { metadataService } from '../../services/metadataService';
 
 // =================================================================
 // 共通インターフェース
@@ -19,6 +20,12 @@ interface RoadInfoEditorProps {
   disabled?: boolean;
 }
 
+// オプション型（共通）
+interface OptionType {
+  value: string;
+  label: string;
+}
+
 // =================================================================
 // 接道情報エディタ
 // =================================================================
@@ -31,7 +38,8 @@ interface RoadInfo {
   road_status: string;
 }
 
-const ROAD_DIRECTIONS = [
+// フォールバック用デフォルト値（DB読み込み失敗時）
+const DEFAULT_ROAD_DIRECTIONS: OptionType[] = [
   { value: '1', label: '北' },
   { value: '2', label: '北東' },
   { value: '3', label: '東' },
@@ -42,12 +50,12 @@ const ROAD_DIRECTIONS = [
   { value: '8', label: '北西' },
 ];
 
-const ROAD_TYPES = [
+const DEFAULT_ROAD_TYPES: OptionType[] = [
   { value: '1', label: '公道' },
   { value: '2', label: '私道' },
 ];
 
-const ROAD_STATUS = [
+const DEFAULT_ROAD_STATUS: OptionType[] = [
   { value: '1', label: '建築基準法上の道路' },
   { value: '2', label: '42条1項1号' },
   { value: '3', label: '42条1項2号' },
@@ -61,6 +69,29 @@ export const RoadInfoEditor: React.FC<RoadInfoEditorProps> = ({
   onChange,
   disabled
 }) => {
+  // メタデータ駆動: 選択肢をAPIから取得
+  const [roadDirections, setRoadDirections] = useState<OptionType[]>(DEFAULT_ROAD_DIRECTIONS);
+  const [roadTypes, setRoadTypes] = useState<OptionType[]>(DEFAULT_ROAD_TYPES);
+  const [roadStatus, setRoadStatus] = useState<OptionType[]>(DEFAULT_ROAD_STATUS);
+
+  useEffect(() => {
+    const loadOptions = async () => {
+      try {
+        const [directions, types, status] = await Promise.all([
+          metadataService.getOptionsByCategory('road_direction'),
+          metadataService.getOptionsByCategory('road_type'),
+          metadataService.getOptionsByCategory('road_status'),
+        ]);
+        if (directions.length > 0) setRoadDirections(directions);
+        if (types.length > 0) setRoadTypes(types);
+        if (status.length > 0) setRoadStatus(status);
+      } catch (error) {
+        console.warn('接道選択肢の取得に失敗、デフォルト値を使用:', error);
+      }
+    };
+    loadOptions();
+  }, []);
+
   // 「接道なし」フラグのチェック
   const isNoRoadAccess = (v: any): boolean => {
     return v && typeof v === 'object' && !Array.isArray(v) && v.no_road_access === true;
@@ -177,7 +208,7 @@ export const RoadInfoEditor: React.FC<RoadInfoEditorProps> = ({
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                 >
                   <option value="">選択</option>
-                  {ROAD_DIRECTIONS.map(opt => (
+                  {roadDirections.map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
@@ -191,7 +222,7 @@ export const RoadInfoEditor: React.FC<RoadInfoEditorProps> = ({
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                 >
                   <option value="">選択</option>
-                  {ROAD_TYPES.map(opt => (
+                  {roadTypes.map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
@@ -237,7 +268,7 @@ export const RoadInfoEditor: React.FC<RoadInfoEditorProps> = ({
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                 >
                   <option value="">選択</option>
-                  {ROAD_STATUS.map(opt => (
+                  {roadStatus.map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
@@ -269,7 +300,8 @@ interface FloorPlan {
   room_count: number;
 }
 
-const ROOM_TYPES = [
+// フォールバック用デフォルト値（DB読み込み失敗時）
+const DEFAULT_ROOM_TYPES: OptionType[] = [
   { value: '10', label: 'R' },
   { value: '20', label: 'K' },
   { value: '25', label: 'SK' },
@@ -286,6 +318,21 @@ export const FloorPlansEditor: React.FC<JsonEditorProps<FloorPlan>> = ({
   onChange,
   disabled
 }) => {
+  // メタデータ駆動: 選択肢をAPIから取得
+  const [roomTypes, setRoomTypes] = useState<OptionType[]>(DEFAULT_ROOM_TYPES);
+
+  useEffect(() => {
+    const loadOptions = async () => {
+      try {
+        const options = await metadataService.getOptionsByCategory('room_type');
+        if (options.length > 0) setRoomTypes(options);
+      } catch (error) {
+        console.warn('間取タイプ選択肢の取得に失敗、デフォルト値を使用:', error);
+      }
+    };
+    loadOptions();
+  }, []);
+
   const addItem = () => {
     onChange([...value, { floor: 1, room_type: '', room_size: 0, room_count: 1 }]);
   };
@@ -328,7 +375,7 @@ export const FloorPlansEditor: React.FC<JsonEditorProps<FloorPlan>> = ({
               className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
             >
               <option value="">選択</option>
-              {ROOM_TYPES.map(opt => (
+              {roomTypes.map(opt => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
@@ -827,21 +874,22 @@ interface Renovation {
   description?: string;
 }
 
-const RENOVATION_ITEMS = [
-  'キッチン',
-  '浴室',
-  'トイレ',
-  '洗面台',
-  '床',
-  '壁紙',
-  '外壁',
-  '屋根',
-  '給湯器',
-  '配管',
-  '窓・サッシ',
-  '電気設備',
-  '防水工事',
-  'その他',
+// フォールバック用デフォルト値（DB読み込み失敗時）
+const DEFAULT_RENOVATION_ITEMS: OptionType[] = [
+  { value: 'キッチン', label: 'キッチン' },
+  { value: '浴室', label: '浴室' },
+  { value: 'トイレ', label: 'トイレ' },
+  { value: '洗面台', label: '洗面台' },
+  { value: '床', label: '床' },
+  { value: '壁紙', label: '壁紙' },
+  { value: '外壁', label: '外壁' },
+  { value: '屋根', label: '屋根' },
+  { value: '給湯器', label: '給湯器' },
+  { value: '配管', label: '配管' },
+  { value: '窓・サッシ', label: '窓・サッシ' },
+  { value: '電気設備', label: '電気設備' },
+  { value: '防水工事', label: '防水工事' },
+  { value: 'その他', label: 'その他' },
 ];
 
 export const RenovationsEditor: React.FC<JsonEditorProps<Renovation>> = ({
@@ -850,6 +898,21 @@ export const RenovationsEditor: React.FC<JsonEditorProps<Renovation>> = ({
   disabled
 }) => {
   const currentYear = new Date().getFullYear();
+
+  // メタデータ駆動: 選択肢をAPIから取得
+  const [renovationItems, setRenovationItems] = useState<OptionType[]>(DEFAULT_RENOVATION_ITEMS);
+
+  useEffect(() => {
+    const loadOptions = async () => {
+      try {
+        const options = await metadataService.getOptionsByCategory('renovation_item');
+        if (options.length > 0) setRenovationItems(options);
+      } catch (error) {
+        console.warn('リフォーム項目選択肢の取得に失敗、デフォルト値を使用:', error);
+      }
+    };
+    loadOptions();
+  }, []);
 
   const addItem = () => {
     onChange([...value, { year: currentYear, item: '' }]);
@@ -908,8 +971,8 @@ export const RenovationsEditor: React.FC<JsonEditorProps<Renovation>> = ({
                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
               >
                 <option value="">選択</option>
-                {RENOVATION_ITEMS.map(opt => (
-                  <option key={opt} value={opt}>{opt}</option>
+                {renovationItems.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
             </div>
