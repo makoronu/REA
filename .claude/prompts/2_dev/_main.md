@@ -35,14 +35,7 @@
 → 2_implement/quality.md
 ```
 
-### 3. テスト（中プロンプト）
-```
-→ 3_test/local_test.md   ← サーバー起動・基本確認
-→ 3_test/selenium.md     ← 問題あれば即停止
-→ 3_test/doc_update.md
-```
-
-### 4. 完了（中プロンプト）
+### 3. 完了（中プロンプト）
 ```
 → 4_complete/commit.md
 → 4_complete/schema_update.md
@@ -66,7 +59,6 @@ afplay /System/Library/Sounds/Glass.aiff
 ━━━━━━━━━━━━━━━━━━━━
 ✓ 準備
 ✓ 実装
-✓ テスト
 ✓ 完了
 
 【成果物】
@@ -81,6 +73,5 @@ afplay /System/Library/Sounds/Glass.aiff
 
 ## 停止条件
 
-- テスト中に問題発見 → 即停止 → 報告
 - 判断に迷う → 即停止 → 質問
 

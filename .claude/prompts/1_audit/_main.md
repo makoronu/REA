@@ -4,6 +4,22 @@
 
 ---
 
+## Seleniumテスト
+
+**必ずヘッドレスモード（バックグラウンド）で実行すること。**
+
+```python
+# UITestHelper使用時
+ui = UITestHelper(headless=True)  # デフォルトでヘッドレス
+
+# 直接Chromeを起動する場合
+options = Options()
+options.add_argument("--headless=new")  # 必須
+options.add_argument("--disable-gpu")
+```
+
+---
+
 ## 実行条件
 - 新機能追加
 - 大規模リファクタリング

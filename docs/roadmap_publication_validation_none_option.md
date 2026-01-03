@@ -319,7 +319,7 @@ def validate_for_publication(
 - [x] Segment C: 交通系3コンポーネントチェック動作OK
 - [x] Segment E: マスタテーブル作成完了
 - [x] Segment D: 全10テストケースPASS（2026-01-03）
-- [ ] 本番デプロイ完了
+- [x] 本番デプロイ完了（2026-01-03）
 
 ---
 
