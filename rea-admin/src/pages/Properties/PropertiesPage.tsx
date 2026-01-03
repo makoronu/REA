@@ -679,7 +679,7 @@ const PropertiesPage = () => {
         return typeId ? (propertyTypeMap[typeId] || typeId) : '-';
       }
       case 'sales_status': return property.sales_status || '未設定';
-      case 'publication_status': return property.publication_status === '公開' ? '公開' : '非公開';
+      case 'publication_status': return property.publication_status || '非公開';
       case 'prefecture': return property.prefecture || '-';
       case 'city': return property.city || '-';
       case 'address_detail': return property.address_detail || '-';
