@@ -7,7 +7,6 @@
 | 全種別表示 | visible_for = NULL | visible_for = [] |
 | ラベル名 | japanese_label | label_ja |
 | グループ名 | group_name | field_group |
-| property_locations | geom列なし | geom参照 |
 
 ## 変更前に確認
 ```sql

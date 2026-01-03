@@ -9,7 +9,6 @@
 properties（親）
   ├─ building_info
   ├─ land_info
-  ├─ property_locations
   ├─ property_images
   └─ property_registries
 ```

@@ -13,7 +13,6 @@ export const PROPERTY_FORM_TABLES = [
 // 物件関連全テーブル（CRUD対象）
 export const PROPERTY_TABLES = [
   ...PROPERTY_FORM_TABLES,
-  'property_locations',
   'property_registries',
 ] as const;
 

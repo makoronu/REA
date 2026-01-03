@@ -68,7 +68,7 @@ class ZohoImportResult(BaseModel):
 # 共通ヘルパー関数
 # ========================================
 
-ALLOWED_RELATED_TABLES = {"land_info", "building_info", "property_locations"}
+ALLOWED_RELATED_TABLES = {"land_info", "building_info"}
 
 
 def _upsert_related_table(cur, table_name: str, property_id: int, data: dict):

@@ -268,7 +268,7 @@ def delete_property(request: Request, property_id: int, db: Session = Depends(ge
         raise HTTPException(status_code=404, detail="Property not found")
 
     # 関連テーブルを先に論理削除（deleted_atを設定）
-    for table_name in ["building_info", "land_info", "property_images", "property_locations", "property_registries"]:
+    for table_name in ["building_info", "land_info", "property_images", "property_registries"]:
         db.execute(
             text(f"UPDATE {table_name} SET deleted_at = NOW() WHERE property_id = :pid AND deleted_at IS NULL"),
             {"pid": property_id}

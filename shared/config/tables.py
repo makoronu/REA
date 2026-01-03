@@ -10,7 +10,6 @@ PROPERTY_TABLES: Set[str] = {
     "building_info",
     "land_info",
     "property_images",
-    "property_locations",
     "property_registries",
     "amenities",
 }
