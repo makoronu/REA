@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { API_URL } from '../../config';
+import { API_BASE_URL } from '../../config';
+import { API_PATHS } from '../../constants/apiPaths';
 
 interface Integration {
   id: number;
@@ -51,9 +52,9 @@ export const IntegrationsPage: React.FC = () => {
     try {
       setIsLoading(true);
       const [integrationsRes, summaryRes, statusRes] = await Promise.all([
-        fetch(`${API_URL}/api/v1/integrations/`),
-        fetch(`${API_URL}/api/v1/integrations/sync-summary`),
-        fetch(`${API_URL}/api/v1/integrations/sync-status?limit=50`)
+        fetch(`${API_BASE_URL}${API_PATHS.INTEGRATIONS.LIST}`),
+        fetch(`${API_BASE_URL}${API_PATHS.INTEGRATIONS.SYNC_SUMMARY}`),
+        fetch(`${API_BASE_URL}${API_PATHS.INTEGRATIONS.SYNC_STATUS}?limit=50`)
       ]);
 
       if (!integrationsRes.ok || !summaryRes.ok || !statusRes.ok) {
@@ -83,7 +84,7 @@ export const IntegrationsPage: React.FC = () => {
   // 連携先の有効/無効切り替え
   const handleToggleActive = async (code: string, currentActive: boolean) => {
     try {
-      const response = await fetch(`${API_URL}/api/v1/integrations/${code}`, {
+      const response = await fetch(`${API_BASE_URL}${API_PATHS.INTEGRATIONS.detail(code)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_active: !currentActive })
@@ -113,7 +114,7 @@ export const IntegrationsPage: React.FC = () => {
     setError(null);
 
     try {
-      const response = await fetch(`${API_URL}/api/v1/integrations/bulk-sync`, {
+      const response = await fetch(`${API_BASE_URL}${API_PATHS.INTEGRATIONS.BULK_SYNC}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

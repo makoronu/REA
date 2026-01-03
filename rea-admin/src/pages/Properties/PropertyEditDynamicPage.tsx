@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { PropertyFullForm } from '../../components/form/DynamicForm';
 import { propertyService } from '../../services/propertyService';
 import { Property } from '../../types/property';
-import { API_URL } from '../../config';
+import { API_BASE_URL } from '../../config';
+import { API_PATHS } from '../../constants/apiPaths';
 
 export const PropertyEditDynamicPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -43,7 +44,7 @@ export const PropertyEditDynamicPage: React.FC = () => {
     setIsSyncingToZoho(true);
     setError(null);
     try {
-      const response = await fetch(`${API_URL}/api/v1/zoho/sync/${id}`, {
+      const response = await fetch(`${API_BASE_URL}${API_PATHS.ZOHO.sync(parseInt(id))}`, {
         method: 'POST',
       });
 

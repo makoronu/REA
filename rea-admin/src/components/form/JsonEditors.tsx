@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { API_URL } from '../../config';
+import { API_BASE_URL } from '../../config';
+import { API_PATHS } from '../../constants/apiPaths';
 import { metadataService } from '../../services/metadataService';
 
 // =================================================================
@@ -453,7 +454,7 @@ export const FacilitiesEditor: React.FC<JsonEditorProps<Facility>> = ({
   useEffect(() => {
     const fetchEquipment = async () => {
       try {
-        const response = await axios.get(`${API_URL}/api/v1/equipment/grouped`);
+        const response = await axios.get(`${API_BASE_URL}${API_PATHS.EQUIPMENT.GROUPED}`);
         setCategories(response.data);
         setLoading(false);
       } catch (err) {

@@ -1,5 +1,6 @@
 import axios from 'axios';
-import { API_URL } from '../config';
+import { API_BASE_URL } from '../config';
+import { API_PATHS } from '../constants/apiPaths';
 import { PROPERTY_FORM_TABLES } from '../constants/tables';
 
 // 型定義
@@ -61,7 +62,7 @@ class MetadataService {
   private baseURL: string;
 
   constructor() {
-    this.baseURL = `${API_URL}/api/v1/metadata`;
+    this.baseURL = `${API_BASE_URL}${API_PATHS.METADATA.BASE}`;
   }
 
   /**

@@ -14,6 +14,8 @@ import {
   PAGE_SIZE_OPTIONS,
 } from '../../constants';
 import { STORAGE_KEYS } from '../../constants/storage';
+import { API_BASE_URL } from '../../config';
+import { API_PATHS } from '../../constants/apiPaths';
 
 // ============================================
 // 型定義
@@ -639,7 +641,7 @@ const PropertiesPage = () => {
     setExporting(true);
     try {
       const propertyIds = selectedIds.size > 0 ? Array.from(selectedIds) : properties.map(p => p.id);
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/portal/homes/export`, {
+      const response = await fetch(`${API_BASE_URL}${API_PATHS.PORTAL.HOMES_EXPORT}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ property_ids: propertyIds }),

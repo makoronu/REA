@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { API_URL } from '../../config';
+import { API_BASE_URL } from '../../config';
+import { API_PATHS } from '../../constants/apiPaths';
 
 // 用途地域の色マッピング
 const ZONE_COLORS: Record<number, string> = {
@@ -53,7 +54,7 @@ export const ZoningMapPage: React.FC = () => {
 
   // 凡例を取得
   useEffect(() => {
-    fetch(`${API_URL}/api/v1/geo/zoning/legend`)
+    fetch(`${API_BASE_URL}${API_PATHS.GEO.ZONING_LEGEND}`)
       .then(res => res.json())
       .then(data => setLegend(data))
       .catch(err => console.error('凡例取得エラー:', err));
@@ -112,7 +113,7 @@ export const ZoningMapPage: React.FC = () => {
 
     try {
       const response = await fetch(
-        `${API_URL}/api/v1/geo/zoning/geojson?min_lat=${minLat}&min_lng=${minLng}&max_lat=${maxLat}&max_lng=${maxLng}&simplify=${simplify}`
+        `${API_BASE_URL}${API_PATHS.GEO.ZONING_GEOJSON}?min_lat=${minLat}&min_lng=${minLng}&max_lat=${maxLat}&max_lng=${maxLng}&simplify=${simplify}`
       );
       const geojson = await response.json();
 

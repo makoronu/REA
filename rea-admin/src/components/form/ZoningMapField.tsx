@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useFormContext } from 'react-hook-form';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { API_URL } from '../../config';
+import { API_BASE_URL } from '../../config';
+import { API_PATHS } from '../../constants/apiPaths';
 
 // 用途地域の色マッピング
 const ZONE_COLORS: Record<number, string> = {
@@ -95,7 +96,7 @@ export const ZoningMapField: React.FC = () => {
     // 用途地域を取得
     try {
       const response = await fetch(
-        `${API_URL}/api/v1/geo/zoning/geojson?min_lat=${minLat}&min_lng=${minLng}&max_lat=${maxLat}&max_lng=${maxLng}&simplify=${simplify}`
+        `${API_BASE_URL}${API_PATHS.GEO.ZONING_GEOJSON}?min_lat=${minLat}&min_lng=${minLng}&max_lat=${maxLat}&max_lng=${maxLng}&simplify=${simplify}`
       );
       const geojson = await response.json();
 
@@ -130,7 +131,7 @@ export const ZoningMapField: React.FC = () => {
     // 都市計画区域を取得
     try {
       const response = await fetch(
-        `${API_URL}/api/v1/geo/urban-planning/geojson?min_lat=${minLat}&min_lng=${minLng}&max_lat=${maxLat}&max_lng=${maxLng}&simplify=${urbanSimplify}`
+        `${API_BASE_URL}${API_PATHS.GEO.URBAN_PLANNING_GEOJSON}?min_lat=${minLat}&min_lng=${minLng}&max_lat=${maxLat}&max_lng=${maxLng}&simplify=${urbanSimplify}`
       );
       const geojson = await response.json();
 
@@ -223,8 +224,8 @@ export const ZoningMapField: React.FC = () => {
 
         try {
           const [zoningRes, urbanRes] = await Promise.all([
-            fetch(`${API_URL}/api/v1/geo/zoning?lat=${clickLat}&lng=${clickLng}`),
-            fetch(`${API_URL}/api/v1/geo/urban-planning?lat=${clickLat}&lng=${clickLng}`)
+            fetch(`${API_BASE_URL}${API_PATHS.GEO.ZONING}?lat=${clickLat}&lng=${clickLng}`),
+            fetch(`${API_BASE_URL}${API_PATHS.GEO.URBAN_PLANNING}?lat=${clickLat}&lng=${clickLng}`)
           ]);
           const zoningData = await zoningRes.json();
           const urbanData = await urbanRes.json();

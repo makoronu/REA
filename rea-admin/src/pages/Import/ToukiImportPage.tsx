@@ -8,7 +8,8 @@
  * - 物件登録
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { API_URL } from '../../config';
+import { API_BASE_URL } from '../../config';
+import { API_PATHS } from '../../constants/apiPaths';
 
 // 型定義
 interface Owner {
@@ -73,13 +74,13 @@ export default function ToukiImportPage() {
     setError(null);
     try {
       // 登記レコード一覧を取得
-      const recordsRes = await fetch(`${API_URL}/api/v1/touki/records/list`);
+      const recordsRes = await fetch(`${API_BASE_URL}${API_PATHS.TOUKI.RECORDS_LIST}`);
       if (!recordsRes.ok) throw new Error('登記レコードの取得に失敗しました');
       const recordsData = await recordsRes.json();
       setRecords(recordsData.items || []);
 
       // インポート一覧を取得
-      const importsRes = await fetch(`${API_URL}/api/v1/touki/list`);
+      const importsRes = await fetch(`${API_BASE_URL}${API_PATHS.TOUKI.LIST}`);
       if (!importsRes.ok) throw new Error('インポート一覧の取得に失敗しました');
       const importsData = await importsRes.json();
       setImports(importsData.imports || []);
@@ -107,7 +108,7 @@ export default function ToukiImportPage() {
         const formData = new FormData();
         formData.append('file', file);
 
-        const res = await fetch(`${API_URL}/api/v1/touki/upload`, {
+        const res = await fetch(`${API_BASE_URL}${API_PATHS.TOUKI.UPLOAD}`, {
           method: 'POST',
           body: formData,
         });
@@ -168,7 +169,7 @@ export default function ToukiImportPage() {
     setSuccess(null);
 
     try {
-      const res = await fetch(`${API_URL}/api/v1/touki/${importId}/parse`, {
+      const res = await fetch(`${API_BASE_URL}${API_PATHS.TOUKI.parse(importId)}`, {
         method: 'POST',
       });
 
@@ -196,7 +197,7 @@ export default function ToukiImportPage() {
 
     setError(null);
     try {
-      const res = await fetch(`${API_URL}/api/v1/touki/records/${recordId}`, {
+      const res = await fetch(`${API_BASE_URL}${API_PATHS.TOUKI.record(recordId)}`, {
         method: 'DELETE',
       });
 
@@ -229,7 +230,7 @@ export default function ToukiImportPage() {
     setSuccess(null);
 
     try {
-      const res = await fetch(`${API_URL}/api/v1/touki/records/apply-to-property`, {
+      const res = await fetch(`${API_BASE_URL}${API_PATHS.TOUKI.RECORDS_APPLY}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -294,7 +295,7 @@ export default function ToukiImportPage() {
     setSuccess(null);
 
     try {
-      const res = await fetch(`${API_URL}/api/v1/touki/records/create-property`, {
+      const res = await fetch(`${API_BASE_URL}${API_PATHS.TOUKI.RECORDS_CREATE}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -311,7 +312,7 @@ export default function ToukiImportPage() {
 
       // 登記レコードを削除（一時データなので）
       for (const id of selectedIds) {
-        await fetch(`${API_URL}/api/v1/touki/records/${id}`, {
+        await fetch(`${API_BASE_URL}${API_PATHS.TOUKI.record(id)}`, {
           method: 'DELETE',
         });
       }

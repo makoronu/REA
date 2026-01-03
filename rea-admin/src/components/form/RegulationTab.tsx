@@ -7,7 +7,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
 import Select from 'react-select';
-import { API_URL } from '../../config';
+import { API_BASE_URL } from '../../config';
+import { API_PATHS } from '../../constants/apiPaths';
 import { RegulationMap } from '../regulations/RegulationMap';
 import { metadataService } from '../../services/metadataService';
 import { parseOptions } from '../../utils/options';
@@ -124,7 +125,7 @@ export const RegulationTab: React.FC = () => {
 
     try {
       const response = await fetch(
-        `${API_URL}/api/v1/reinfolib/regulations?lat=${lat}&lng=${lng}`
+        `${API_BASE_URL}${API_PATHS.REINFOLIB.REGULATIONS}?lat=${lat}&lng=${lng}`
       );
 
       if (!response.ok) {

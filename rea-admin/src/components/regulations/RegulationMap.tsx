@@ -6,7 +6,8 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { API_URL } from '../../config';
+import { API_BASE_URL } from '../../config';
+import { API_PATHS } from '../../constants/apiPaths';
 
 interface RegulationMapProps {
   lat: number;
@@ -95,7 +96,7 @@ export const RegulationMap: React.FC<RegulationMapProps> = ({ lat, lng }) => {
 
     try {
       const response = await fetch(
-        `${API_URL}/api/v1/reinfolib/tile/${layerCode}?lat=${lat}&lng=${lng}`
+        `${API_BASE_URL}${API_PATHS.REINFOLIB.tile(layerCode)}?lat=${lat}&lng=${lng}`
       );
 
       if (!response.ok) {

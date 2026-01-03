@@ -5,7 +5,8 @@ import { useMetadataForm } from '../../hooks/useMetadataForm';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { ColumnWithLabel, metadataService } from '../../services/metadataService';
 import { SelectableListModal, SelectableItem, Category } from '../common/SelectableListModal';
-import { API_URL } from '../../config';
+import { API_BASE_URL } from '../../config';
+import { API_PATHS } from '../../constants/apiPaths';
 import { AUTO_SAVE_DELAY_MS, TAB_GROUPS } from '../../constants';
 import { RegulationTab } from './RegulationTab';
 import { RegistryTab } from '../registry/RegistryTab';
@@ -66,7 +67,7 @@ const SchoolDistrictAutoFetchButton: React.FC = () => {
 
     try {
       const response = await fetch(
-        `${API_URL}/api/v1/geo/school-districts?lat=${lat}&lng=${lng}`
+        `${API_BASE_URL}${API_PATHS.GEO.SCHOOL_DISTRICTS}?lat=${lat}&lng=${lng}`
       );
 
       if (!response.ok) {
@@ -295,7 +296,7 @@ const StationAutoFetchButton: React.FC = () => {
 
     try {
       const response = await fetch(
-        `${API_URL}/api/v1/geo/nearest-stations?lat=${lat}&lng=${lng}&radius=5000&limit=15`
+        `${API_BASE_URL}${API_PATHS.GEO.NEAREST_STATIONS}?lat=${lat}&lng=${lng}&radius=5000&limit=15`
       );
 
       if (!response.ok) {
@@ -517,7 +518,7 @@ const BusStopAutoFetchButton: React.FC = () => {
 
     try {
       const response = await fetch(
-        `${API_URL}/api/v1/geo/nearest-bus-stops?lat=${lat}&lng=${lng}&limit=15`
+        `${API_BASE_URL}${API_PATHS.GEO.NEAREST_BUS_STOPS}?lat=${lat}&lng=${lng}&limit=15`
       );
 
       if (!response.ok) {
@@ -737,7 +738,7 @@ const FacilityAutoFetchButton: React.FC = () => {
 
     try {
       const response = await fetch(
-        `${API_URL}/api/v1/geo/nearest-facilities-by-category?lat=${lat}&lng=${lng}&limit_per_category=5`
+        `${API_BASE_URL}${API_PATHS.GEO.NEAREST_FACILITIES}?lat=${lat}&lng=${lng}&limit_per_category=5`
       );
 
       if (!response.ok) {

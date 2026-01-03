@@ -5,7 +5,8 @@
  * レイアウト: 物件種別が行、フィールドが列（横スクロール不要）
  */
 import React, { useState, useEffect } from 'react';
-import { API_URL } from '../../config';
+import { API_BASE_URL } from '../../config';
+import { API_PATHS } from '../../constants/apiPaths';
 
 // 型定義
 interface PropertyType {
@@ -63,13 +64,13 @@ const FieldVisibilityPage: React.FC = () => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const ptRes = await fetch(`${API_URL}/api/v1/admin/property-types`);
+        const ptRes = await fetch(`${API_BASE_URL}${API_PATHS.ADMIN.PROPERTY_TYPES}`);
         if (ptRes.ok) {
           const ptData = await ptRes.json();
           setPropertyTypes(ptData);
         }
 
-        const fvRes = await fetch(`${API_URL}/api/v1/admin/field-visibility?table_name=${selectedTable}`);
+        const fvRes = await fetch(`${API_BASE_URL}${API_PATHS.ADMIN.FIELD_VISIBILITY}?table_name=${selectedTable}`);
         if (fvRes.ok) {
           const fvData = await fvRes.json();
           setFields(fvData);
@@ -215,7 +216,7 @@ const FieldVisibilityPage: React.FC = () => {
       });
 
       const res = await fetch(
-        `${API_URL}/api/v1/admin/field-visibility/bulk?field_type=${settingType}`,
+        `${API_BASE_URL}${API_PATHS.ADMIN.FIELD_VISIBILITY_BULK}?field_type=${settingType}`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -227,7 +228,7 @@ const FieldVisibilityPage: React.FC = () => {
         const label = settingType === 'required' ? '必須設定' : '表示設定';
         setMessage({ type: 'success', text: `${updates.length}件の${label}を保存しました` });
         setPendingChanges(new Map());
-        const fvRes = await fetch(`${API_URL}/api/v1/admin/field-visibility?table_name=${selectedTable}`);
+        const fvRes = await fetch(`${API_BASE_URL}${API_PATHS.ADMIN.FIELD_VISIBILITY}?table_name=${selectedTable}`);
         if (fvRes.ok) {
           const fvData = await fvRes.json();
           setFields(fvData);

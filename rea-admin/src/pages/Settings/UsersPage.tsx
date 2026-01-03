@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { API_URL } from '../../config';
+import { API_BASE_URL } from '../../config';
+import { API_PATHS } from '../../constants/apiPaths';
 import { STORAGE_KEYS } from '../../constants/storage';
 
 interface User {
@@ -44,8 +45,8 @@ export const UsersPage: React.FC = () => {
     try {
       setIsLoading(true);
       const [usersRes, rolesRes] = await Promise.all([
-        fetch(`${API_URL}/api/v1/users`, { headers: getAuthHeaders() }),
-        fetch(`${API_URL}/api/v1/users/roles`, { headers: getAuthHeaders() })
+        fetch(`${API_BASE_URL}${API_PATHS.USERS.LIST}`, { headers: getAuthHeaders() }),
+        fetch(`${API_BASE_URL}${API_PATHS.USERS.ROLES}`, { headers: getAuthHeaders() })
       ]);
 
       if (!usersRes.ok) {
@@ -88,7 +89,7 @@ export const UsersPage: React.FC = () => {
     setError(null);
 
     try {
-      const response = await fetch(`${API_URL}/api/v1/users`, {
+      const response = await fetch(`${API_BASE_URL}${API_PATHS.USERS.LIST}`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(newUser)
@@ -113,7 +114,7 @@ export const UsersPage: React.FC = () => {
 
   const handleToggleActive = async (userId: number, currentActive: boolean) => {
     try {
-      const response = await fetch(`${API_URL}/api/v1/users/${userId}`, {
+      const response = await fetch(`${API_BASE_URL}${API_PATHS.USERS.detail(userId)}`, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify({ is_active: !currentActive })

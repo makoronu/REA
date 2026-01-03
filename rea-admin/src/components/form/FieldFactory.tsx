@@ -15,7 +15,8 @@ import { TransportationField } from './TransportationField';
 import { BusStopsField } from './BusStopsField';
 import { NearbyFacilitiesField } from './NearbyFacilitiesField';
 import { ZoningMapField } from './ZoningMapField';
-import { API_URL } from '../../config';
+import { API_BASE_URL } from '../../config';
+import { API_PATHS } from '../../constants/apiPaths';
 import { parseOptions } from '../../utils/options';
 
 interface FieldFactoryProps {
@@ -948,7 +949,7 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
 
       try {
         // ジオコードで緯度経度を取得
-        const geocodeRes = await fetch(`${API_URL}/api/v1/geo/geocode?address=${encodeURIComponent(fullAddress)}`);
+        const geocodeRes = await fetch(`${API_BASE_URL}${API_PATHS.GEO.GEOCODE}?address=${encodeURIComponent(fullAddress)}`);
         const geocodeData = await geocodeRes.json();
 
         if (geocodeData.latitude && geocodeData.longitude) {
@@ -981,8 +982,8 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
 
       // 用途地域と都市計画区域を同時に取得
       const [zoningRes, urbanRes] = await Promise.all([
-        fetch(`${API_URL}/api/v1/geo/zoning?lat=${lat}&lng=${lng}`),
-        fetch(`${API_URL}/api/v1/geo/urban-planning?lat=${lat}&lng=${lng}`)
+        fetch(`${API_BASE_URL}${API_PATHS.GEO.ZONING}?lat=${lat}&lng=${lng}`),
+        fetch(`${API_BASE_URL}${API_PATHS.GEO.URBAN_PLANNING}?lat=${lat}&lng=${lng}`)
       ]);
 
       const zoningData = await zoningRes.json();
