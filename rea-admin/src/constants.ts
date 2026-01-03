@@ -48,6 +48,31 @@ export const AUTO_SAVE_DELAY_MS = 2000;
 export const DEFAULT_SEARCH_RADIUS_M = 2000;  // デフォルト検索半径（メートル）
 export const WALK_SPEED_M_PER_MIN = 80;       // 徒歩速度（メートル/分）
 
+// === 検索パラメータ設定 ===
+export const GEO_SEARCH_CONFIG = {
+  // 最寄駅検索
+  STATION: {
+    RADIUS_M: 5000,      // 検索半径（メートル）
+    LIMIT: 15,           // 最大取得件数
+  },
+  // バス停検索
+  BUS_STOP: {
+    LIMIT: 15,           // 最大取得件数
+  },
+  // 周辺施設検索
+  FACILITY: {
+    LIMIT_PER_CATEGORY: 5,  // カテゴリあたりの最大件数
+  },
+  // 最寄駅設定（物件保存用）
+  PROPERTY_STATIONS: {
+    LIMIT: 3,            // 物件に保存する最寄駅数
+  },
+  // geoService用デフォルト
+  API_DEFAULT: {
+    LIMIT: 10,           // API呼び出しのデフォルトlimit
+  },
+} as const;
+
 // === 価格フォーマット ===
 export const formatPrice = (price: number): string => {
   if (price >= YEN_OKU) return (price / YEN_OKU).toFixed(1) + '億円';

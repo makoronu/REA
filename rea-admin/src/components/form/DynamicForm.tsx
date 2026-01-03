@@ -7,7 +7,7 @@ import { ColumnWithLabel, metadataService } from '../../services/metadataService
 import { SelectableListModal, SelectableItem, Category } from '../common/SelectableListModal';
 import { API_BASE_URL } from '../../config';
 import { API_PATHS } from '../../constants/apiPaths';
-import { AUTO_SAVE_DELAY_MS, TAB_GROUPS } from '../../constants';
+import { AUTO_SAVE_DELAY_MS, TAB_GROUPS, GEO_SEARCH_CONFIG } from '../../constants';
 import { RegulationTab } from './RegulationTab';
 import { RegistryTab } from '../registry/RegistryTab';
 
@@ -296,7 +296,7 @@ const StationAutoFetchButton: React.FC = () => {
 
     try {
       const response = await fetch(
-        `${API_BASE_URL}${API_PATHS.GEO.NEAREST_STATIONS}?lat=${lat}&lng=${lng}&radius=5000&limit=15`
+        `${API_BASE_URL}${API_PATHS.GEO.NEAREST_STATIONS}?lat=${lat}&lng=${lng}&radius=${GEO_SEARCH_CONFIG.STATION.RADIUS_M}&limit=${GEO_SEARCH_CONFIG.STATION.LIMIT}`
       );
 
       if (!response.ok) {
@@ -518,7 +518,7 @@ const BusStopAutoFetchButton: React.FC = () => {
 
     try {
       const response = await fetch(
-        `${API_BASE_URL}${API_PATHS.GEO.NEAREST_BUS_STOPS}?lat=${lat}&lng=${lng}&limit=15`
+        `${API_BASE_URL}${API_PATHS.GEO.NEAREST_BUS_STOPS}?lat=${lat}&lng=${lng}&limit=${GEO_SEARCH_CONFIG.BUS_STOP.LIMIT}`
       );
 
       if (!response.ok) {
@@ -738,7 +738,7 @@ const FacilityAutoFetchButton: React.FC = () => {
 
     try {
       const response = await fetch(
-        `${API_BASE_URL}${API_PATHS.GEO.NEAREST_FACILITIES}?lat=${lat}&lng=${lng}&limit_per_category=5`
+        `${API_BASE_URL}${API_PATHS.GEO.NEAREST_FACILITIES}?lat=${lat}&lng=${lng}&limit_per_category=${GEO_SEARCH_CONFIG.FACILITY.LIMIT_PER_CATEGORY}`
       );
 
       if (!response.ok) {

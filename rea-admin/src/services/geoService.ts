@@ -1,6 +1,6 @@
 // 地理情報API
 import { api } from './api';
-import { DEFAULT_SEARCH_RADIUS_M } from '../constants';
+import { DEFAULT_SEARCH_RADIUS_M, GEO_SEARCH_CONFIG } from '../constants';
 
 // 郵便番号検索結果
 export interface PostalCodeResult {
@@ -77,7 +77,7 @@ export const geoService = {
     lat: number,
     lng: number,
     radius: number = DEFAULT_SEARCH_RADIUS_M,
-    limit: number = 10
+    limit: number = GEO_SEARCH_CONFIG.API_DEFAULT.LIMIT
   ): Promise<NearestStationsResponse> {
     const response = await api.get('/geo/nearest-stations', {
       params: { lat, lng, radius, limit }
@@ -96,7 +96,7 @@ export const geoService = {
   // 物件の最寄駅を自動設定（バックエンドで処理）
   async setPropertyNearestStations(
     propertyId: number,
-    limit: number = 3
+    limit: number = GEO_SEARCH_CONFIG.PROPERTY_STATIONS.LIMIT
   ): Promise<{ property_id: number; stations_set: number; transportation: PropertyStation[] }> {
     const response = await api.post(`/geo/properties/${propertyId}/set-nearest-stations`, null, {
       params: { limit }
