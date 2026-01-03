@@ -18,9 +18,9 @@
 
 | 項目 | 内容 |
 |------|------|
-| 作業中 | Seg3精査完了、計画策定中 |
-| 完了 | Seg1・Seg2ハードコーディング撲滅（デプロイ待ち） |
-| 残り | Seg3a〜3d、Seg4、HOMES入稿、ZOHO画像同期 |
+| 作業中 | Seg1〜3a ハードコーディング撲滅（開発完了、デプロイ待ち） |
+| 完了 | 公開時バリデーション「該当なし」対応（本番デプロイ完了） |
+| 残り | Seg3b〜4、HOMES入稿、ZOHO画像同期 |
 | 更新 | 2026-01-03 |
 
 ---
@@ -30,7 +30,7 @@
 | タスク | ファイル | 状態 |
 |--------|---------|------|
 | 該当なし対応 | `docs/roadmap_publication_validation_none_option.md` | ✅実装完了 |
-| ハードコーディング撲滅 | `docs/roadmap_hardcoding_elimination.md` | Seg1・2完了（デプロイ待ち）、Seg3精査完了 |
+| ハードコーディング撲滅 | `docs/roadmap_hardcoding_elimination.md` | Seg1〜3a完了（デプロイ待ち） |
 
 ---
 
