@@ -18,30 +18,34 @@
 
 | 項目 | 内容 |
 |------|------|
-| 作業中 | なし |
-| 次回 | **デプロイ実施**（7件まとめて） |
-| 残り | Seg3d〜4（優先度低）、HOMES入稿、ZOHO画像同期 |
+| 作業中 | **全体テスト→デプロイ準備** |
+| 次回 | **全体テスト後、デプロイ実施** |
+| 残り | Seg4（日付・メッセージ）、HOMES入稿、ZOHO画像同期 |
 | 更新 | 2026-01-04 |
 
 ### 次回やること
 
-1. **デプロイ実施**（7件まとめて）
-   - Seg1〜3c + property_locations削除（6件）
-   - 法令制限自動取得メタデータ駆動化（1件）
+1. **全体テスト実施**（Seg1〜3d統合テスト）
+2. **デプロイ実施**（8件まとめて）
+   - Seg1〜3d + property_locations削除（8件）
    - デプロイプロンプト `.claude/prompts/3_deploy/_main.md` に従う
    - 本番: https://realestateautomation.net/
 
-2. デプロイ後、残りセグメント検討
-   - Seg3d: その他設定値（30+件、優先度低）
-   - Seg4: 日付・メッセージ（85+件、優先度低）
-
 ### 今日完了した作業（2026-01-04）
+
+- **Seg3d: 設定値DB化（メタデータ駆動）**
+  - DB: `system_config`テーブル新規作成
+  - DB: `property_types.sort_order`カラム追加
+  - shared/constants.py: DB読み込み型に変更（_LazyDict）
+  - constants.ts: GEO_SEARCH_CONFIG定数追加
+  - DynamicForm.tsx: 直書き3件→定数参照
+  - geoService.ts: デフォルト値→定数参照
+  - コミット: f60b255
 
 - **法令制限自動取得メタデータ駆動化**
   - DB: `master_options.api_aliases`カラム追加
   - API: コード変換処理追加（全角数字→漢数字対応）
   - フロント: 自動取得→直接代入、ハードコーディング削除
-  - テスト: PASS（デプロイ可能）
   - コミット: c962685, 0d16315
 
 ---
@@ -51,7 +55,7 @@
 | タスク | ファイル | 状態 |
 |--------|---------|------|
 | 該当なし対応 | `docs/roadmap_publication_validation_none_option.md` | ✅実装完了 |
-| ハードコーディング撲滅 | `docs/roadmap_hardcoding_elimination.md` | Seg1〜3c完了（デプロイ待ち） |
+| ハードコーディング撲滅 | `docs/roadmap_hardcoding_elimination.md` | Seg1〜3d完了（デプロイ待ち） |
 
 ---
 
