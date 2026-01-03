@@ -15,6 +15,17 @@ logger = logging.getLogger(__name__)
 # API定義（メタデータ駆動）
 API_DEFINITIONS = {
     # 地図タイル系（XYZタイル方式）
+    "XKT001": {
+        "name": "都市計画区域・区域区分",
+        "endpoint": "XKT001",
+        "type": "tile",
+        "zoom_level": 14,
+        "properties_map": {
+            "area_classification_ja": "区域区分",
+            "prefecture": "都道府県",
+            "city_name": "市区町村"
+        }
+    },
     "XKT002": {
         "name": "用途地域",
         "endpoint": "XKT002",
@@ -34,7 +45,7 @@ API_DEFINITIONS = {
         "type": "tile",
         "zoom_level": 14,
         "properties_map": {
-            "fire_prevent_ja": "防火地域区分",
+            "fire_prevention_ja": "防火地域区分",
             "prefecture": "都道府県",
             "city_name": "市区町村"
         }
@@ -299,6 +310,10 @@ class ReinfLibClient:
             }
         """
         results = {}
+
+        # 都市計画区域・区域区分（XKT001）
+        props = self.get_regulation_at_point("XKT001", lat, lng)
+        results["city_planning"] = self._map_properties("XKT001", props) if props else None
 
         # 用途地域
         props = self.get_regulation_at_point("XKT002", lat, lng)

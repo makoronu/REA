@@ -471,6 +471,7 @@ def get_filter_options(db: Session = Depends(dependencies.get_db)) -> Dict[str, 
                 JOIN master_categories mc ON mo.category_id = mc.id
                 WHERE mc.category_code = :category_code
                 AND mo.is_active = true
+                AND mo.deleted_at IS NULL
                 ORDER BY mo.display_order
             """)
             options_result = db.execute(options_query, {"category_code": master_category_code})
@@ -626,6 +627,7 @@ def _get_master_options_cache(db: Session) -> Dict[str, List[Dict[str, str]]]:
         JOIN master_categories mc ON mo.category_id = mc.id
         WHERE mo.source = 'rea'
         AND mo.is_active = true
+        AND mo.deleted_at IS NULL
         ORDER BY mc.category_code, mo.display_order
     """)
     result = db.execute(query)
@@ -635,10 +637,9 @@ def _get_master_options_cache(db: Session) -> Dict[str, List[Dict[str, str]]]:
     for row in result:
         if row.category_code not in options_by_category:
             options_by_category[row.category_code] = []
-        # option_code は "rea_1" 形式なので、数字部分のみ抽出
-        code = row.option_code.replace("rea_", "")
+        # option_code をそのまま使用（メタデータ駆動）
         options_by_category[row.category_code].append({
-            "value": code,
+            "value": row.option_code,
             "label": row.option_value
         })
 
@@ -676,6 +677,7 @@ def get_options_by_category(
             JOIN master_categories mc ON mo.category_id = mc.id
             WHERE mc.category_code = :category_code
             AND mo.is_active = true
+            AND mo.deleted_at IS NULL
             ORDER BY mo.display_order
         """)
         result = db.execute(query, {"category_code": category_code})
@@ -766,6 +768,7 @@ def get_status_settings(db: Session = Depends(dependencies.get_db)) -> Dict[str,
             JOIN master_categories mc ON mo.category_id = mc.id
             WHERE mc.category_code = 'sales_status'
             AND mo.is_active = true
+            AND mo.deleted_at IS NULL
             ORDER BY mo.display_order
         """)
         sales_result = db.execute(sales_query)
@@ -805,6 +808,7 @@ def get_status_settings(db: Session = Depends(dependencies.get_db)) -> Dict[str,
             JOIN master_categories mc ON mo.category_id = mc.id
             WHERE mc.category_code = 'publication_status'
             AND mo.is_active = true
+            AND mo.deleted_at IS NULL
             ORDER BY mo.display_order
         """)
         pub_result = db.execute(pub_query)
@@ -835,6 +839,7 @@ def get_status_settings(db: Session = Depends(dependencies.get_db)) -> Dict[str,
             JOIN master_categories mc ON mo.category_id = mc.id
             WHERE mc.category_code = 'transaction_type'
             AND mo.is_active = true
+            AND mo.deleted_at IS NULL
             AND mo.shows_contractor = true
             ORDER BY mo.display_order
         """)

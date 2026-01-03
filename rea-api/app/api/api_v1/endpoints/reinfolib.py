@@ -87,6 +87,12 @@ def _convert_to_codes(regulations: Dict[str, Any]) -> Dict[str, Any]:
     if regulations.get('district_plan') and regulations['district_plan'].get('地区計画名'):
         codes['district_plan_name'] = regulations['district_plan']['地区計画名']
 
+    # 都市計画区域（メタデータ駆動: XKT001 API -> 区域区分）
+    if regulations.get('city_planning') and regulations['city_planning'].get('区域区分'):
+        city_planning_map = _get_code_mapping('city_planning')
+        area_type = regulations['city_planning']['区域区分']
+        codes['city_planning'] = city_planning_map.get(area_type)
+
     return codes
 
 

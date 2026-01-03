@@ -343,13 +343,23 @@ def should_exclude_field(
     # マスタオプション表示名での判定（exclude_when_option_value）
     if "exclude_when_option_value" in rule:
         exclude_values = rule.get("exclude_when_option_value", [])
-        if isinstance(depends_value, int):
-            # depends_onのmaster_category_codeを取得
-            category_code = get_master_category_code(db, depends_on)
-            if category_code:
-                option_value = get_option_value_by_id(db, depends_value, category_code)
+        category_code = get_master_category_code(db, depends_on)
+        if not category_code:
+            return False
+
+        # JSONB配列対応: ["rea_4"] のような形式
+        if isinstance(depends_value, list):
+            for code in depends_value:
+                option_value = get_option_value_by_id(db, code, category_code)
                 if option_value and option_value in exclude_values:
                     return True
+            return False
+
+        # 後方互換: 整数または文字列
+        if isinstance(depends_value, (int, str)):
+            option_value = get_option_value_by_id(db, depends_value, category_code)
+            if option_value and option_value in exclude_values:
+                return True
         return False
 
     # 値ベースの判定（exclude_when）- 後方互換性のため残す

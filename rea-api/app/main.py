@@ -1,4 +1,6 @@
 import os
+import traceback
+import logging
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,6 +10,8 @@ from fastapi.staticfiles import StaticFiles
 from .api.api_v1.api import api_router
 from .core.config import settings
 from .core.exceptions import REAException
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -51,4 +55,28 @@ async def rea_exception_handler(request: Request, exc: REAException):
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": exc.detail, **exc.extra}
+    )
+
+
+# グローバル例外ハンドラー（デバッグ用）
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """
+    未処理例外をキャッチしてスタックトレースを返す
+    デバッグ用：エラー詳細をフロントエンドで表示可能にする
+    """
+    error_detail = str(exc)
+    error_traceback = traceback.format_exc()
+
+    # ログに出力
+    logger.error(f"Unhandled exception: {error_detail}\n{error_traceback}")
+
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": error_detail,
+            "traceback": error_traceback,
+            "path": str(request.url.path),
+            "method": request.method
+        }
     )

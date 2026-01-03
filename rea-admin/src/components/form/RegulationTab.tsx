@@ -24,6 +24,7 @@ interface RegulationCodes {
   floor_area_ratio?: number;
   fire_prevention_area?: string;
   district_plan_name?: string;
+  city_planning?: string;  // メタデータ駆動: geo/urban-planning -> layer_no
 }
 
 
@@ -117,6 +118,11 @@ export const RegulationTab: React.FC = () => {
       if (codes.district_plan_name) {
         setValue('district_plan_name', codes.district_plan_name, { shouldDirty: true });
         updated.push('地区計画');
+      }
+      // メタデータ駆動: city_planning (geo/urban-planning -> layer_no)
+      if (codes.city_planning) {
+        setValue('city_planning', [codes.city_planning], { shouldDirty: true });
+        updated.push('都市計画');
       }
 
       if (updated.length > 0) {

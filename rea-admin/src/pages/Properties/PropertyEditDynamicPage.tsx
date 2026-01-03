@@ -15,7 +15,9 @@ export const PropertyEditDynamicPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(!isNew);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [errorDetail, setErrorDetail] = useState<{ detail: string; traceback?: string; path?: string } | null>(null);
   const [isSyncingToZoho, setIsSyncingToZoho] = useState(false);
+  const [showErrorDetail, setShowErrorDetail] = useState(false);
 
   // 既存データの取得（関連テーブル含む）
   useEffect(() => {
@@ -108,22 +110,33 @@ export const PropertyEditDynamicPage: React.FC = () => {
       console.error('Save error:', err);
 
       // エラーレスポンスの解析
-      const errorDetail = err.response?.data?.detail;
+      const responseData = err.response?.data;
+      const detail = responseData?.detail;
 
       // 公開バリデーションエラー（グループ付き）の場合は再スロー
-      if (errorDetail && typeof errorDetail === 'object' && errorDetail.groups) {
+      if (detail && typeof detail === 'object' && detail.groups) {
         // DynamicFormでキャッチして表示するために再スロー
         throw {
           type: 'publication_validation',
-          message: errorDetail.message,
-          groups: errorDetail.groups,
+          message: detail.message,
+          groups: detail.groups,
         };
       }
 
+      // エラー詳細を保存（デバッグ用）
+      if (responseData) {
+        setErrorDetail({
+          detail: typeof detail === 'string' ? detail : (detail?.message || JSON.stringify(detail)),
+          traceback: responseData.traceback,
+          path: responseData.path,
+        });
+        setShowErrorDetail(true);
+      }
+
       // 通常のエラー
-      const errorMessage = typeof errorDetail === 'string'
-        ? errorDetail
-        : errorDetail?.message || '保存に失敗しました';
+      const errorMessage = typeof detail === 'string'
+        ? detail
+        : detail?.message || '保存に失敗しました';
       setError(errorMessage);
     }
   };
@@ -225,6 +238,75 @@ export const PropertyEditDynamicPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* エラー詳細モーダル（デバッグ用） */}
+      {showErrorDetail && errorDetail && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[80vh] overflow-hidden">
+            <div className="bg-red-600 text-white px-4 py-3 flex justify-between items-center">
+              <h3 className="font-bold flex items-center gap-2">
+                <svg className="h-5 w-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                  <path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                保存エラー
+              </h3>
+              <button
+                onClick={() => setShowErrorDetail(false)}
+                className="text-white hover:text-gray-200"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto max-h-[60vh]">
+              {/* エラーメッセージ */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">エラー内容</label>
+                <div className="bg-red-50 border border-red-200 rounded p-3 text-red-800 text-sm font-mono whitespace-pre-wrap select-all">
+                  {errorDetail.detail}
+                </div>
+              </div>
+
+              {/* パス */}
+              {errorDetail.path && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">API Path</label>
+                  <div className="bg-gray-50 border border-gray-200 rounded p-2 text-gray-800 text-sm font-mono select-all">
+                    {errorDetail.path}
+                  </div>
+                </div>
+              )}
+
+              {/* スタックトレース */}
+              {errorDetail.traceback && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">スタックトレース</label>
+                  <div className="bg-gray-900 text-green-400 rounded p-3 text-xs font-mono whitespace-pre-wrap overflow-x-auto select-all max-h-64 overflow-y-auto">
+                    {errorDetail.traceback}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="bg-gray-50 px-4 py-3 flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  const text = `エラー: ${errorDetail.detail}\n\nPath: ${errorDetail.path || 'N/A'}\n\nTraceback:\n${errorDetail.traceback || 'N/A'}`;
+                  navigator.clipboard.writeText(text);
+                  alert('クリップボードにコピーしました');
+                }}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700"
+              >
+                📋 コピー
+              </button>
+              <button
+                onClick={() => setShowErrorDetail(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50"
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* エラー表示 */}
       {error && saveStatus !== 'error' && (

@@ -975,9 +975,9 @@ async def set_property_zoning(property_id: int):
 
             # 主たる用途地域（面積最大）の値を設定
             primary = rows[0]
-            # メタデータ駆動: zone_code（INTEGER）を直接保存
-            # 表示時にm_zoningとJOINしてzone_nameを取得
-            result['use_district'] = int(primary[0])  # zone_code
+            # JSONB配列形式で保存（master_optionsと形式を統一）
+            # TODO: m_zoningのzone_codeをmaster_optionsのrea_Xコードにマッピング
+            result['use_district'] = json.dumps([str(primary[0])])
             result['building_coverage_ratio'] = primary[2]
             result['floor_area_ratio'] = primary[3]
 
