@@ -255,6 +255,7 @@ def get_table_columns_with_labels(
                 cl.visible_for,
                 cl.master_category_code,
                 cl.group_order,
+                cl.placeholder,
                 -- 主キー判定
                 CASE
                     WHEN pk.column_name IS NOT NULL THEN true
@@ -325,7 +326,7 @@ def get_table_columns_with_labels(
                 "is_display_list": False,  # 存在しない
                 "group_name": row.group_name or "基本情報",
                 "group_order": row.group_order if row.group_order is not None else DEFAULT_ORDER,
-                "placeholder": None,  # 存在しない
+                "placeholder": row.placeholder,  # column_labelsから取得
                 "help_text": row.description,  # descriptionを流用
                 "default_value": None,  # 存在しない
                 "options": options,  # master_optionsまたはproperty_typesから取得
@@ -349,7 +350,8 @@ def get_table_columns_with_labels(
                 cl.data_type,
                 cl.visible_for,
                 cl.master_category_code,
-                cl.group_order
+                cl.group_order,
+                cl.placeholder
             FROM column_labels cl
             WHERE cl.table_name = :table_name
             AND cl.column_name NOT IN (
@@ -389,7 +391,7 @@ def get_table_columns_with_labels(
                 "is_display_list": False,
                 "group_name": row.group_name or "その他",
                 "group_order": row.group_order if row.group_order is not None else DEFAULT_ORDER,
-                "placeholder": None,
+                "placeholder": row.placeholder,  # column_labelsから取得
                 "help_text": row.description,
                 "default_value": None,
                 "options": virtual_options,
