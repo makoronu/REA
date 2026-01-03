@@ -1,7 +1,7 @@
 # ハードコーディング撲滅ロードマップ
 
 **作成日:** 2026-01-03
-**更新日:** 2026-01-03（Seg3分割）
+**更新日:** 2026-01-04（Seg3d完了、データ復旧タスク追加）
 **ベース:** docs/hardcoding_audit_report.md
 
 ---
@@ -157,3 +157,45 @@ Step 4: テスト
 | 2026-01-03 | Seg3a完了（ロールコードベース化） |
 | 2026-01-03 | Seg3b完了（テーブル名・ストレージキー統一） |
 | 2026-01-03 | Seg3c完了（APIパス統一、40件→apiPaths.ts） |
+| 2026-01-04 | Seg3d完了（設定値DB化） |
+| 2026-01-04 | land_info型変更時に0→NULL変換ミス発覚（ローカルのみ、本番無事） |
+
+---
+
+## 次回タスク: ローカルDBデータ復旧
+
+**優先度:** ハードコーディング撲滅完了後
+
+### 問題
+
+land_info カラム型変更時、移行SQLで `0 → NULL` に変換してしまった。
+`0 = 未設定` は有効なオプション値のため、データ欠損が発生。
+
+### 影響範囲（ローカルDBのみ）
+
+| カラム | 消失件数 |
+|--------|----------|
+| land_area_measurement | 2369 |
+| land_category | 83 |
+| land_rights | 113 |
+| land_transaction_notice | 2370 |
+| setback | 32 |
+| terrain | 132 |
+| city_planning | 409 |
+
+### 復旧方法
+
+本番DBからデータを取得し、ローカルDBに反映する。
+
+```sql
+-- 例: setback の復旧
+UPDATE land_info l
+SET setback = p.setback::text
+FROM 本番land_info p
+WHERE l.property_id = p.property_id AND l.setback IS NULL;
+```
+
+### 本番DBの状態
+
+- **型: 全てINTEGER（未変更）**
+- **データ: 全件NOT NULL（0含む、無事）**
