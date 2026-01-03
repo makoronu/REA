@@ -104,8 +104,26 @@ export const PropertyEditDynamicPage: React.FC = () => {
       }
     } catch (err: any) {
       setSaveStatus('error');
-      setError(err.response?.data?.detail || '保存に失敗しました');
       console.error('Save error:', err);
+
+      // エラーレスポンスの解析
+      const errorDetail = err.response?.data?.detail;
+
+      // 公開バリデーションエラー（グループ付き）の場合は再スロー
+      if (errorDetail && typeof errorDetail === 'object' && errorDetail.groups) {
+        // DynamicFormでキャッチして表示するために再スロー
+        throw {
+          type: 'publication_validation',
+          message: errorDetail.message,
+          groups: errorDetail.groups,
+        };
+      }
+
+      // 通常のエラー
+      const errorMessage = typeof errorDetail === 'string'
+        ? errorDetail
+        : errorDetail?.message || '保存に失敗しました';
+      setError(errorMessage);
     }
   };
 

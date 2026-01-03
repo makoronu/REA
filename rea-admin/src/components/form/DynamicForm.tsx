@@ -977,7 +977,12 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState(0);
   // 公開バリデーションエラー状態（全モードで必要なため、早期リターン前に定義）
-  const [publicationValidationError, setPublicationValidationError] = useState<string | null>(null);
+  const [publicationValidationError, setPublicationValidationError] = useState<{
+    message: string;
+    groups: Record<string, string[]>;
+  } | null>(null);
+  // エラーモーダル表示状態
+  const [showValidationErrorModal, setShowValidationErrorModal] = useState(false);
 
   // ステータス色設定（メタデータ駆動）
   const [salesStatusConfig, setSalesStatusConfig] = useState<Record<string, { label: string; color: string; bg: string }>>({});
@@ -1383,47 +1388,19 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
       if (!['販売中', '商談中'].includes(newStatus)) {
         form.setValue('publication_status', '非公開', { shouldDirty: true });
       }
-      // 販売中に変更した場合、デフォルトで公開に
+      // 販売中に変更した場合、デフォルトで公開に設定
+      // （バリデーションは保存時にAPIで実行、NGなら公開不合格になる）
       if (newStatus === '販売中' && currentPublicationStatus === '非公開') {
         form.setValue('publication_status', '公開', { shouldDirty: true });
       }
     };
 
-    // 公開に必須な項目（最低限これがないと公開できない）
-    const requiredFieldsForPublication = [
-      { field: 'property_name', label: '物件名' },
-      { field: 'price', label: '価格' },
-      { field: 'prefecture', label: '都道府県' },
-      { field: 'city', label: '市区町村' },
-    ];
-
+    // 公開ステータス変更ハンドラー（バリデーションは保存時にAPIで実行）
     const handlePublicationStatusChange = (newStatus: string) => {
-      // 非公開への変更はバリデーション不要
-      if (newStatus === '非公開') {
-        form.setValue('publication_status', newStatus, { shouldDirty: true });
-        setPublicationValidationError(null);
-        return;
-      }
-
-      // 公開/会員公開の場合は必須項目をチェック
-      const missingFields: string[] = [];
-      for (const { field, label } of requiredFieldsForPublication) {
-        const value = formData[field];
-        if (value === null || value === undefined || value === '') {
-          missingFields.push(label);
-        }
-      }
-
-      if (missingFields.length > 0) {
-        setPublicationValidationError(`公開には以下の項目が必要です: ${missingFields.join('、')}`);
-        // 3秒後にエラーを消す
-        setTimeout(() => setPublicationValidationError(null), 5000);
-        return;
-      }
-
-      // バリデーション通過
       form.setValue('publication_status', newStatus, { shouldDirty: true });
+      // エラー状態をクリア
       setPublicationValidationError(null);
+      setShowValidationErrorModal(false);
     };
 
     return (
@@ -1535,9 +1512,24 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                   {!autoSave && (
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         console.log('Save button clicked');
-                        submitForm();
+                        try {
+                          await submitForm();
+                          // 成功時はエラー状態をクリア
+                          setPublicationValidationError(null);
+                          setShowValidationErrorModal(false);
+                        } catch (err: any) {
+                          // 公開バリデーションエラーの場合
+                          if (err?.type === 'publication_validation') {
+                            setPublicationValidationError({
+                              message: err.message,
+                              groups: err.groups,
+                            });
+                            setShowValidationErrorModal(true);
+                          }
+                          // その他のエラーは親コンポーネントで処理済み
+                        }
                       }}
                       style={{
                         backgroundColor: '#10B981',
@@ -1570,14 +1562,32 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                   padding: '10px 14px',
                   borderRadius: '8px',
                   fontSize: '13px',
-                  backgroundColor: '#FEE2E2',
+                  backgroundColor: '#FEF2F2',
+                  border: '1px solid #FECACA',
                   color: '#991B1B',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
                 }}>
-                  <span style={{ fontSize: '16px' }}>⚠️</span>
-                  {publicationValidationError}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '16px' }}>⚠️</span>
+                      <span>{publicationValidationError.message}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowValidationErrorModal(true)}
+                      style={{
+                        backgroundColor: '#DC2626',
+                        color: '#fff',
+                        border: 'none',
+                        padding: '4px 12px',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      詳細を見る
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -1838,6 +1848,123 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
             </div>
 
             {renderDebugInfo()}
+
+            {/* 公開バリデーションエラー詳細モーダル */}
+            {showValidationErrorModal && publicationValidationError && (
+              <div
+                style={{
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 1000,
+                }}
+                onClick={() => setShowValidationErrorModal(false)}
+              >
+                <div
+                  style={{
+                    backgroundColor: '#fff',
+                    borderRadius: '12px',
+                    padding: '24px',
+                    maxWidth: '500px',
+                    width: '90%',
+                    maxHeight: '80vh',
+                    overflow: 'auto',
+                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* モーダルヘッダー */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: '20px',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '24px' }}>⚠️</span>
+                      <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#DC2626', margin: 0 }}>
+                        公開に必要な項目が未入力です
+                      </h3>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowValidationErrorModal(false)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        fontSize: '24px',
+                        cursor: 'pointer',
+                        color: '#9CA3AF',
+                        padding: '4px',
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+
+                  {/* エラー内容（グループ別） */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {Object.entries(publicationValidationError.groups).map(([groupName, fields]) => (
+                      <div key={groupName} style={{
+                        backgroundColor: '#FEF2F2',
+                        borderRadius: '8px',
+                        padding: '12px 16px',
+                        border: '1px solid #FECACA',
+                      }}>
+                        <div style={{
+                          fontSize: '13px',
+                          fontWeight: 600,
+                          color: '#B91C1C',
+                          marginBottom: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                        }}>
+                          <span>📋</span>
+                          {groupName}
+                        </div>
+                        <ul style={{
+                          margin: 0,
+                          paddingLeft: '20px',
+                          color: '#991B1B',
+                          fontSize: '13px',
+                        }}>
+                          {fields.map((field, idx) => (
+                            <li key={idx} style={{ marginBottom: '4px' }}>{field}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* 閉じるボタン */}
+                  <div style={{ marginTop: '20px', textAlign: 'center' }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowValidationErrorModal(false)}
+                      style={{
+                        backgroundColor: '#6B7280',
+                        color: '#fff',
+                        border: 'none',
+                        padding: '10px 32px',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      閉じる
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </FormProvider>
       </div>

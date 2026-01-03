@@ -76,8 +76,33 @@ UPDATE column_labels SET required_for_publication = '{mansion,apartment,detached
 UPDATE column_labels SET required_for_publication = '{mansion,apartment,detached,office,store,warehouse,factory,building}' WHERE table_name = 'land_info' AND column_name = 'road_info';
 
 -- ============================================================================
--- 5. 確認クエリ
+-- 5. 新ステータス「公開不合格」追加（master_options）
 -- ============================================================================
+-- category_id = 28 (publication_status)
+INSERT INTO master_options (category_id, option_code, option_value, sort_order, is_active, created_at, updated_at)
+SELECT 28, 'publication_failed', '公開不合格', 4, true, NOW(), NOW()
+WHERE NOT EXISTS (
+    SELECT 1 FROM master_options WHERE category_id = 28 AND option_code = 'publication_failed'
+);
+
+-- 色設定追加（オレンジ系警告色）
+UPDATE master_options
+SET color = '#F97316', bg = '#FFF7ED'
+WHERE category_id = 28 AND option_code = 'publication_failed';
+
+-- ============================================================================
+-- 6. 既存データ移行（公開・会員公開 → 公開不合格）
+-- ============================================================================
+-- 対象: 2,329件（公開90件 + 会員公開2,239件）
+UPDATE properties
+SET publication_status = '公開不合格', updated_at = NOW()
+WHERE publication_status IN ('公開', '会員公開')
+  AND deleted_at IS NULL;
+
+-- ============================================================================
+-- 7. 確認クエリ
+-- ============================================================================
+-- 必須項目設定確認
 SELECT
     table_name,
     column_name,
@@ -85,3 +110,10 @@ SELECT
 FROM column_labels
 WHERE required_for_publication IS NOT NULL
 ORDER BY table_name, column_name;
+
+-- ステータス別件数確認
+SELECT publication_status, COUNT(*) as count
+FROM properties
+WHERE deleted_at IS NULL
+GROUP BY publication_status
+ORDER BY count DESC;

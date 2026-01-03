@@ -200,14 +200,14 @@ def get_required_fields(db: Session, property_type: str) -> List[Dict[str, Any]]
     指定された物件種別で必須となるフィールド一覧を取得
 
     Returns:
-        [{"table_name": "properties", "column_name": "property_name", "japanese_label": "物件名"}, ...]
+        [{"table_name": "properties", "column_name": "property_name", "japanese_label": "物件名", "group_name": "基本情報"}, ...]
     """
     query = text("""
-        SELECT table_name, column_name, japanese_label
+        SELECT table_name, column_name, japanese_label, group_name
         FROM column_labels
         WHERE required_for_publication IS NOT NULL
           AND :property_type = ANY(required_for_publication)
-        ORDER BY table_name, column_name
+        ORDER BY COALESCE(group_order, 999), COALESCE(display_order, 999)
     """)
     result = db.execute(query, {"property_type": property_type})
     return [
@@ -215,6 +215,7 @@ def get_required_fields(db: Session, property_type: str) -> List[Dict[str, Any]]
             "table_name": row.table_name,
             "column_name": row.column_name,
             "japanese_label": row.japanese_label or row.column_name,
+            "group_name": row.group_name or "その他",
         }
         for row in result
     ]
@@ -225,7 +226,7 @@ def validate_for_publication(
     property_data: Dict[str, Any],
     new_publication_status: Optional[str],
     current_publication_status: Optional[str] = None,
-) -> Tuple[bool, List[str]]:
+) -> Tuple[bool, List[Dict[str, str]]]:
     """
     公開時バリデーションを実行
 
@@ -236,7 +237,8 @@ def validate_for_publication(
         current_publication_status: 現在の公開ステータス（既に公開中なら再チェック不要の判断用）
 
     Returns:
-        (is_valid, missing_fields): バリデーション結果と未入力フィールド名のリスト
+        (is_valid, missing_fields): バリデーション結果と未入力フィールド情報のリスト
+        missing_fields: [{"label": "物件名", "group": "基本情報"}, ...]
     """
     # 公開/会員公開への変更でない場合はスキップ
     if new_publication_status not in PUBLICATION_STATUSES_REQUIRING_VALIDATION:
@@ -249,7 +251,7 @@ def validate_for_publication(
     # 物件種別を取得
     property_type = property_data.get("property_type")
     if not property_type:
-        return False, ["物件種別が未設定です"]
+        return False, [{"label": "物件種別が未設定です", "group": "基本情報"}]
 
     # 必須フィールド一覧を取得
     required_fields = get_required_fields(db, property_type)
@@ -271,7 +273,10 @@ def validate_for_publication(
 
         # 有効値判定（改善版）
         if not is_valid_value(value, column_name):
-            missing_fields.append(field["japanese_label"])
+            missing_fields.append({
+                "label": field["japanese_label"],
+                "group": field["group_name"],
+            })
 
     if missing_fields:
         return False, missing_fields
@@ -279,9 +284,37 @@ def validate_for_publication(
     return True, []
 
 
-def format_validation_error(missing_fields: List[str], publication_status: str) -> str:
+def format_validation_error(missing_fields: List[Dict[str, str]], publication_status: str) -> str:
     """
-    バリデーションエラーメッセージをフォーマット
+    バリデーションエラーメッセージをフォーマット（シンプル版）
     """
-    fields_str = "、".join(missing_fields)
+    labels = [f["label"] for f in missing_fields]
+    fields_str = "、".join(labels)
     return f"「{publication_status}」にするには以下の項目が必要です: {fields_str}"
+
+
+def format_validation_error_grouped(missing_fields: List[Dict[str, str]], publication_status: str) -> Dict[str, Any]:
+    """
+    バリデーションエラーをグループ別に整形（詳細版）
+
+    Returns:
+        {
+            "message": "「公開」にするには以下の項目が必要です",
+            "groups": {
+                "基本情報": ["物件名", "物件種別"],
+                "所在地": ["郵便番号", "住所"],
+                ...
+            }
+        }
+    """
+    groups: Dict[str, List[str]] = {}
+    for field in missing_fields:
+        group = field["group"]
+        if group not in groups:
+            groups[group] = []
+        groups[group].append(field["label"])
+
+    return {
+        "message": f"「{publication_status}」にするには以下の項目が必要です",
+        "groups": groups,
+    }
