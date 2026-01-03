@@ -115,7 +115,17 @@ UPDATE column_labels SET special_flag_key = 'no_station' WHERE column_name = 'tr
 UPDATE column_labels SET special_flag_key = 'no_bus' WHERE column_name = 'bus_stops' AND table_name = 'properties';
 UPDATE column_labels SET special_flag_key = 'no_facilities' WHERE column_name = 'nearby_facilities' AND table_name = 'properties';
 
--- 3-4: requires_validation 設定（公開・会員公開はバリデーション必要）
+-- 3-4: 建ぺい率・容積率をrequired_for_publicationに追加
+-- 条件付き除外が機能するために必須項目として登録
+UPDATE column_labels
+SET required_for_publication = ARRAY['land', 'detached', 'mansion', 'apartment', 'store', 'warehouse', 'building', 'other']
+WHERE column_name = 'building_coverage_ratio' AND table_name = 'land_info';
+
+UPDATE column_labels
+SET required_for_publication = ARRAY['land', 'detached', 'mansion', 'apartment', 'store', 'warehouse', 'building', 'other']
+WHERE column_name = 'floor_area_ratio' AND table_name = 'land_info';
+
+-- 3-5: requires_validation 設定（公開・会員公開はバリデーション必要）
 UPDATE master_options SET requires_validation = TRUE
 WHERE category_id = (SELECT id FROM master_categories WHERE category_code = 'publication_status')
   AND option_value IN ('公開', '会員公開');
