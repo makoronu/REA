@@ -18,10 +18,20 @@
 
 | 項目 | 内容 |
 |------|------|
-| 作業中 | Seg1〜3b ハードコーディング撲滅（開発完了、デプロイ待ち） |
-| 完了 | 公開時バリデーション「該当なし」対応（本番デプロイ完了） |
-| 残り | Seg3c〜4、HOMES入稿、ZOHO画像同期 |
+| 作業中 | **Seg1〜3c デプロイ待ち（5セグメント全テスト済み）** |
+| 次回 | **デプロイ実施** → `.claude/prompts/3_deploy/_main.md` から開始 |
+| 残り | Seg3d〜4（優先度低）、HOMES入稿、ZOHO画像同期 |
 | 更新 | 2026-01-03 |
+
+### 次回やること
+
+1. **デプロイ実施**（Seg1〜3c、5セグメント）
+   - デプロイプロンプト `.claude/prompts/3_deploy/_main.md` に従う
+   - 本番: https://realestateautomation.net/
+
+2. デプロイ後、残りセグメント検討
+   - Seg3d: その他設定値（30+件、優先度低）
+   - Seg4: 日付・メッセージ（85+件、優先度低）
 
 ---
 
@@ -30,7 +40,7 @@
 | タスク | ファイル | 状態 |
 |--------|---------|------|
 | 該当なし対応 | `docs/roadmap_publication_validation_none_option.md` | ✅実装完了 |
-| ハードコーディング撲滅 | `docs/roadmap_hardcoding_elimination.md` | Seg1〜3b完了（デプロイ待ち） |
+| ハードコーディング撲滅 | `docs/roadmap_hardcoding_elimination.md` | Seg1〜3c完了（デプロイ待ち） |
 
 ---
 
