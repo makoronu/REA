@@ -12,6 +12,13 @@ interface JsonEditorProps<T> {
   disabled?: boolean;
 }
 
+// RoadInfoEditor専用インターフェース（接道なしフラグ対応）
+interface RoadInfoEditorProps {
+  value: RoadInfo[] | { no_road_access?: boolean } | null;
+  onChange: (value: RoadInfo[] | { no_road_access: boolean }) => void;
+  disabled?: boolean;
+}
+
 // =================================================================
 // 接道情報エディタ
 // =================================================================
@@ -49,14 +56,23 @@ const ROAD_STATUS = [
   { value: '9', label: 'その他' },
 ];
 
-export const RoadInfoEditor: React.FC<JsonEditorProps<RoadInfo>> = ({
+export const RoadInfoEditor: React.FC<RoadInfoEditorProps> = ({
   value,
   onChange,
   disabled
 }) => {
+  // 「接道なし」フラグのチェック
+  const isNoRoadAccess = (v: any): boolean => {
+    return v && typeof v === 'object' && !Array.isArray(v) && v.no_road_access === true;
+  };
+
+  const noRoadAccess = isNoRoadAccess(value);
+
   // valueが配列でない場合（オブジェクト形式のroad_info）を配列に変換
   const normalizeValue = (v: any): RoadInfo[] => {
     if (!v) return [];
+    // 「接道なし」フラグの場合は空配列
+    if (isNoRoadAccess(v)) return [];
     if (Array.isArray(v)) return v;
     // オブジェクト形式の場合（road1_type, road1_width, road1_direction, road1_frontage...）
     if (typeof v === 'object') {
@@ -87,6 +103,15 @@ export const RoadInfoEditor: React.FC<JsonEditorProps<RoadInfo>> = ({
 
   const normalizedValue = normalizeValue(value);
 
+  // 「接道なし」チェックボックスの切り替え
+  const handleNoRoadAccessChange = (checked: boolean) => {
+    if (checked) {
+      onChange({ no_road_access: true });
+    } else {
+      onChange([]);
+    }
+  };
+
   const addItem = () => {
     onChange([...normalizedValue, {
       direction: '',
@@ -109,96 +134,126 @@ export const RoadInfoEditor: React.FC<JsonEditorProps<RoadInfo>> = ({
 
   return (
     <div className="space-y-3">
-      {normalizedValue.map((item, index) => (
-        <div
-          key={index}
-          className="p-4 border border-gray-200 rounded-lg bg-white"
-          style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr) auto', gap: '12px', alignItems: 'end' }}
-        >
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">接道方向</label>
-            <select
-              value={item.direction}
-              onChange={(e) => updateItem(index, 'direction', e.target.value)}
-              disabled={disabled}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+      {/* 接道なしチェックボックス */}
+      <label
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '12px 16px',
+          backgroundColor: noRoadAccess ? '#FEF3C7' : '#F9FAFB',
+          borderRadius: '8px',
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          border: noRoadAccess ? '1px solid #F59E0B' : '1px solid #E5E7EB',
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={noRoadAccess}
+          onChange={(e) => handleNoRoadAccessChange(e.target.checked)}
+          disabled={disabled}
+          style={{ width: '18px', height: '18px', accentColor: '#F59E0B' }}
+        />
+        <span style={{ fontSize: '14px', fontWeight: 500, color: noRoadAccess ? '#92400E' : '#374151' }}>
+          接道なし（袋地）
+        </span>
+      </label>
+
+      {/* 接道情報入力欄（接道なしの場合は非表示） */}
+      {!noRoadAccess && (
+        <>
+          {normalizedValue.map((item, index) => (
+            <div
+              key={index}
+              className="p-4 border border-gray-200 rounded-lg bg-white"
+              style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr) auto', gap: '12px', alignItems: 'end' }}
             >
-              <option value="">選択</option>
-              {ROAD_DIRECTIONS.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">接道種別</label>
-            <select
-              value={item.road_type}
-              onChange={(e) => updateItem(index, 'road_type', e.target.value)}
-              disabled={disabled}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-            >
-              <option value="">選択</option>
-              {ROAD_TYPES.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">道路幅員(m)</label>
-            <input
-              type="number"
-              step="0.1"
-              value={item.road_width || ''}
-              onChange={(e) => updateItem(index, 'road_width', parseFloat(e.target.value) || 0)}
-              disabled={disabled}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-              placeholder="4.0"
-            />
-          </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">接道方向</label>
+                <select
+                  value={item.direction}
+                  onChange={(e) => updateItem(index, 'direction', e.target.value)}
+                  disabled={disabled}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                >
+                  <option value="">選択</option>
+                  {ROAD_DIRECTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">接道種別</label>
+                <select
+                  value={item.road_type}
+                  onChange={(e) => updateItem(index, 'road_type', e.target.value)}
+                  disabled={disabled}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                >
+                  <option value="">選択</option>
+                  {ROAD_TYPES.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">道路幅員(m)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={item.road_width || ''}
+                  onChange={(e) => updateItem(index, 'road_width', parseFloat(e.target.value) || 0)}
+                  disabled={disabled}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                  placeholder="4.0"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => removeItem(index)}
+                disabled={disabled}
+                className="px-3 py-2 text-red-600 hover:bg-red-50 rounded text-sm"
+              >
+                削除
+              </button>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">間口(m)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={item.frontage || ''}
+                  onChange={(e) => updateItem(index, 'frontage', parseFloat(e.target.value) || 0)}
+                  disabled={disabled}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                  placeholder="5.0"
+                />
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <label className="block text-xs text-gray-600 mb-1">接道状況</label>
+                <select
+                  value={item.road_status}
+                  onChange={(e) => updateItem(index, 'road_status', e.target.value)}
+                  disabled={disabled}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                >
+                  <option value="">選択</option>
+                  {ROAD_STATUS.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          ))}
           <button
             type="button"
-            onClick={() => removeItem(index)}
+            onClick={addItem}
             disabled={disabled}
-            className="px-3 py-2 text-red-600 hover:bg-red-50 rounded text-sm"
+            className="w-full py-2 px-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors"
           >
-            削除
+            + 接道情報を追加
           </button>
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">間口(m)</label>
-            <input
-              type="number"
-              step="0.1"
-              value={item.frontage || ''}
-              onChange={(e) => updateItem(index, 'frontage', parseFloat(e.target.value) || 0)}
-              disabled={disabled}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-              placeholder="5.0"
-            />
-          </div>
-          <div style={{ gridColumn: 'span 2' }}>
-            <label className="block text-xs text-gray-600 mb-1">接道状況</label>
-            <select
-              value={item.road_status}
-              onChange={(e) => updateItem(index, 'road_status', e.target.value)}
-              disabled={disabled}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-            >
-              <option value="">選択</option>
-              {ROAD_STATUS.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      ))}
-      <button
-        type="button"
-        onClick={addItem}
-        disabled={disabled}
-        className="w-full py-2 px-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors"
-      >
-        + 接道情報を追加
-      </button>
+        </>
+      )}
     </div>
   );
 };

@@ -12,6 +12,11 @@ interface NearbyFacilitiesFieldProps {
   disabled?: boolean;
 }
 
+// 近隣施設なしフラグ検出
+const isNoFacilities = (v: any): boolean => {
+  return v && typeof v === 'object' && !Array.isArray(v) && v.no_facilities === true;
+};
+
 // 施設カテゴリ
 const FACILITY_CATEGORIES = [
   { value: 'convenience', label: 'コンビニ' },
@@ -47,7 +52,16 @@ export const NearbyFacilitiesField: React.FC<NearbyFacilitiesFieldProps> = ({ di
       control={control}
       defaultValue={[]}
       render={({ field }) => {
-        const facilities: NearbyFacility[] = field.value || [];
+        const noFacilities = isNoFacilities(field.value);
+        const facilities: NearbyFacility[] = noFacilities ? [] : (Array.isArray(field.value) ? field.value : []);
+
+        const handleNoFacilitiesChange = (checked: boolean) => {
+          if (checked) {
+            field.onChange({ no_facilities: true });
+          } else {
+            field.onChange([]);
+          }
+        };
 
         const addFacility = () => {
           if (!newFacility.facility_name) return;
@@ -73,6 +87,27 @@ export const NearbyFacilitiesField: React.FC<NearbyFacilitiesFieldProps> = ({ di
 
         return (
           <div style={{ marginTop: '8px' }}>
+            {/* 近隣施設なしチェックボックス */}
+            <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: noFacilities ? '#FEF3C7' : '#F9FAFB', borderRadius: '8px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: disabled ? 'not-allowed' : 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={noFacilities}
+                  onChange={(e) => handleNoFacilitiesChange(e.target.checked)}
+                  disabled={disabled}
+                  style={{ width: '18px', height: '18px', cursor: disabled ? 'not-allowed' : 'pointer' }}
+                />
+                <span style={{ fontWeight: 500 }}>近隣施設なし（山間部等）</span>
+              </label>
+              {noFacilities && (
+                <p style={{ fontSize: '12px', color: '#92400E', marginTop: '8px', marginLeft: '26px' }}>
+                  近隣施設がない物件として登録されます
+                </p>
+              )}
+            </div>
+
+            {!noFacilities && (
+            <>
             {/* 登録済み施設 */}
             <div style={{ marginBottom: '12px' }}>
               <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '8px' }}>
@@ -223,6 +258,8 @@ export const NearbyFacilitiesField: React.FC<NearbyFacilitiesFieldProps> = ({ di
                 ※ 徒歩分数を空欄にすると距離から自動計算します（80m/分）
               </p>
             </div>
+            </>
+            )}
           </div>
         );
       }}

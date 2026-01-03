@@ -6,6 +6,11 @@ interface TransportationFieldProps {
   disabled?: boolean;
 }
 
+// 最寄駅なしフラグ検出
+const isNoStation = (v: any): boolean => {
+  return v && typeof v === 'object' && !Array.isArray(v) && v.no_station === true;
+};
+
 export const TransportationField: React.FC<TransportationFieldProps> = ({ disabled = false }) => {
   const { watch, control } = useFormContext();
 
@@ -73,7 +78,16 @@ export const TransportationField: React.FC<TransportationFieldProps> = ({ disabl
       control={control}
       defaultValue={[]}
       render={({ field }) => {
-        const stations: PropertyStation[] = field.value || [];
+        const noStation = isNoStation(field.value);
+        const stations: PropertyStation[] = noStation ? [] : (Array.isArray(field.value) ? field.value : []);
+
+        const handleNoStationChange = (checked: boolean) => {
+          if (checked) {
+            field.onChange({ no_station: true });
+          } else {
+            field.onChange([]);
+          }
+        };
 
         const addStation = (station: NearestStation) => {
           if (stations.length >= 10) {
@@ -118,6 +132,27 @@ export const TransportationField: React.FC<TransportationFieldProps> = ({ disabl
 
         return (
           <div style={{ marginTop: '8px' }}>
+            {/* 最寄駅なしチェックボックス */}
+            <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: noStation ? '#FEF3C7' : '#F9FAFB', borderRadius: '8px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: disabled ? 'not-allowed' : 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={noStation}
+                  onChange={(e) => handleNoStationChange(e.target.checked)}
+                  disabled={disabled}
+                  style={{ width: '18px', height: '18px', cursor: disabled ? 'not-allowed' : 'pointer' }}
+                />
+                <span style={{ fontWeight: 500 }}>最寄駅なし（離島・山間部等）</span>
+              </label>
+              {noStation && (
+                <p style={{ fontSize: '12px', color: '#92400E', marginTop: '8px', marginLeft: '26px' }}>
+                  最寄駅がない物件として登録されます
+                </p>
+              )}
+            </div>
+
+            {!noStation && (
+            <>
             {/* 登録済み駅 */}
             <div style={{ marginBottom: '16px' }}>
               <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '8px' }}>
@@ -390,6 +425,8 @@ export const TransportationField: React.FC<TransportationFieldProps> = ({ disabl
                 </button>
               </div>
             </div>
+            </>
+            )}
           </div>
         );
       }}

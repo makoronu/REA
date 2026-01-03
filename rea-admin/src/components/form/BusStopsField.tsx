@@ -11,6 +11,11 @@ interface BusStopsFieldProps {
   disabled?: boolean;
 }
 
+// バス路線なしフラグ検出
+const isNoBus = (v: any): boolean => {
+  return v && typeof v === 'object' && !Array.isArray(v) && v.no_bus === true;
+};
+
 export const BusStopsField: React.FC<BusStopsFieldProps> = ({ disabled = false }) => {
   const { control } = useFormContext();
   const [newStop, setNewStop] = useState({ bus_stop_name: '', line_name: '', walk_minutes: '' });
@@ -21,7 +26,16 @@ export const BusStopsField: React.FC<BusStopsFieldProps> = ({ disabled = false }
       control={control}
       defaultValue={[]}
       render={({ field }) => {
-        const stops: BusStop[] = field.value || [];
+        const noBus = isNoBus(field.value);
+        const stops: BusStop[] = noBus ? [] : (Array.isArray(field.value) ? field.value : []);
+
+        const handleNoBusChange = (checked: boolean) => {
+          if (checked) {
+            field.onChange({ no_bus: true });
+          } else {
+            field.onChange([]);
+          }
+        };
 
         const addStop = () => {
           if (!newStop.bus_stop_name) return;
@@ -47,6 +61,27 @@ export const BusStopsField: React.FC<BusStopsFieldProps> = ({ disabled = false }
 
         return (
           <div style={{ marginTop: '8px' }}>
+            {/* バス路線なしチェックボックス */}
+            <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: noBus ? '#FEF3C7' : '#F9FAFB', borderRadius: '8px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: disabled ? 'not-allowed' : 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={noBus}
+                  onChange={(e) => handleNoBusChange(e.target.checked)}
+                  disabled={disabled}
+                  style={{ width: '18px', height: '18px', cursor: disabled ? 'not-allowed' : 'pointer' }}
+                />
+                <span style={{ fontWeight: 500 }}>バス路線なし</span>
+              </label>
+              {noBus && (
+                <p style={{ fontSize: '12px', color: '#92400E', marginTop: '8px', marginLeft: '26px' }}>
+                  バス路線がない物件として登録されます
+                </p>
+              )}
+            </div>
+
+            {!noBus && (
+            <>
             {/* 登録済みバス停 */}
             <div style={{ marginBottom: '12px' }}>
               <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '8px' }}>
@@ -189,6 +224,8 @@ export const BusStopsField: React.FC<BusStopsFieldProps> = ({ disabled = false }
                 </button>
               </div>
             </div>
+            </>
+            )}
           </div>
         );
       }}
