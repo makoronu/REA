@@ -3,6 +3,8 @@
  *
  * 用途地域・都市計画・ハザード情報をMAP表示し、自動取得・手動編集する
  * 重要事項説明書の法令チェック項目も管理
+ *
+ * メタデータ駆動: API側でコード変換済みの値を返すため、フロントはそのまま使用
  */
 import React, { useState, useCallback, useEffect } from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
@@ -15,62 +17,24 @@ import { parseOptions } from '../../utils/options';
 import { OptionType } from '../../types/metadata';
 import { LEGAL_REGULATION_CATEGORIES } from '../../constants/legalRegulations';
 
-// フォールバック用デフォルト値（DB読み込み失敗時）
-const DEFAULT_FIRE_PREVENTION_OPTIONS: OptionType[] = [
-  { value: '1', label: '防火地域' },
-  { value: '2', label: '準防火地域' },
-  { value: '3', label: '指定なし' },
-];
-
-// フォールバック用デフォルト値（用途地域マッピング）
-const DEFAULT_USE_DISTRICT_MAP: Record<string, string> = {
-  '第一種低層住居専用地域': '1',
-  '第二種低層住居専用地域': '2',
-  '第一種中高層住居専用地域': '3',
-  '第二種中高層住居専用地域': '4',
-  '第一種住居地域': '5',
-  '第二種住居地域': '6',
-  '準住居地域': '7',
-  '近隣商業地域': '8',
-  '商業地域': '9',
-  '準工業地域': '10',
-  '工業地域': '11',
-  '工業専用地域': '12',
-  '田園住居地域': '21',
-};
-
-interface RegulationData {
-  use_area?: {
-    '用途地域'?: string;
-    '建ぺい率'?: string;
-    '容積率'?: string;
-    '都道府県'?: string;
-    '市区町村'?: string;
-  };
-  fire_prevention?: {
-    '防火地域区分'?: string;
-  };
-  flood?: Record<string, string>;
-  landslide?: Record<string, string>;
-  tsunami?: Record<string, string>;
-  storm_surge?: Record<string, string>;
-  location_optimization?: Record<string, string>;
-  district_plan?: Record<string, string>;
-  planned_road?: Record<string, string>;
+// API返却の型定義
+interface RegulationCodes {
+  use_district?: string;
+  building_coverage_ratio?: number;
+  floor_area_ratio?: number;
+  fire_prevention_area?: string;
+  district_plan_name?: string;
 }
 
 
 export const RegulationTab: React.FC = () => {
   const { setValue, watch, control, register } = useFormContext();
   const [isLoading, setIsLoading] = useState(false);
-  const [regulationData, setRegulationData] = useState<RegulationData | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [useDistrictOptions, setUseDistrictOptions] = useState<OptionType[]>([]);
   const [cityPlanningOptions, setCityPlanningOptions] = useState<OptionType[]>([]);
-  // メタデータ駆動: 防火地域選択肢
-  const [firePreventionOptions, setFirePreventionOptions] = useState<OptionType[]>(DEFAULT_FIRE_PREVENTION_OPTIONS);
-  // メタデータ駆動: 用途地域名→コードマッピング（API自動取得用）
-  const [useDistrictMap, setUseDistrictMap] = useState<Record<string, string>>(DEFAULT_USE_DISTRICT_MAP);
+  // メタデータ駆動: 防火地域選択肢（DBから取得）
+  const [firePreventionOptions, setFirePreventionOptions] = useState<OptionType[]>([]);
 
   const lat = watch('latitude');
   const lng = watch('longitude');
@@ -88,10 +52,6 @@ export const RegulationTab: React.FC = () => {
         if (useDistrictCol?.options) {
           const opts = parseOptions(useDistrictCol.options);
           setUseDistrictOptions(opts);
-          // 用途地域名→コードマッピングを生成（API自動取得用）
-          const map: Record<string, string> = {};
-          opts.forEach(opt => { map[opt.label] = opt.value; });
-          setUseDistrictMap(map);
         }
 
         // 都市計画の選択肢（共通パース関数を使用）
@@ -113,7 +73,7 @@ export const RegulationTab: React.FC = () => {
     loadOptions();
   }, []);
 
-  // 法令制限を自動取得
+  // 法令制限を自動取得 → 直接フォームに代入（メタデータ駆動）
   const handleFetchRegulations = useCallback(async () => {
     if (!hasCoordinates) {
       setMessage({ type: 'error', text: '緯度・経度を先に入力してください' });
@@ -133,48 +93,44 @@ export const RegulationTab: React.FC = () => {
       }
 
       const data = await response.json();
-      setRegulationData(data.regulations);
-      setMessage({ type: 'success', text: '法令制限情報を取得しました。下の「登録」ボタンで保存できます。' });
+      const codes: RegulationCodes = data.codes || {};
+
+      // メタデータ駆動: API側で変換済みのコードを直接フォームに代入
+      const updated: string[] = [];
+
+      if (codes.use_district) {
+        setValue('use_district', [codes.use_district], { shouldDirty: true });
+        updated.push('用途地域');
+      }
+      if (codes.building_coverage_ratio !== undefined) {
+        setValue('building_coverage_ratio', codes.building_coverage_ratio, { shouldDirty: true });
+        updated.push('建ぺい率');
+      }
+      if (codes.floor_area_ratio !== undefined) {
+        setValue('floor_area_ratio', codes.floor_area_ratio, { shouldDirty: true });
+        updated.push('容積率');
+      }
+      if (codes.fire_prevention_area) {
+        setValue('fire_prevention_area', codes.fire_prevention_area, { shouldDirty: true });
+        updated.push('防火地域');
+      }
+      if (codes.district_plan_name) {
+        setValue('district_plan_name', codes.district_plan_name, { shouldDirty: true });
+        updated.push('地区計画');
+      }
+
+      if (updated.length > 0) {
+        setMessage({ type: 'success', text: `${updated.join('・')}を設定しました` });
+      } else {
+        setMessage({ type: 'success', text: '法令制限情報を取得しました（該当データなし）' });
+      }
+      setTimeout(() => setMessage(null), 3000);
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || '取得に失敗しました' });
     } finally {
       setIsLoading(false);
     }
-  }, [lat, lng, hasCoordinates]);
-
-  // 取得したデータをフォームに登録
-  const handleRegister = useCallback(() => {
-    if (!regulationData?.use_area) {
-      setMessage({ type: 'error', text: '先に「自動取得」で情報を取得してください' });
-      return;
-    }
-
-    const useArea = regulationData.use_area;
-
-    // 用途地域コードを設定（メタデータ駆動マッピング）
-    const zoneName = useArea['用途地域'] || '';
-    const useDistrictCode = useDistrictMap[zoneName];
-    if (useDistrictCode) {
-      setValue('use_district', useDistrictCode, { shouldDirty: true });
-    }
-
-    // 建ぺい率（%を除去して数値に）
-    const coverageStr = useArea['建ぺい率'] || '';
-    const coverage = parseFloat(coverageStr.replace('%', ''));
-    if (!isNaN(coverage)) {
-      setValue('building_coverage_ratio', coverage, { shouldDirty: true });
-    }
-
-    // 容積率（%を除去して数値に）
-    const floorStr = useArea['容積率'] || '';
-    const floor = parseFloat(floorStr.replace('%', ''));
-    if (!isNaN(floor)) {
-      setValue('floor_area_ratio', floor, { shouldDirty: true });
-    }
-
-    setMessage({ type: 'success', text: '用途地域・建ぺい率・容積率を登録しました' });
-    setTimeout(() => setMessage(null), 3000);
-  }, [regulationData, setValue, useDistrictMap]);
+  }, [lat, lng, hasCoordinates, setValue]);
 
   // 複数選択の値をパース
   const parseMultiValue = (value: any): string[] => {
@@ -236,10 +192,8 @@ export const RegulationTab: React.FC = () => {
         </div>
       )}
 
-      {/* 自動取得・登録ボタン */}
+      {/* 自動取得ボタン */}
       <div style={{
-        display: 'flex',
-        gap: '12px',
         marginTop: '16px',
         marginBottom: '16px',
       }}>
@@ -270,25 +224,6 @@ export const RegulationTab: React.FC = () => {
             <>🔍 法令制限を自動取得</>
           )}
         </button>
-
-        {regulationData?.use_area && (
-          <button
-            type="button"
-            onClick={handleRegister}
-            style={{
-              padding: '10px 20px',
-              fontSize: '14px',
-              fontWeight: 600,
-              backgroundColor: '#10B981',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-            }}
-          >
-            ✅ 登録
-          </button>
-        )}
       </div>
 
       {/* メッセージ */}
@@ -302,50 +237,6 @@ export const RegulationTab: React.FC = () => {
           fontSize: '13px',
         }}>
           {message.text}
-        </div>
-      )}
-
-      {/* 取得結果表示 */}
-      {regulationData?.use_area && (
-        <div style={{
-          padding: '16px',
-          backgroundColor: '#EFF6FF',
-          borderRadius: '8px',
-          marginBottom: '16px',
-          border: '1px solid #BFDBFE',
-        }}>
-          <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: '#1E40AF' }}>
-            取得結果（登録前プレビュー）
-          </h4>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', fontSize: '13px' }}>
-            <div>用途地域: <strong>{regulationData.use_area['用途地域'] || '-'}</strong></div>
-            <div>建ぺい率: <strong>{regulationData.use_area['建ぺい率'] || '-'}</strong></div>
-            <div>容積率: <strong>{regulationData.use_area['容積率'] || '-'}</strong></div>
-            <div>市区町村: <strong>{regulationData.use_area['市区町村'] || '-'}</strong></div>
-          </div>
-
-          {/* ハザード情報 */}
-          {(regulationData.flood || regulationData.landslide || regulationData.tsunami || regulationData.storm_surge) && (
-            <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #BFDBFE' }}>
-              <h5 style={{ fontSize: '13px', fontWeight: 600, color: '#DC2626', marginBottom: '8px' }}>
-                ⚠️ ハザード情報
-              </h5>
-              <div style={{ fontSize: '12px', color: '#991B1B' }}>
-                {regulationData.flood && Object.keys(regulationData.flood).length > 0 && (
-                  <div>洪水: {Object.values(regulationData.flood).join(', ')}</div>
-                )}
-                {regulationData.landslide && Object.keys(regulationData.landslide).length > 0 && (
-                  <div>土砂災害: {Object.values(regulationData.landslide).join(', ')}</div>
-                )}
-                {regulationData.tsunami && Object.keys(regulationData.tsunami).length > 0 && (
-                  <div>津波: {Object.values(regulationData.tsunami).join(', ')}</div>
-                )}
-                {regulationData.storm_surge && Object.keys(regulationData.storm_surge).length > 0 && (
-                  <div>高潮: {Object.values(regulationData.storm_surge).join(', ')}</div>
-                )}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
