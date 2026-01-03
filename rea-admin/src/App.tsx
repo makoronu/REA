@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { AuthProvider } from './contexts/AuthContext';
 import Layout from './components/common/Layout';
 import PrivateRoute from './components/common/PrivateRoute';
+import { ADMIN_ROLES } from './constants/roles';
 import LoginPage from './pages/Auth/LoginPage';
 import DevLoginPage from './pages/Auth/DevLoginPage';
 import PasswordResetPage from './pages/Auth/PasswordResetPage';
@@ -71,7 +72,7 @@ function AppContent() {
           </PrivateRoute>
         } />
         <Route path="/admin/field-visibility" element={
-          <PrivateRoute minLevel={50}>
+          <PrivateRoute requiredRoles={ADMIN_ROLES}>
             <Layout onOpenCommandPalette={() => setCommandPaletteOpen(true)}>
               <FieldVisibilityPage />
             </Layout>
@@ -106,7 +107,7 @@ function AppContent() {
           </PrivateRoute>
         } />
         <Route path="/settings/users" element={
-          <PrivateRoute minLevel={80}>
+          <PrivateRoute requiredRoles={ADMIN_ROLES}>
             <Layout onOpenCommandPalette={() => setCommandPaletteOpen(true)}>
               <UsersPage />
             </Layout>

@@ -3,6 +3,7 @@ from functools import wraps
 from typing import Optional
 from fastapi import Request, HTTPException
 from .jwt_handler import verify_token
+from .constants import ADMIN_ROLES, SUPER_ADMIN_ROLES, USER_ROLES
 
 
 def get_current_user(request: Request) -> Optional[dict]:
@@ -71,15 +72,55 @@ def require_auth(min_level: int = 0):
 
 
 def require_super_admin():
-    """super_admin専用（level: 100）"""
-    return require_auth(min_level=100)
+    """super_admin専用（SUPER_ADMIN_ROLES参照）"""
+    return require_roles(SUPER_ADMIN_ROLES)
 
 
 def require_admin():
-    """admin以上（level: 50）"""
-    return require_auth(min_level=50)
+    """admin以上（ADMIN_ROLES参照）"""
+    return require_roles(ADMIN_ROLES)
 
 
 def require_user():
-    """一般ユーザー以上（level: 10）"""
-    return require_auth(min_level=10)
+    """一般ユーザー以上（USER_ROLES参照）"""
+    return require_roles(USER_ROLES)
+
+
+def require_roles(allowed_roles: list):
+    """
+    ロールコードベースの認可デコレータ
+
+    Args:
+        allowed_roles: 許可するロールコードのリスト
+
+    Usage:
+        @app.get("/api/v1/admin/users")
+        @require_roles(['admin', 'super_admin'])
+        async def get_users(request: Request):
+            ...
+    """
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(request: Request, *args, **kwargs):
+            # 1. JWT検証
+            user = get_current_user(request)
+            if not user:
+                raise HTTPException(
+                    status_code=401,
+                    detail="認証が必要です"
+                )
+
+            # 2. ロールコードチェック
+            user_role = user.get('role_code', '')
+            if user_role not in allowed_roles:
+                raise HTTPException(
+                    status_code=403,
+                    detail="権限が不足しています"
+                )
+
+            # 3. リクエストにユーザー情報を付与
+            request.state.current_user = user
+
+            return await func(request, *args, **kwargs)
+        return wrapper
+    return decorator

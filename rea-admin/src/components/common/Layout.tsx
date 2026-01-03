@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useSaveStatusDisplay, SaveStatus } from '../../hooks/useAutoSave';
 import { useAuth } from '../../contexts/AuthContext';
+import { isAdmin as checkIsAdmin } from '../../constants/roles';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -99,7 +100,7 @@ const Layout: React.FC<LayoutProps> = ({ children, onOpenCommandPalette }) => {
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
-  const isAdmin = (user?.role_level ?? 0) >= 80;
+  const isAdmin = checkIsAdmin(user?.role_code);
 
   const menuItems = [
     { path: '/properties', label: '物件一覧', icon: '🏠' },

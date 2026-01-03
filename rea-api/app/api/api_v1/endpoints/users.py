@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from app.api import dependencies
 from shared.auth.middleware import get_current_user
 from shared.auth.password import hash_password
+from shared.auth.constants import ADMIN_ROLES
 from shared.email import EmailService, EmailConfig
 
 router = APIRouter()
@@ -58,12 +59,12 @@ class UserListResponse(BaseModel):
 # ========================================
 
 def require_admin(request: Request):
-    """管理者権限を要求"""
+    """管理者権限を要求（role_codeベースで判定）"""
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="認証が必要です")
-    # role_level 80以上（admin, super_admin）
-    if user.get('role_level', 0) < 80:
+    # ロールコードで判定（ADMIN_ROLESはshared/auth/constants.pyで定義）
+    if user.get('role_code') not in ADMIN_ROLES:
         raise HTTPException(status_code=403, detail="管理者権限が必要です")
     return user
 

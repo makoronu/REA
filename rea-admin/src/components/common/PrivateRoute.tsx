@@ -5,10 +5,10 @@ import { useAuth } from '../../contexts/AuthContext';
 
 interface PrivateRouteProps {
   children: React.ReactNode;
-  minLevel?: number; // 必要な最小権限レベル
+  requiredRoles?: readonly string[]; // 必要なロール（定数から参照）
 }
 
-const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, minLevel = 0 }) => {
+const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, requiredRoles }) => {
   const { user, isLoading, isAuthenticated } = useAuth();
   const location = useLocation();
 
@@ -53,8 +53,8 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, minLevel = 0 }) =
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // 権限レベルが不足している場合
-  if (minLevel > 0 && user && user.role_level < minLevel) {
+  // ロールが不足している場合
+  if (requiredRoles && user && !requiredRoles.includes(user.role_code)) {
     return (
       <div style={{
         minHeight: '100vh',
