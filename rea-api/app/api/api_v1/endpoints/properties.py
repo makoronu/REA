@@ -13,19 +13,30 @@ from app.crud.generic import GenericCRUD
 from app.services.publication_validator import (
     validate_for_publication,
     format_validation_error,
+    format_validation_error_grouped,
 )
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
+from shared.auth.middleware import get_current_user
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
+def require_auth(request: Request) -> dict:
+    """認証を要求（ログイン必須）"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="認証が必要です")
+    return user
+
+
 @router.get("/", response_model=List[Dict[str, Any]])
 def read_properties(
+    request: Request,
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     search: Optional[str] = Query(None, description="汎用検索（物件名・物件番号）"),
@@ -42,6 +53,7 @@ def read_properties(
     物件一覧取得（検索条件付き）
     メタデータ駆動: フィルタ条件は動的に構築
     """
+    require_auth(request)
     crud = GenericCRUD(db)
 
     # フィルタ条件を構築
@@ -86,10 +98,11 @@ def read_properties(
 
 
 @router.get("/{property_id}", response_model=Dict[str, Any])
-def read_property(property_id: int, db: Session = Depends(get_db)):
+def read_property(request: Request, property_id: int, db: Session = Depends(get_db)):
     """
     物件詳細取得（propertiesテーブルのみ）
     """
+    require_auth(request)
     crud = GenericCRUD(db)
     result = crud.get("properties", property_id)
 
@@ -100,7 +113,7 @@ def read_property(property_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/{property_id}/full", response_model=Dict[str, Any])
-def read_property_full(property_id: int, db: Session = Depends(get_db)):
+def read_property_full(request: Request, property_id: int, db: Session = Depends(get_db)):
     """
     物件詳細取得（関連テーブル含む）
     メタデータ駆動: 重複カラムはpropertiesを優先
@@ -108,6 +121,7 @@ def read_property_full(property_id: int, db: Session = Depends(get_db)):
     properties, building_info, land_info, amenities を全て含めて返す。
     編集画面で使用する。
     """
+    require_auth(request)
     crud = GenericCRUD(db)
     result = crud.get_full(property_id)
 
@@ -118,12 +132,18 @@ def read_property_full(property_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/", response_model=Dict[str, Any])
-def create_property(property_data: Dict[str, Any], db: Session = Depends(get_db)):
+def create_property(request: Request, property_data: Dict[str, Any], db: Session = Depends(get_db)):
     """
     物件新規作成
     メタデータ駆動: 有効なカラムのみ受け付け
     """
+    require_auth(request)
     crud = GenericCRUD(db)
+
+    # 文字列フィールドのトリム処理
+    for key, value in property_data.items():
+        if isinstance(value, str):
+            property_data[key] = value.strip()
 
     # property_nameは必須
     if not property_data.get("property_name"):
@@ -153,6 +173,7 @@ def create_property(property_data: Dict[str, Any], db: Session = Depends(get_db)
 
 @router.put("/{property_id}", response_model=Dict[str, Any])
 def update_property(
+    request: Request,
     property_id: int,
     property_data: Dict[str, Any],
     db: Session = Depends(get_db),
@@ -165,7 +186,17 @@ def update_property(
     publication_statusが「公開」「会員公開」に変更される場合、
     required_for_publicationで設定された必須項目をチェック
     """
+    require_auth(request)
     crud = GenericCRUD(db)
+
+    # 文字列フィールドのトリム処理
+    for key, value in property_data.items():
+        if isinstance(value, str):
+            property_data[key] = value.strip()
+
+    # property_nameがnullの場合は400エラー
+    if "property_name" in property_data and property_data["property_name"] is None:
+        raise HTTPException(status_code=400, detail="property_nameをnullにすることはできません")
 
     # 存在確認 & 現在データ取得（全テーブル）
     existing_full = crud.get_full(property_id)
@@ -183,8 +214,9 @@ def update_property(
             db, merged_data, new_publication_status, current_status
         )
         if not is_valid:
-            error_msg = format_validation_error(missing_fields, new_publication_status)
-            raise HTTPException(status_code=400, detail=error_msg)
+            # 詳細なエラー情報を返す（グループ別）
+            error_detail = format_validation_error_grouped(missing_fields, new_publication_status)
+            raise HTTPException(status_code=400, detail=error_detail)
 
     try:
         result = crud.update_full(property_id, property_data)
@@ -209,11 +241,12 @@ def update_property(
 
 
 @router.delete("/{property_id}")
-def delete_property(property_id: int, db: Session = Depends(get_db)):
+def delete_property(request: Request, property_id: int, db: Session = Depends(get_db)):
     """
     物件論理削除
     関連テーブルも論理削除
     """
+    require_auth(request)
     crud = GenericCRUD(db)
 
     # 存在確認
@@ -241,8 +274,9 @@ def delete_property(property_id: int, db: Session = Depends(get_db)):
 # これらはメタデータ駆動とは別の集計機能
 
 @router.get("/contractors/contacts")
-def get_contractor_contacts(db: Session = Depends(get_db)):
+def get_contractor_contacts(request: Request, db: Session = Depends(get_db)):
     """元請会社の連絡先一覧を取得"""
+    require_auth(request)
     result = db.execute(text("""
         SELECT
             contractor_company_name,
