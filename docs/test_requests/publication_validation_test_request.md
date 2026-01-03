@@ -120,6 +120,18 @@ curl -X PUT "http://localhost:8005/api/v1/properties/{detached_id}" \
 | 3 | PUT で `property_name: "  test  "` を送信 | 前後スペースがトリムされる |
 | 4 | POST で `property_name: "  "` を送信 | 400エラー（空白のみは無効） |
 
+### publication_statusバリデーションテスト（2026-01-03追加）
+
+| No | テスト内容 | 期待結果 |
+|----|-----------|---------|
+| 1 | PUT で `publication_status: null` を送信 | 400エラー「publication_statusをnullにすることはできません」 |
+| 2 | PUT で `publication_status: "invalid"` を送信 | 400エラー「publication_statusの値が不正です。有効な値: 公開, 非公開, 会員公開」 |
+| 3 | PUT で `publication_status: "公開"` を送信 | 正常処理（公開バリデーション実行） |
+| 4 | PUT で `publication_status: "非公開"` を送信 | 正常処理（バリデーションスキップ） |
+| 5 | PUT で `publication_status: "会員公開"` を送信 | 正常処理（公開バリデーション実行） |
+| 6 | PUT で `publication_status: ""` を送信 | 400エラー（空文字は不正値） |
+| 7 | PUT で `publication_status: " 公開 "` を送信 | トリム後「公開」として正常処理 |
+
 ---
 
 ## 条件付き除外ルールの検証
