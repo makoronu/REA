@@ -1396,12 +1396,78 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
       }
     };
 
-    // 公開ステータス変更ハンドラー（バリデーションは保存時にAPIで実行）
-    const handlePublicationStatusChange = (newStatus: string) => {
+    // 公開ステータス変更ハンドラー（リアルタイムバリデーション付き）
+    const handlePublicationStatusChange = async (newStatus: string) => {
       form.setValue('publication_status', newStatus, { shouldDirty: true });
       // エラー状態をクリア
       setPublicationValidationError(null);
       setShowValidationErrorModal(false);
+
+      // 公開/会員公開への変更時のみバリデーションを実行
+      if (['公開', '会員公開'].includes(newStatus) && formData.id) {
+        try {
+          const response = await fetch(
+            `${API_BASE_URL}${API_PATHS.PROPERTIES.validatePublication(formData.id)}?target_status=${encodeURIComponent(newStatus)}`
+          );
+          if (response.ok) {
+            const result = await response.json();
+            if (!result.is_valid) {
+              setPublicationValidationError({
+                message: result.message,
+                groups: result.groups,
+              });
+            }
+          }
+        } catch (err) {
+          console.error('Publication validation check failed:', err);
+        }
+      }
+    };
+
+    // グループ名からタブインデックスを特定してナビゲート
+    const navigateToField = (groupName: string) => {
+      // グループ名とタブのマッピング
+      const groupToTabIndex: Record<string, number> = {};
+
+      // tabGroups配列を走査してマッピングを構築
+      tabGroups.forEach((tab, index) => {
+        // 通常タブ: groupsの各グループ名をマッピング
+        Object.keys(tab.groups).forEach((grp) => {
+          groupToTabIndex[grp] = index;
+        });
+        // TAB_GROUPSからの直接マッピング
+        if (tab.tableName === 'properties_location') {
+          TAB_GROUPS.location.forEach((grp) => { groupToTabIndex[grp] = index; });
+        } else if (tab.tableName === 'properties_basic') {
+          TAB_GROUPS.basicInfo.forEach((grp) => { groupToTabIndex[grp] = index; });
+        } else if (tab.tableName === 'properties_price') {
+          TAB_GROUPS.priceDeal.forEach((grp) => { groupToTabIndex[grp] = index; });
+        } else if (tab.tableName === 'properties_management') {
+          TAB_GROUPS.management.forEach((grp) => { groupToTabIndex[grp] = index; });
+        } else if (tab.tableName === 'land_info') {
+          groupToTabIndex['土地情報'] = index;
+          groupToTabIndex['土地'] = index;
+        } else if (tab.tableName === 'building_info') {
+          groupToTabIndex['建物情報'] = index;
+          groupToTabIndex['建物'] = index;
+        } else if (tab.tableName === 'regulations') {
+          groupToTabIndex['法規制（自動取得）'] = index;
+          groupToTabIndex['ハザード情報（自動取得）'] = index;
+        }
+      });
+
+      const tabIndex = groupToTabIndex[groupName];
+      if (tabIndex !== undefined) {
+        setActiveTab(tabIndex);
+        setShowValidationErrorModal(false);
+        // 少し待ってからスクロール（タブ切り替え後のレンダリングを待つ）
+        setTimeout(() => {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 100);
+      } else {
+        // マッピングが見つからない場合はモーダルを閉じるのみ
+        setShowValidationErrorModal(false);
+      }
     };
 
     return (
@@ -1513,6 +1579,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                   {!autoSave && (
                     <button
                       type="button"
+                      disabled={!!publicationValidationError}
                       onClick={async () => {
                         console.log('Save button clicked');
                         try {
@@ -1533,21 +1600,26 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                         }
                       }}
                       style={{
-                        backgroundColor: '#10B981',
+                        backgroundColor: publicationValidationError ? '#9CA3AF' : '#10B981',
                         color: '#fff',
                         border: 'none',
                         padding: '5px 16px',
                         borderRadius: '4px',
-                        cursor: 'pointer',
+                        cursor: publicationValidationError ? 'not-allowed' : 'pointer',
                         fontWeight: 600,
                         fontSize: '11px',
                         transition: 'all 100ms',
+                        opacity: publicationValidationError ? 0.7 : 1,
                       }}
                       onMouseOver={(e) => {
-                        e.currentTarget.style.backgroundColor = '#059669';
+                        if (!publicationValidationError) {
+                          e.currentTarget.style.backgroundColor = '#059669';
+                        }
                       }}
                       onMouseOut={(e) => {
-                        e.currentTarget.style.backgroundColor = '#10B981';
+                        if (!publicationValidationError) {
+                          e.currentTarget.style.backgroundColor = '#10B981';
+                        }
                       }}
                     >
                       保存
@@ -1918,18 +1990,29 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                         padding: '12px 16px',
                         border: '1px solid #FECACA',
                       }}>
-                        <div style={{
-                          fontSize: '13px',
-                          fontWeight: 600,
-                          color: '#B91C1C',
-                          marginBottom: '8px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                        }}>
+                        <button
+                          type="button"
+                          onClick={() => navigateToField(groupName)}
+                          style={{
+                            width: '100%',
+                            textAlign: 'left',
+                            background: 'none',
+                            border: 'none',
+                            padding: 0,
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            color: '#B91C1C',
+                            marginBottom: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                          }}
+                        >
                           <span>📋</span>
                           {groupName}
-                        </div>
+                          <span style={{ marginLeft: 'auto', fontSize: '11px', color: '#DC2626' }}>→移動</span>
+                        </button>
                         <ul style={{
                           margin: 0,
                           paddingLeft: '20px',

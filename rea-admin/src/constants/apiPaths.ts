@@ -68,6 +68,11 @@ export const API_PATHS = {
     GROUPED: '/equipment/grouped',
   },
 
+  // 物件
+  PROPERTIES: {
+    validatePublication: (id: number) => `/properties/${id}/validate-publication`,
+  },
+
   // ポータル
   PORTAL: {
     HOMES_EXPORT: '/portal/homes/export',

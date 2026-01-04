@@ -260,6 +260,45 @@ def update_property(
         )
 
 
+@router.get("/{property_id}/validate-publication")
+def validate_publication(
+    request: Request,
+    property_id: int,
+    target_status: str = Query(..., description="検証対象の公開ステータス（公開/会員公開）"),
+    db: Session = Depends(get_db),
+):
+    """
+    公開バリデーションを事前チェック
+
+    publication_statusを変更する前に、必須項目のチェックを行う。
+    リアルタイムバリデーション用。
+    """
+    require_auth(request)
+    crud = GenericCRUD(db)
+
+    # 物件の全データを取得
+    existing_full = crud.get_full(property_id)
+    if existing_full is None:
+        raise HTTPException(status_code=404, detail="Property not found")
+
+    current_status = existing_full.get("publication_status")
+
+    # バリデーション実行
+    is_valid, missing_fields = validate_for_publication(
+        db, existing_full, target_status, current_status
+    )
+
+    if not is_valid:
+        error_detail = format_validation_error_grouped(missing_fields, target_status)
+        return {
+            "is_valid": False,
+            "message": error_detail["message"],
+            "groups": error_detail["groups"],
+        }
+
+    return {"is_valid": True, "message": None, "groups": {}}
+
+
 @router.delete("/{property_id}")
 def delete_property(request: Request, property_id: int, db: Session = Depends(get_db)):
     """
