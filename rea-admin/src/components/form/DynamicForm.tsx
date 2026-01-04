@@ -1400,7 +1400,8 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
       if (['公開', '会員公開'].includes(newStatus) && formData.id) {
         try {
           const response = await fetch(
-            `${API_BASE_URL}${API_PATHS.PROPERTIES.validatePublication(formData.id)}?target_status=${encodeURIComponent(newStatus)}`
+            `${API_BASE_URL}${API_PATHS.PROPERTIES.validatePublication(formData.id)}?target_status=${encodeURIComponent(newStatus)}`,
+            { credentials: 'include' }
           );
           if (response.ok) {
             const result = await response.json();
