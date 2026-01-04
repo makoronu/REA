@@ -1381,19 +1381,12 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
     // 案件ステータスに応じて公開状態の選択肢を制限（販売中・商談中のみ公開可能）
     const isPublicationEditable = ['販売中', '商談中'].includes(currentSalesStatus);
 
-    // ステータス変更ハンドラー
+    // ステータス変更ハンドラー（連動ロジックはAPI側で一元管理）
     const handleSalesStatusChange = (newStatus: string) => {
       form.setValue('sales_status', newStatus, { shouldDirty: true });
-
-      // 連動ロジック: 販売中・商談中以外は強制的に非公開
-      if (!['販売中', '商談中'].includes(newStatus)) {
-        form.setValue('publication_status', '非公開', { shouldDirty: true });
-      }
-      // 販売中に変更した場合、デフォルトで公開に設定
-      // （バリデーションは保存時にAPIで実行、NGなら公開不合格になる）
-      if (newStatus === '販売中' && currentPublicationStatus === '非公開') {
-        form.setValue('publication_status', '公開', { shouldDirty: true });
-      }
+      // publication_statusの自動設定は削除
+      // 連動ロジックはAPI側（properties.py）で一元管理
+      // 保存後にAPIレスポンスでUIが更新される
     };
 
     // 公開ステータス変更ハンドラー（リアルタイムバリデーション付き）

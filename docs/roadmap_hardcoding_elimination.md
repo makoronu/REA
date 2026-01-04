@@ -145,6 +145,20 @@ Step 4: テスト
 - フォームplaceholder外部化
 - エラーメッセージ統一（日英混在解消）
 
+### Seg5: ステータス連動ロジックAPI一元化
+
+**問題**: 販売ステータス→公開ステータス連動がフロント（2箇所）とAPI（1箇所）に分散
+
+対象:
+- PropertiesPage.tsx: handleStatusChange, handleBulkStatusChange
+- DynamicForm.tsx: handleSalesStatusChange
+- PropertyEditDynamicPage.tsx: handleSubmit
+
+修正内容:
+- フロント側のpublication_status自動設定を削除
+- APIレスポンスでUI更新
+- 連動ロジックはAPI（properties.py）に一元化
+
 ---
 
 ## 更新履歴

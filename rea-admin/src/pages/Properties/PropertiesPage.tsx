@@ -8,8 +8,6 @@ import {
   formatPrice,
   SALES_STATUS,
   PUBLICATION_STATUS,
-  ACTIVE_SALES_STATUSES,
-  INACTIVE_SALES_STATUSES,
   PAGE_CONFIG,
   PAGE_SIZE_OPTIONS,
 } from '../../constants';
@@ -442,22 +440,14 @@ const PropertiesPage = () => {
     setStatusDropdown({ id, field, x: rect.left, y: rect.bottom + 4 });
   };
 
-  // ステータス連動ロジック: 販売ステータス変更時に公開ステータスも連動
+  // ステータス変更ハンドラー（連動ロジックはAPI側で一元管理）
   const handleStatusChange = async (id: number, field: string, value: string) => {
     try {
       const updates: Record<string, string> = { [field]: value };
 
-      // 販売ステータス → 公開ステータス連動（定数使用）
-      if (field === 'sales_status') {
-        if ((ACTIVE_SALES_STATUSES as readonly string[]).includes(value)) {
-          updates.publication_status = PUBLICATION_STATUS.PUBLIC;
-        } else if ((INACTIVE_SALES_STATUSES as readonly string[]).includes(value)) {
-          updates.publication_status = PUBLICATION_STATUS.PRIVATE;
-        }
-      }
-
-      await propertyService.updateProperty(id, updates);
-      setProperties(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+      // APIで更新し、レスポンスでUI更新（連動ロジックはAPI側）
+      const updated = await propertyService.updateProperty(id, updates);
+      setProperties(prev => prev.map(p => p.id === id ? { ...p, ...updated } : p));
       closeContextMenu();
     } catch (err) {
       console.error('ステータス更新エラー:', err);
@@ -500,7 +490,7 @@ const PropertiesPage = () => {
   // ============================================
   // 一括操作
   // ============================================
-  // 一括ステータス変更（連動ロジック適用・定数使用）
+  // 一括ステータス変更（連動ロジックはAPI側で一元管理）
   const handleBulkStatusChange = async (field: string, value: string) => {
     if (selectedIds.size === 0) return;
     if (!confirm(`${selectedIds.size}件の物件を「${value}」に変更しますか？`)) return;
@@ -508,20 +498,14 @@ const PropertiesPage = () => {
     try {
       const updates: Record<string, string> = { [field]: value };
 
-      // 販売ステータス → 公開ステータス連動（定数使用）
-      if (field === 'sales_status') {
-        if ((ACTIVE_SALES_STATUSES as readonly string[]).includes(value)) {
-          updates.publication_status = PUBLICATION_STATUS.PUBLIC;
-        } else if ((INACTIVE_SALES_STATUSES as readonly string[]).includes(value)) {
-          updates.publication_status = PUBLICATION_STATUS.PRIVATE;
-        }
-      }
-
-      await Promise.all(
+      // APIで更新し、各レスポンスでUI更新（連動ロジックはAPI側）
+      const results = await Promise.all(
         Array.from(selectedIds).map(id => propertyService.updateProperty(id, updates))
       );
+      // レスポンスをマップ化
+      const updatedMap = new Map(results.map(r => [r.id, r]));
       setProperties(prev => prev.map(p =>
-        selectedIds.has(p.id) ? { ...p, ...updates } : p
+        updatedMap.has(p.id) ? { ...p, ...updatedMap.get(p.id) } : p
       ));
       setSelectedIds(new Set());
     } catch (err) {
@@ -536,10 +520,12 @@ const PropertiesPage = () => {
     if (!confirm(`${selectedIds.size}件の物件を「${SALES_STATUS.WITHDRAWN}」にしますか？`)) return;
 
     try {
+      // 取下げ時は非公開も明示（TODO: API側で連動ロジック一元化）
       const updates = { sales_status: SALES_STATUS.WITHDRAWN, publication_status: PUBLICATION_STATUS.PRIVATE };
-      await Promise.all(Array.from(selectedIds).map(id => propertyService.updateProperty(id, updates)));
+      const results = await Promise.all(Array.from(selectedIds).map(id => propertyService.updateProperty(id, updates)));
+      const updatedMap = new Map(results.map(r => [r.id, r]));
       setProperties(prev => prev.map(p =>
-        selectedIds.has(p.id) ? { ...p, ...updates } : p
+        updatedMap.has(p.id) ? { ...p, ...updatedMap.get(p.id) } : p
       ));
       setSelectedIds(new Set());
     } catch (err) {

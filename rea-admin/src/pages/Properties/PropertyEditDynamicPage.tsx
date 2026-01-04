@@ -96,8 +96,9 @@ export const PropertyEditDynamicPage: React.FC = () => {
           navigate(`/properties/${created.id}/edit`);
         }, 500);
       } else {
-        // 更新
-        await propertyService.updateProperty(parseInt(id!), data);
+        // 更新（APIレスポンスでpropertyを更新、連動ロジックの反映）
+        const updated = await propertyService.updateProperty(parseInt(id!), data);
+        setProperty(updated);
         setSaveStatus('saved');
 
         // 成功メッセージを表示
