@@ -17,10 +17,27 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def _get_code_mapping(category_code: str) -> Dict[str, str]:
+def _convert_option_code_to_int(option_code: str):
+    """
+    option_codeを数値に変換（DBカラムがINTEGER型のため）
+    'rea_1' → 1, 'rea_2' → 2, '0' → 0
+    """
+    if option_code.startswith('rea_'):
+        try:
+            return int(option_code[4:])
+        except ValueError:
+            return option_code
+    elif option_code.isdigit() or (option_code.startswith('-') and option_code[1:].isdigit()):
+        return int(option_code)
+    else:
+        return option_code
+
+
+def _get_code_mapping(category_code: str) -> Dict[str, Any]:
     """
     マスタオプションからapi_aliases→option_codeのマッピングを取得
     メタデータ駆動: DBのapi_aliasesを使用
+    option_codeは数値に変換して返す（DBカラムがINTEGER型のため）
     """
     mapping = {}
     try:
@@ -40,8 +57,10 @@ def _get_code_mapping(category_code: str) -> Dict[str, str]:
 
         for option_code, aliases in rows:
             if aliases:
+                # option_codeを数値に変換（'rea_3' → 3）
+                converted_code = _convert_option_code_to_int(option_code)
                 for alias in aliases:
-                    mapping[alias] = option_code
+                    mapping[alias] = converted_code
     except Exception as e:
         logger.error(f"Failed to get code mapping for {category_code}: {e}")
 
