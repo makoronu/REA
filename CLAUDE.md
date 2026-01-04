@@ -43,6 +43,11 @@
 
 ### 今日完了した作業（2026-01-04）
 
+- **reinfolib API option_code数値変換**
+  - 法令調査ボタンで取得した値を数値に変換
+  - 'rea_3' → 3 に変換して返す
+  - コミット: 3e40f93
+
 - **land_info input_type修正 + 既存データマイグレーション**
   - column_labels: city_planning, land_category を radio に変更
   - use_district: 2370件を `["rea_*"]` → `[数値]` に変換
