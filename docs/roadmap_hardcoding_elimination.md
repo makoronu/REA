@@ -159,6 +159,15 @@ Step 4: テスト
 - APIレスポンスでUI更新
 - 連動ロジックはAPI（properties.py）に一元化
 
+### Seg5バグ修正: INACTIVE_SALES_STATUSES連動
+
+**問題**: 売止め/成約/販売終了 → 非公開 の連動がAPIに未実装
+
+修正内容:
+1. master_optionsに`triggers_unpublish`カラム追加（boolean）
+2. 該当レコードにフラグ投入（成約済み、取下げ、販売終了）
+3. properties.pyでDB読み込み、連動処理追加
+
 ---
 
 ## 更新履歴

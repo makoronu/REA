@@ -26,6 +26,37 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+# =============================================================================
+# DB設定読み込み関数
+# =============================================================================
+
+def get_triggers_unpublish_statuses(db: Session) -> List[str]:
+    """
+    非公開連動が必要な販売ステータス一覧を取得
+
+    Returns:
+        ["成約済み", "取下げ", "販売終了"] 等
+    """
+    try:
+        query = text("""
+            SELECT mo.option_value
+            FROM master_options mo
+            JOIN master_categories mc ON mo.category_id = mc.id
+            WHERE mc.category_code = 'sales_status'
+              AND mo.triggers_unpublish = TRUE
+              AND mo.is_active = TRUE
+        """)
+        result = db.execute(query)
+        statuses = [row.option_value for row in result]
+        if statuses:
+            return statuses
+    except Exception as e:
+        logger.warning(f"Failed to load triggers_unpublish_statuses from DB: {e}")
+
+    # フォールバック（DBカラム未追加時）
+    return ["成約済み", "取下げ", "販売終了"]
+
+
 def require_auth(request: Request) -> dict:
     """認証を要求（ログイン必須）"""
     user = get_current_user(request)
@@ -216,12 +247,19 @@ def update_property(
     if existing_full is None:
         raise HTTPException(status_code=404, detail="Property not found")
 
-    # 販売中に変更 → 公開前確認に自動設定
+    # 販売ステータス → 公開ステータス連動（メタデータ駆動）
     new_sales_status = property_data.get("sales_status")
     current_sales_status = existing_full.get("sales_status")
-    if new_sales_status == "販売中" and current_sales_status != "販売中":
-        # 販売中に変更された場合、公開前確認に自動設定
-        property_data["publication_status"] = "公開前確認"
+
+    if new_sales_status and new_sales_status != current_sales_status:
+        # 販売中に変更 → 公開前確認に自動設定
+        if new_sales_status == "販売中":
+            property_data["publication_status"] = "公開前確認"
+        else:
+            # 非公開連動ステータス（DB駆動）
+            triggers_unpublish = get_triggers_unpublish_statuses(db)
+            if new_sales_status in triggers_unpublish:
+                property_data["publication_status"] = "非公開"
 
     # 公開時バリデーション
     new_publication_status = property_data.get("publication_status")
