@@ -620,7 +620,30 @@ def _guess_input_type(data_type: str) -> str:
     return type_mapping.get(data_type.lower(), "text")
 
 
-def _get_master_options_cache(db: Session) -> Dict[str, List[Dict[str, str]]]:
+def _convert_option_code_to_int(option_code: str) -> Any:
+    """
+    option_codeを数値に変換（DBカラムがINTEGER型のため）
+
+    変換ルール:
+    - 'rea_1' → 1（rea_接頭辞を除去して数値化）
+    - '0', '1', '2' → 0, 1, 2（数字文字列は数値化）
+    - それ以外 → そのまま文字列として返す（一部カテゴリで必要）
+    """
+    if option_code.startswith('rea_'):
+        # 'rea_' 接頭辞を除去して数値化
+        try:
+            return int(option_code[4:])
+        except ValueError:
+            return option_code
+    elif option_code.isdigit() or (option_code.startswith('-') and option_code[1:].isdigit()):
+        # 数字文字列は数値化
+        return int(option_code)
+    else:
+        # それ以外は文字列のまま
+        return option_code
+
+
+def _get_master_options_cache(db: Session) -> Dict[str, List[Dict[str, Any]]]:
     """
     master_optionsからREAソースの選択肢をカテゴリ別に取得
     JSON配列形式で返す（統一フォーマット）
@@ -646,13 +669,15 @@ def _get_master_options_cache(db: Session) -> Dict[str, List[Dict[str, str]]]:
     result = db.execute(query)
 
     # カテゴリごとにJSON配列形式でグループ化
-    options_by_category: Dict[str, List[Dict[str, str]]] = {}
+    options_by_category: Dict[str, List[Dict[str, Any]]] = {}
     for row in result:
         if row.category_code not in options_by_category:
             options_by_category[row.category_code] = []
-        # option_code をそのまま使用（メタデータ駆動）
+        # option_codeを数値に変換（DBカラムがINTEGER型のため）
+        # 'rea_1' → 1, 'rea_2' → 2, '0' → 0
+        value = _convert_option_code_to_int(row.option_code)
         options_by_category[row.category_code].append({
-            "value": row.option_code,
+            "value": value,
             "label": row.option_value
         })
 
@@ -698,8 +723,10 @@ def get_options_by_category(
 
         options = []
         for row in result:
+            # option_codeを数値に変換（DBカラムがINTEGER型のため）
+            value = _convert_option_code_to_int(row.option_code)
             opt = {
-                "value": row.option_code,
+                "value": value,
                 "label": row.option_value,
                 "display_order": row.display_order,
             }
