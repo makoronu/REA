@@ -28,15 +28,15 @@
 
 | 項目 | 内容 |
 |------|------|
-| 作業中 | **Seg5バグ修正完了 → テスト待ち** |
-| 次回 | **テスト後デプロイ実施（13件）** |
+| 作業中 | **Seg5バグ修正テスト完了 → デプロイ準備** |
+| 次回 | **デプロイ実施（14件）** |
 | 残り | HOMES入稿、ZOHO画像同期 |
 | 更新 | 2026-01-04 |
 
 ### 次回やること
 
-1. **デプロイ実施**（13件まとめて）
-   - Seg1〜5 + Seg5バグ修正 + property_locations削除 + city_planning JSONB + 公開バリデーションUI
+1. **デプロイ実施**（14件まとめて）
+   - Seg1〜5 + Seg5バグ修正(完全DB駆動化) + property_locations削除 + city_planning JSONB + 公開バリデーションUI
    - デプロイプロンプト `.claude/prompts/3_deploy/_main.md` に従う
    - 本番: https://realestateautomation.net/
 
