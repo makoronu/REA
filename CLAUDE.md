@@ -28,20 +28,27 @@
 
 | 項目 | 内容 |
 |------|------|
-| 作業中 | **city_planning JSONB変更完了 → デプロイ準備** |
-| 次回 | **全体テスト後、デプロイ実施（10件）** |
+| 作業中 | **公開バリデーションリアルタイムチェック完了 → デプロイ準備** |
+| 次回 | **デプロイ実施（11件）** |
 | 残り | HOMES入稿、ZOHO画像同期 |
 | 更新 | 2026-01-04 |
 
 ### 次回やること
 
-1. **全体テスト実施**（Seg1〜4統合テスト）
-2. **デプロイ実施**（9件まとめて）
-   - Seg1〜4 + property_locations削除 + city_planning JSONB（10件）
+1. **デプロイ実施**（11件まとめて）
+   - Seg1〜4 + property_locations削除 + city_planning JSONB + 公開バリデーションUI
    - デプロイプロンプト `.claude/prompts/3_deploy/_main.md` に従う
    - 本番: https://realestateautomation.net/
 
 ### 今日完了した作業（2026-01-04）
+
+- **公開バリデーション リアルタイムチェック機能**
+  - API: GET /properties/{id}/validate-publication 追加
+  - UI: 公開/会員公開選択時に即時バリデーション実行
+  - UI: エラー時は保存ボタン無効化（グレーアウト）
+  - UI: エラーモーダルからグループ名クリックで該当タブへ移動
+  - テスト: 全項目PASS
+  - コミット: bf4b4b2
 
 - **city_planning INTEGER→JSONB変更**
   - DBカラム型変更: INTEGER→JSONB（複数選択対応）
