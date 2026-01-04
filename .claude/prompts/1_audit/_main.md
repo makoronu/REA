@@ -29,6 +29,11 @@ options.add_argument("--disable-gpu")
 
 ## 実行順序
 
+### 0. 過去履歴確認
+```
+→ 0_history.md
+```
+
 ### 1. 調査（中プロンプト）
 ```
 → 1_investigate/structure.md

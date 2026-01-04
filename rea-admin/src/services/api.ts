@@ -37,7 +37,13 @@ api.interceptors.response.use(
         window.location.href = '/login';
       }
     }
-    console.error('API Error:', error);
+    // 詳細エラーログ
+    console.error('=== API Error ===');
+    console.error('URL:', error.config?.url);
+    console.error('Method:', error.config?.method);
+    console.error('Status:', error.response?.status);
+    console.error('Detail:', error.response?.data?.detail || error.message);
+    console.error('Full response:', error.response?.data);
     return Promise.reject(error);
   }
 );

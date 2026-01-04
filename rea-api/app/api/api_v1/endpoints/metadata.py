@@ -3,15 +3,21 @@
 テーブル構造、カラム情報、ラベル情報を提供
 
 選択肢の取得:
-- master_optionsテーブル（source='homes'）から取得
+- master_optionsテーブル（source='rea'）から取得
 - master_category_codeでカテゴリを指定
 """
 import sys
+import logging
+import traceback
 from pathlib import Path
 project_root = Path(__file__).resolve().parent.parent.parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from typing import Any, Dict, List, Optional, Set
+
+# ロガー設定
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 from app.api import dependencies
 from app.core.database import engine
@@ -78,6 +84,7 @@ def get_all_tables(db: Session = Depends(dependencies.get_db)) -> List[Dict[str,
         return tables
 
     except Exception as e:
+        logger.error(f"Error: {str(e)}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -213,6 +220,7 @@ def get_table_details(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Error: {str(e)}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -227,7 +235,7 @@ def get_table_columns_with_labels(
 
     選択肢の取得:
     - property_type → property_typesテーブル
-    - その他 → master_options (source='homes') から取得（master_category_codeで指定）
+    - その他 → master_options (source='rea') から取得（master_category_codeで指定）
     """
     try:
         # master_optionsキャッシュを先に取得
@@ -294,7 +302,7 @@ def get_table_columns_with_labels(
 
             # 選択肢の取得:
             # 1. property_type → property_typesテーブル
-            # 2. その他 → master_options (source='homes')
+            # 2. その他 → master_options (source='rea')
             if row.column_name == "property_type":
                 options = property_type_options
             elif row.master_category_code and row.master_category_code in master_options_cache:
@@ -406,6 +414,7 @@ def get_table_columns_with_labels(
         return columns
 
     except Exception as e:
+        logger.error(f"Error: {str(e)}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -440,6 +449,7 @@ def get_enum_values(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Error: {str(e)}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -515,6 +525,7 @@ def get_filter_options(db: Session = Depends(dependencies.get_db)) -> Dict[str, 
         return filter_options
 
     except Exception as e:
+        logger.error(f"Error: {str(e)}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -611,7 +622,7 @@ def _guess_input_type(data_type: str) -> str:
 
 def _get_master_options_cache(db: Session) -> Dict[str, List[Dict[str, str]]]:
     """
-    master_optionsからhomesソースの選択肢をカテゴリ別に取得
+    master_optionsからREAソースの選択肢をカテゴリ別に取得
     JSON配列形式で返す（統一フォーマット）
 
     Returns:
@@ -627,7 +638,7 @@ def _get_master_options_cache(db: Session) -> Dict[str, List[Dict[str, str]]]:
             mo.option_value
         FROM master_options mo
         JOIN master_categories mc ON mo.category_id = mc.id
-        WHERE mo.source = 'homes'
+        WHERE mo.source = 'rea'
         AND mo.is_active = true
         AND mo.deleted_at IS NULL
         ORDER BY mc.category_code, mo.display_order
@@ -678,7 +689,7 @@ def get_options_by_category(
             FROM master_options mo
             JOIN master_categories mc ON mo.category_id = mc.id
             WHERE mc.category_code = :category_code
-            AND mo.source = 'homes'
+            AND mo.source = 'rea'
             AND mo.is_active = true
             AND mo.deleted_at IS NULL
             ORDER BY mo.display_order
@@ -724,6 +735,7 @@ def get_options_by_category(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Error: {str(e)}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -856,6 +868,7 @@ def get_status_settings(db: Session = Depends(dependencies.get_db)) -> Dict[str,
         return result
 
     except Exception as e:
+        logger.error(f"Error: {str(e)}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -890,4 +903,5 @@ def get_all_categories(db: Session = Depends(dependencies.get_db)) -> List[Dict[
         ]
 
     except Exception as e:
+        logger.error(f"Error: {str(e)}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
