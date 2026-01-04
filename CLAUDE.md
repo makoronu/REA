@@ -28,19 +28,25 @@
 
 | 項目 | 内容 |
 |------|------|
-| 作業中 | **Seg5完了 → デプロイ準備** |
-| 次回 | **デプロイ実施（12件）** |
+| 作業中 | **Seg5バグ修正完了 → テスト待ち** |
+| 次回 | **テスト後デプロイ実施（13件）** |
 | 残り | HOMES入稿、ZOHO画像同期 |
 | 更新 | 2026-01-04 |
 
 ### 次回やること
 
-1. **デプロイ実施**（12件まとめて）
-   - Seg1〜5 + property_locations削除 + city_planning JSONB + 公開バリデーションUI
+1. **デプロイ実施**（13件まとめて）
+   - Seg1〜5 + Seg5バグ修正 + property_locations削除 + city_planning JSONB + 公開バリデーションUI
    - デプロイプロンプト `.claude/prompts/3_deploy/_main.md` に従う
    - 本番: https://realestateautomation.net/
 
 ### 今日完了した作業（2026-01-04）
+
+- **Seg5バグ修正: 非公開連動追加**
+  - 問題: 売止め/成約/販売終了→非公開の連動がAPIに未実装
+  - 修正: master_optionsにtriggers_unpublishカラム追加
+  - 修正: properties.pyでDB駆動の連動処理追加
+  - コミット: 6b14cf0
 
 - **Seg5: ステータス連動ロジックAPI一元化**
   - 問題: sales_status→publication_status連動がフロント(2箇所)とAPI(1箇所)に分散
