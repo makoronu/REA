@@ -277,6 +277,65 @@ class GenericCRUD:
         result = self.db.execute(text(query), params)
         return [dict(row._mapping) for row in result]
 
+    def get_count(
+        self,
+        table_name: str,
+        filters: Optional[Dict[str, Any]] = None,
+        range_filters: Optional[Dict[str, Any]] = None,
+        search_term: Optional[str] = None,
+        search_columns: Optional[List[str]] = None,
+    ) -> int:
+        """
+        レコード件数取得（フィルタリング対応）
+
+        get_list / search と同じ条件でCOUNTを返す
+        """
+        self._validate_table(table_name)
+
+        valid_columns = set(self._get_db_columns(table_name))
+        params: Dict[str, Any] = {}
+        conditions = ["deleted_at IS NULL"]
+
+        # 検索条件（searchメソッドと同じロジック）
+        if search_term and search_columns:
+            target_columns = [c for c in search_columns if c in valid_columns]
+            if target_columns:
+                search_conditions = [f"{col} ILIKE :search" for col in target_columns]
+                conditions.append(f"({' OR '.join(search_conditions)})")
+                params["search"] = f"%{search_term}%"
+
+        # フィルタリング（get_listと同じロジック）
+        if filters:
+            for i, (key, value) in enumerate(filters.items()):
+                if key in valid_columns and value is not None:
+                    param_name = f"filter_{i}"
+                    if isinstance(value, str) and '%' in value:
+                        conditions.append(f"{key} ILIKE :{param_name}")
+                    else:
+                        conditions.append(f"{key} = :{param_name}")
+                    params[param_name] = value
+
+        # 範囲フィルタリング
+        if range_filters:
+            for i, (key, value) in enumerate(range_filters.items()):
+                if value is not None:
+                    if "__gte" in key:
+                        col_name = key.replace("__gte", "")
+                        if col_name in valid_columns:
+                            param_name = f"range_{i}"
+                            conditions.append(f"{col_name} >= :{param_name}")
+                            params[param_name] = value
+                    elif "__lte" in key:
+                        col_name = key.replace("__lte", "")
+                        if col_name in valid_columns:
+                            param_name = f"range_{i}"
+                            conditions.append(f"{col_name} <= :{param_name}")
+                            params[param_name] = value
+
+        query = f"SELECT COUNT(*) FROM {table_name} WHERE " + " AND ".join(conditions)
+        result = self.db.execute(text(query), params).scalar()
+        return result or 0
+
     def create(self, table_name: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """
         レコード作成

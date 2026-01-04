@@ -74,7 +74,7 @@ def require_auth(request: Request) -> dict:
     return user
 
 
-@router.get("/", response_model=List[Dict[str, Any]])
+@router.get("/", response_model=Dict[str, Any])
 def read_properties(
     request: Request,
     skip: int = Query(0, ge=0),
@@ -90,8 +90,13 @@ def read_properties(
     db: Session = Depends(get_db),
 ):
     """
-    物件一覧取得（検索条件付き）
-    メタデータ駆動: フィルタ条件は動的に構築
+    物件一覧取得（検索条件付き・ページネーション対応）
+
+    レスポンス形式:
+    {
+        "items": [...],
+        "total": 件数
+    }
     """
     require_auth(request)
     crud = GenericCRUD(db)
@@ -112,16 +117,26 @@ def read_properties(
     if sale_price_max is not None:
         range_filters["sale_price__lte"] = sale_price_max
 
+    # 検索カラム定義
+    search_columns = ["property_name", "company_property_number"]
+
     # 汎用検索
     if search:
         # 検索は別メソッドで処理
         results = crud.search(
             "properties",
             search,
-            search_columns=["property_name", "company_property_number"],
+            search_columns=search_columns,
             skip=skip,
             limit=limit,
             range_filters=range_filters if range_filters else None,
+        )
+        # 総件数取得（検索条件付き）
+        total = crud.get_count(
+            "properties",
+            range_filters=range_filters if range_filters else None,
+            search_term=search,
+            search_columns=search_columns,
         )
     else:
         results = crud.get_list(
@@ -133,8 +148,14 @@ def read_properties(
             sort_by=sort_by or "id",
             sort_order=sort_order or "desc",
         )
+        # 総件数取得（フィルタ条件付き）
+        total = crud.get_count(
+            "properties",
+            filters=filters if filters else None,
+            range_filters=range_filters if range_filters else None,
+        )
 
-    return results
+    return {"items": results, "total": total}
 
 
 @router.get("/{property_id}", response_model=Dict[str, Any])
