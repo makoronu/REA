@@ -28,17 +28,18 @@
 
 | 項目 | 内容 |
 |------|------|
-| 作業中 | **Seg5バグ修正テスト完了 → デプロイ準備** |
-| 次回 | **デプロイ実施（14件）** |
+| 作業中 | なし |
+| 完了 | **デプロイ 2026-01-04（50コミット・141ファイル）** |
 | 残り | HOMES入稿、ZOHO画像同期 |
 | 更新 | 2026-01-04 |
 
-### 次回やること
+### デプロイ完了（2026-01-04 18:15）
 
-1. **デプロイ実施**（14件まとめて）
-   - Seg1〜5 + Seg5バグ修正(完全DB駆動化) + property_locations削除 + city_planning JSONB + 公開バリデーションUI
-   - デプロイプロンプト `.claude/prompts/3_deploy/_main.md` に従う
-   - 本番: https://realestateautomation.net/
+- **50コミット・141ファイル**を本番に反映
+- スキーマ差異対応: 新テーブル1、新カラム18、型変換2
+- ページネーション修正、ステータス連動DB駆動化、公開バリデーションUI
+- バックアップ: `~/REA_backup/20260104/`
+- 詳細: `docs/roadmap_deploy_20260104.md`
 
 ### 今日完了した作業（2026-01-04）
 
@@ -107,8 +108,9 @@
 
 | タスク | ファイル | 状態 |
 |--------|---------|------|
-| 該当なし対応 | `docs/roadmap_publication_validation_none_option.md` | ✅実装完了 |
-| ハードコーディング撲滅 | `docs/roadmap_hardcoding_elimination.md` | ✅全セグメント完了（デプロイ待ち） |
+| 該当なし対応 | `docs/roadmap_publication_validation_none_option.md` | ✅デプロイ完了 |
+| ハードコーディング撲滅 | `docs/roadmap_hardcoding_elimination.md` | ✅デプロイ完了 |
+| デプロイ 2026-01-04 | `docs/roadmap_deploy_20260104.md` | ✅完了 |
 
 ---
 
