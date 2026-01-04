@@ -159,14 +159,19 @@ Step 4: テスト
 - APIレスポンスでUI更新
 - 連動ロジックはAPI（properties.py）に一元化
 
-### Seg5バグ修正: INACTIVE_SALES_STATUSES連動
+### Seg5バグ修正: ステータス連動の完全DB駆動化
 
-**問題**: 売止め/成約/販売終了 → 非公開 の連動がAPIに未実装
+**問題**:
+- 売止め/成約/販売終了 → 非公開 の連動がAPIに未実装
+- 販売中 → 公開前確認 の判定がハードコード
+- option_value（文字列）とoption_code（数値）の型不一致
 
 修正内容:
-1. master_optionsに`triggers_unpublish`カラム追加（boolean）
-2. 該当レコードにフラグ投入（成約済み、取下げ、販売終了）
-3. properties.pyでDB読み込み、連動処理追加
+1. master_optionsに`triggers_unpublish`カラム追加（非公開連動）
+2. master_optionsに`triggers_pre_check`カラム追加（公開前確認連動）
+3. properties.pyで両方をDB駆動化（option_codeで比較）
+4. フォールバックは空リスト（ハードコードなし）
+5. `rea_`プレフィックス除去のマッピング追加（ADR-0002）
 
 ---
 

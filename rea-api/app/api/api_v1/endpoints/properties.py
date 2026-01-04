@@ -27,34 +27,43 @@ router = APIRouter()
 
 
 # =============================================================================
-# DB設定読み込み関数
+# DB設定読み込み関数（ステータス連動）
 # =============================================================================
 
-def get_triggers_unpublish_statuses(db: Session) -> List[str]:
+def get_status_trigger_codes(db: Session, trigger_type: str) -> List[int]:
     """
-    非公開連動が必要な販売ステータス一覧を取得
+    ステータス連動が必要なoption_code一覧を取得（DB駆動）
+
+    Args:
+        trigger_type: 'triggers_unpublish' または 'triggers_pre_check'
 
     Returns:
-        ["成約済み", "取下げ", "販売終了"] 等
+        [8, 9, 10] 等（空リストの場合は連動しない）
     """
     try:
-        query = text("""
-            SELECT mo.option_value
+        query = text(f"""
+            SELECT mo.option_code
             FROM master_options mo
             JOIN master_categories mc ON mo.category_id = mc.id
             WHERE mc.category_code = 'sales_status'
-              AND mo.triggers_unpublish = TRUE
+              AND mo.{trigger_type} = TRUE
               AND mo.is_active = TRUE
         """)
         result = db.execute(query)
-        statuses = [row.option_value for row in result]
-        if statuses:
-            return statuses
+        codes = []
+        for row in result:
+            code = row.option_code
+            if code:
+                # rea_X 形式の場合はプレフィックス除去（ADR-0002）
+                code_str = str(code)
+                if code_str.startswith('rea_'):
+                    code_str = code_str[4:]
+                if code_str.isdigit():
+                    codes.append(int(code_str))
+        return codes
     except Exception as e:
-        logger.warning(f"Failed to load triggers_unpublish_statuses from DB: {e}")
-
-    # フォールバック（DBカラム未追加時）
-    return ["成約済み", "取下げ", "販売終了"]
+        logger.warning(f"Failed to load {trigger_type} codes from DB: {e}")
+        return []  # フォールバック: 空リスト（連動しない）
 
 
 def require_auth(request: Request) -> dict:
@@ -247,19 +256,24 @@ def update_property(
     if existing_full is None:
         raise HTTPException(status_code=404, detail="Property not found")
 
-    # 販売ステータス → 公開ステータス連動（メタデータ駆動）
+    # 販売ステータス → 公開ステータス連動（完全DB駆動）
     new_sales_status = property_data.get("sales_status")
     current_sales_status = existing_full.get("sales_status")
 
     if new_sales_status and new_sales_status != current_sales_status:
-        # 販売中に変更 → 公開前確認に自動設定
-        if new_sales_status == "販売中":
-            property_data["publication_status"] = "公開前確認"
-        else:
-            # 非公開連動ステータス（DB駆動）
-            triggers_unpublish = get_triggers_unpublish_statuses(db)
-            if new_sales_status in triggers_unpublish:
-                property_data["publication_status"] = "非公開"
+        # 数値に変換（フロントからは数値で来る）
+        sales_code = int(new_sales_status) if str(new_sales_status).isdigit() else None
+
+        if sales_code is not None:
+            # 公開前確認連動（DB駆動）
+            pre_check_codes = get_status_trigger_codes(db, 'triggers_pre_check')
+            if sales_code in pre_check_codes:
+                property_data["publication_status"] = "公開前確認"
+            else:
+                # 非公開連動（DB駆動）
+                unpublish_codes = get_status_trigger_codes(db, 'triggers_unpublish')
+                if sales_code in unpublish_codes:
+                    property_data["publication_status"] = "非公開"
 
     # 公開時バリデーション
     new_publication_status = property_data.get("publication_status")
