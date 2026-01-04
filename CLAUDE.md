@@ -43,6 +43,11 @@
 
 ### 今日完了した作業（2026-01-04）
 
+- **land_info input_type修正 + 既存データマイグレーション**
+  - column_labels: city_planning, land_category を radio に変更
+  - use_district: 2370件を `["rea_*"]` → `[数値]` に変換
+  - コミット: a23746d
+
 - **land_info INTEGER対応（metadata API修正）**
   - option_code を数値変換（'rea_1' → 1）
   - DBカラム（INTEGER型）への保存エラー解消
