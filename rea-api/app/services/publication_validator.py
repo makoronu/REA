@@ -381,6 +381,8 @@ def get_required_fields(db: Session, property_type: str) -> List[Dict[str, Any]]
     """
     指定された物件種別で必須となるフィールド一覧を取得
 
+    非表示カラム（visible_forに含まれない）はバリデーション対象外
+
     Returns:
         [{"table_name": "properties", "column_name": "property_name", "japanese_label": "物件名", "group_name": "基本情報"}, ...]
     """
@@ -389,6 +391,7 @@ def get_required_fields(db: Session, property_type: str) -> List[Dict[str, Any]]
         FROM column_labels
         WHERE required_for_publication IS NOT NULL
           AND :property_type = ANY(required_for_publication)
+          AND (visible_for IS NULL OR :property_type = ANY(visible_for))
         ORDER BY COALESCE(group_order, 999), COALESCE(display_order, 999)
     """)
     result = db.execute(query, {"property_type": property_type})

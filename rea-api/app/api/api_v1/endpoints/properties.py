@@ -203,7 +203,7 @@ def update_property(
         raise HTTPException(status_code=400, detail="publication_statusをnullにすることはできません")
 
     # publication_statusの値バリデーション
-    VALID_PUBLICATION_STATUSES = ["公開", "非公開", "会員公開"]
+    VALID_PUBLICATION_STATUSES = ["公開", "非公開", "会員公開", "公開前確認"]
     if "publication_status" in property_data and property_data["publication_status"] is not None:
         if property_data["publication_status"] not in VALID_PUBLICATION_STATUSES:
             raise HTTPException(
@@ -215,6 +215,13 @@ def update_property(
     existing_full = crud.get_full(property_id)
     if existing_full is None:
         raise HTTPException(status_code=404, detail="Property not found")
+
+    # 販売中に変更 → 公開前確認に自動設定
+    new_sales_status = property_data.get("sales_status")
+    current_sales_status = existing_full.get("sales_status")
+    if new_sales_status == "販売中" and current_sales_status != "販売中":
+        # 販売中に変更された場合、公開前確認に自動設定
+        property_data["publication_status"] = "公開前確認"
 
     # 公開時バリデーション
     new_publication_status = property_data.get("publication_status")
