@@ -28,19 +28,26 @@
 
 | 項目 | 内容 |
 |------|------|
-| 作業中 | **公開バリデーションリアルタイムチェック完了 → デプロイ準備** |
-| 次回 | **デプロイ実施（11件）** |
+| 作業中 | **Seg5完了 → デプロイ準備** |
+| 次回 | **デプロイ実施（12件）** |
 | 残り | HOMES入稿、ZOHO画像同期 |
 | 更新 | 2026-01-04 |
 
 ### 次回やること
 
-1. **デプロイ実施**（11件まとめて）
-   - Seg1〜4 + property_locations削除 + city_planning JSONB + 公開バリデーションUI
+1. **デプロイ実施**（12件まとめて）
+   - Seg1〜5 + property_locations削除 + city_planning JSONB + 公開バリデーションUI
    - デプロイプロンプト `.claude/prompts/3_deploy/_main.md` に従う
    - 本番: https://realestateautomation.net/
 
 ### 今日完了した作業（2026-01-04）
+
+- **Seg5: ステータス連動ロジックAPI一元化**
+  - 問題: sales_status→publication_status連動がフロント(2箇所)とAPI(1箇所)に分散
+  - 修正: フロント側のpublication_status自動設定を削除
+  - 修正: APIレスポンスでUI更新に変更
+  - 連動ロジックはAPI（properties.py）で一元管理
+  - コミット: e2ef9ad
 
 - **公開バリデーション リアルタイムチェック機能**
   - API: GET /properties/{id}/validate-publication 追加
