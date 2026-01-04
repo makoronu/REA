@@ -43,6 +43,11 @@
 
 ### 今日完了した作業（2026-01-04）
 
+- **land_info INTEGER対応（metadata API修正）**
+  - option_code を数値変換（'rea_1' → 1）
+  - DBカラム（INTEGER型）への保存エラー解消
+  - コミット: 5c9bd31
+
 - **Seg4: ハードコーディング撲滅（定数ファイル作成）**
   - DB: column_labels.placeholder カラム追加（マイグレーション）
   - API: metadata.py でplaceholderをDB読み込み
