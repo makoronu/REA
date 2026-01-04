@@ -28,8 +28,8 @@
 
 | 項目 | 内容 |
 |------|------|
-| 作業中 | **Seg4完了 → デプロイ準備** |
-| 次回 | **全体テスト後、デプロイ実施（9件）** |
+| 作業中 | **city_planning JSONB変更完了 → デプロイ準備** |
+| 次回 | **全体テスト後、デプロイ実施（10件）** |
 | 残り | HOMES入稿、ZOHO画像同期 |
 | 更新 | 2026-01-04 |
 
@@ -37,11 +37,17 @@
 
 1. **全体テスト実施**（Seg1〜4統合テスト）
 2. **デプロイ実施**（9件まとめて）
-   - Seg1〜4 + property_locations削除（9件）
+   - Seg1〜4 + property_locations削除 + city_planning JSONB（10件）
    - デプロイプロンプト `.claude/prompts/3_deploy/_main.md` に従う
    - 本番: https://realestateautomation.net/
 
 ### 今日完了した作業（2026-01-04）
+
+- **city_planning INTEGER→JSONB変更**
+  - DBカラム型変更: INTEGER→JSONB（複数選択対応）
+  - column_labels: input_type を multi_select に変更
+  - 理由: 境界線上の土地で複数の都市計画区域が該当するケースあり
+  - コミット: 459a223
 
 - **reinfolib API option_code数値変換**
   - 法令調査ボタンで取得した値を数値に変換
