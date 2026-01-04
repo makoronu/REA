@@ -23,7 +23,11 @@ app = FastAPI(
 # CORS設定
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 本番では具体的なドメインを指定
+    allow_origins=[
+        "https://realestateautomation.net",
+        "http://localhost:5173",
+        "http://localhost:8005",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
