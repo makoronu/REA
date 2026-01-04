@@ -120,6 +120,7 @@ export const RegulationTab: React.FC = () => {
         updated.push('地区計画');
       }
       // メタデータ駆動: city_planning (geo/urban-planning -> layer_no)
+      // city_planning は JSONB 型（複数選択：境界線上で複数該当あり）
       if (codes.city_planning) {
         setValue('city_planning', [codes.city_planning], { shouldDirty: true });
         updated.push('都市計画');
@@ -290,7 +291,7 @@ export const RegulationTab: React.FC = () => {
             />
           </div>
 
-          {/* 都市計画（複数選択） */}
+          {/* 都市計画（複数選択：JSONB型、境界線上で複数該当あり） */}
           <div>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '4px' }}>
               都市計画
@@ -301,7 +302,7 @@ export const RegulationTab: React.FC = () => {
               render={({ field }) => {
                 const currentValues = parseMultiValue(field.value);
                 const selectedOptions = cityPlanningOptions.filter(opt =>
-                  currentValues.includes(opt.value)
+                  currentValues.includes(String(opt.value))
                 );
                 return (
                   <Select
