@@ -77,7 +77,6 @@ const ALL_COLUMNS: ColumnDef[] = [
   { key: 'prefecture', label: '都道府県', sortable: false, width: 90, minWidth: 70 },
   { key: 'city', label: '市区町村', sortable: false, width: 110, minWidth: 80 },
   { key: 'address_detail', label: '住所', sortable: false, width: 140, minWidth: 100 },
-  { key: 'contractor_company_name', label: '元請会社', sortable: false, width: 130, minWidth: 100 },
   { key: 'created_at', label: '登録日', sortable: true, width: 100, minWidth: 80 },
 ];
 
@@ -668,7 +667,6 @@ const PropertiesPage = () => {
       case 'prefecture': return property.prefecture || '-';
       case 'city': return property.city || '-';
       case 'address_detail': return property.address_detail || '-';
-      case 'contractor_company_name': return property.contractor_company_name || '-';
       case 'created_at': return formatDate(property.created_at);
       default: return '-';
     }
