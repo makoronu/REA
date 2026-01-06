@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgis/postgis:15-3.4
+    container_name: rea-db
+    environment:
+      POSTGRES_DB: real_estate_db
+      POSTGRES_USER: rea_user
+      POSTGRES_PASSWORD: rea_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - rea_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rea_user -d real_estate_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: rea-api/Dockerfile
+    container_name: rea-api
+    ports:
+      - "8005:8005"
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env.docker
+    volumes:
+      - ./rea-api:/app/rea-api
+      - ./shared:/app/shared
+      - ./uploads:/app/uploads
+      - ./rea-flyer/generators:/app/generators
+      - ./rea-flyer:/app/rea-flyer
+
+volumes:
+  rea_db_data:
