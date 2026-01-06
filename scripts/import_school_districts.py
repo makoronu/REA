@@ -6,12 +6,23 @@ Shapefile形式を読み込み
 
 import json
 import os
+import sys
 import zipfile
 import tempfile
 import urllib.request
 
 import psycopg2
 import shapefile  # pyshp
+
+# プロジェクトルートをパスに追加
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+def get_db_connection():
+    """環境変数からDB接続を取得"""
+    database_url = os.environ.get('DATABASE_URL')
+    if database_url:
+        return psycopg2.connect(database_url)
+    return psycopg2.connect(dbname='real_estate_db', host='localhost')
 
 PREFECTURE_CODES = {
     '01': '北海道', '02': '青森県', '03': '岩手県', '04': '宮城県', '05': '秋田県',
@@ -123,7 +134,7 @@ def import_shapefile(shp_path, pref_code, conn):
     return count
 
 def main():
-    conn = psycopg2.connect(dbname='real_estate_db', host='localhost')
+    conn = get_db_connection()
     
     cur = conn.cursor()
     cur.execute("DELETE FROM m_school_districts")

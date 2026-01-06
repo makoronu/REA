@@ -12,6 +12,16 @@ import urllib.request
 
 import psycopg2
 
+# プロジェクトルートをパスに追加
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+def get_db_connection():
+    """環境変数からDB接続を取得"""
+    database_url = os.environ.get('DATABASE_URL')
+    if database_url:
+        return psycopg2.connect(database_url)
+    return psycopg2.connect(dbname='real_estate_db', host='localhost')
+
 PREFECTURE_CODES = {
     '01': '北海道', '02': '青森県', '03': '岩手県', '04': '宮城県', '05': '秋田県',
     '06': '山形県', '07': '福島県', '08': '茨城県', '09': '栃木県', '10': '群馬県',
@@ -94,7 +104,7 @@ def import_geojson(geojson_path, pref_code, conn):
     return count
 
 def main():
-    conn = psycopg2.connect(dbname='real_estate_db', host='localhost')
+    conn = get_db_connection()
     
     cur = conn.cursor()
     cur.execute("DELETE FROM m_schools")
