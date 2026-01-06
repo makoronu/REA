@@ -236,9 +236,18 @@ def main():
     cur = conn.cursor()
 
     try:
-        # テーブル作成
-        create_bus_stops_table(cur)
+        # テーブル作成（既存テーブルがあればスキップ）
+        try:
+            create_bus_stops_table(cur)
+            conn.commit()
+        except Exception as e:
+            print(f"テーブル作成スキップ（既存）: {e}")
+            conn.rollback()
+
+        # 既存データをクリア
+        cur.execute("DELETE FROM m_bus_stops")
         conn.commit()
+        print("✅ 既存データクリア")
 
         total_count = 0
 
