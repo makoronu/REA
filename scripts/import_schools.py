@@ -93,9 +93,9 @@ def import_geojson(geojson_path, pref_code, conn):
         
         try:
             cur.execute("""
-                INSERT INTO m_schools (name, school_type, address, admin_type_name, location, prefecture, city)
-                VALUES (%s, %s, %s, %s, ST_SetSRID(ST_MakePoint(%s, %s), 4326), %s, %s)
-            """, (name, school_type, address, admin_type_name, lng, lat, prefecture, city))
+                INSERT INTO m_schools (name, school_type, address, admin_type_name, location, prefecture_code, prefecture_name, latitude, longitude)
+                VALUES (%s, %s, %s, %s, ST_SetSRID(ST_MakePoint(%s, %s), 4326), %s, %s, %s, %s)
+            """, (name, school_type, address, admin_type_name, lng, lat, pref_code, prefecture, lat, lng))
             count += 1
         except Exception as e:
             pass
