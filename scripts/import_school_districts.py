@@ -123,9 +123,9 @@ def import_shapefile(shp_path, pref_code, conn):
 
         try:
             cur.execute("""
-                INSERT INTO m_school_districts (school_name, school_type, area, prefecture, city)
-                VALUES (%s, %s, ST_Multi(ST_GeomFromGeoJSON(%s)), %s, %s)
-            """, (school_name, school_type, geojson_str, prefecture, city))
+                INSERT INTO m_school_districts (school_name, school_type, area, prefecture_code, prefecture_name, admin_type)
+                VALUES (%s, %s, ST_Multi(ST_GeomFromGeoJSON(%s)), %s, %s, %s)
+            """, (school_name, school_type, geojson_str, pref_code, prefecture, city))
             count += 1
         except Exception as e:
             print(f"    挿入エラー: {school_name} - {e}")

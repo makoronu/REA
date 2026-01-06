@@ -62,8 +62,9 @@ def extract_shapefile(zip_path, temp_dir):
             # A32-xx_xx.shp (ポリゴン版) のみ取得、A32P-xx_xx.shp (ポイント版)は除外
             if name.endswith(('.shp', '.shx', '.dbf', '.prj', '.cpg')):
                 zf.extract(name, temp_dir)
-                # A32-で始まる（A32P-ではない）.shpを探す
-                if name.endswith('.shp') and '/A32-' in name and '/A32P-' not in name:
+                # A32-で始まる（A32P-ではない）.shpを探す（ルート直下 or サブディレクトリ対応）
+                basename = os.path.basename(name)
+                if name.endswith('.shp') and basename.startswith('A32-') and not basename.startswith('A32P-'):
                     shp_path = os.path.join(temp_dir, name)
         return shp_path
 
@@ -123,9 +124,9 @@ def import_shapefile(shp_path, pref_code, conn):
 
         try:
             cur.execute("""
-                INSERT INTO m_school_districts (school_name, school_type, area, prefecture, city)
-                VALUES (%s, %s, ST_Multi(ST_GeomFromGeoJSON(%s)), %s, %s)
-            """, (school_name, school_type, geojson_str, prefecture, city))
+                INSERT INTO m_school_districts (school_name, school_type, area, prefecture_code, prefecture_name, admin_type)
+                VALUES (%s, %s, ST_Multi(ST_GeomFromGeoJSON(%s)), %s, %s, %s)
+            """, (school_name, school_type, geojson_str, pref_code, prefecture, city))
             count += 1
         except Exception as e:
             print(f"    挿入エラー: {school_name} - {e}")
