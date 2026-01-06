@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from shared.auth.middleware import get_current_user
+from shared.real_estate_utils import calculate_price_per_tsubo, calculate_brokerage_fee
 
 logger = logging.getLogger(__name__)
 
@@ -295,6 +296,25 @@ def update_property(
                 unpublish_codes = get_status_trigger_codes(db, 'triggers_unpublish')
                 if sales_code in unpublish_codes:
                     property_data["publication_status"] = "非公開"
+
+    # 自動計算: 坪単価・仲介手数料
+    # マージしたデータから計算（更新データ優先）
+    merged_for_calc = {**existing_full, **property_data}
+    sale_price = merged_for_calc.get("sale_price")
+    land_area = merged_for_calc.get("land_area")  # land_infoテーブル
+
+    # 坪単価: 常に再計算（price_per_tsuboは自動計算フィールド）
+    if sale_price and land_area:
+        calculated_price_per_tsubo = calculate_price_per_tsubo(sale_price, land_area)
+        if calculated_price_per_tsubo is not None:
+            property_data["price_per_tsubo"] = calculated_price_per_tsubo
+
+    # 仲介手数料: 既存値がない場合のみ自動計算（編集可能）
+    current_brokerage_fee = merged_for_calc.get("brokerage_fee")
+    if not current_brokerage_fee and sale_price:
+        calculated_fee = calculate_brokerage_fee(sale_price)
+        if calculated_fee is not None:
+            property_data["brokerage_fee"] = calculated_fee
 
     # 公開時バリデーション
     new_publication_status = property_data.get("publication_status")

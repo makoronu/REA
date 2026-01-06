@@ -154,6 +154,22 @@ def get_property_type_group_order() -> Dict[str, int]:
 WALK_SPEED_METERS_PER_MIN: int = 80
 
 
+# =============================================================================
+# 不動産計算用定数
+# =============================================================================
+
+# 消費税率（2019年10月〜）
+TAX_RATE: float = 0.10
+
+# 面積変換: 1㎡ = 0.3025坪
+SQM_TO_TSUBO: float = 0.3025
+
+# 空き家特例（2024年7月施行）
+# 800万円以下の物件に適用、仲介手数料上限33万円（税込）
+AKIYA_SPECIAL_PRICE_LIMIT: int = 8_000_000  # 適用上限価格（円）
+AKIYA_SPECIAL_FEE_LIMIT: int = 330_000  # 上限手数料（税込、円）
+
+
 def calc_walk_minutes(distance_meters: float) -> int:
     """
     距離（メートル）から徒歩分数を計算

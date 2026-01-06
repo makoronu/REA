@@ -263,7 +263,13 @@ def normalize_property_type(property_type: str) -> str:
 
 from decimal import Decimal
 
-SQM_TO_TSUBO = 0.3025  # 1㎡ = 0.3025坪
+# 定数はshared.constantsからインポート
+from shared.constants import (
+    SQM_TO_TSUBO,
+    TAX_RATE,
+    AKIYA_SPECIAL_PRICE_LIMIT,
+    AKIYA_SPECIAL_FEE_LIMIT,
+)
 
 
 def to_float(value) -> Optional[float]:
@@ -460,3 +466,84 @@ def format_floor_display(floor: Optional[int]) -> str:
     if floor < 0:
         return f"地下{abs(floor)}階"
     return f"{floor}階"
+
+
+# ==================================================
+# 自動計算関数
+# ==================================================
+
+def calculate_price_per_tsubo(sale_price: Optional[float], land_area_sqm: Optional[float]) -> Optional[int]:
+    """
+    坪単価を計算
+
+    Args:
+        sale_price: 売買価格（円）
+        land_area_sqm: 土地面積（㎡）
+
+    Returns:
+        int: 坪単価（円）、計算不可の場合はNone
+
+    Examples:
+        >>> calculate_price_per_tsubo(30000000, 100.0)
+        991736  # 約99万円/坪
+    """
+    sale_price = to_float(sale_price)
+    land_area_sqm = to_float(land_area_sqm)
+
+    if sale_price is None or land_area_sqm is None:
+        return None
+    if sale_price <= 0 or land_area_sqm <= 0:
+        return None
+
+    tsubo = land_area_sqm * SQM_TO_TSUBO
+    price_per_tsubo = sale_price / tsubo
+    return int(round(price_per_tsubo))
+
+
+def calculate_brokerage_fee(sale_price: Optional[float]) -> Optional[int]:
+    """
+    仲介手数料を計算（空き家特例適用）
+
+    速算法:
+    - 400万円超: 価格×3%+6万円+消費税
+    - 200万円超〜400万円: 価格×4%+2万円+消費税
+    - 200万円以下: 価格×5%+消費税
+
+    空き家特例（2024年7月施行）:
+    - 800万円以下の物件: 上限33万円（税込）
+
+    Args:
+        sale_price: 売買価格（円）
+
+    Returns:
+        int: 仲介手数料（税込、円）、計算不可の場合はNone
+
+    Examples:
+        >>> calculate_brokerage_fee(30000000)  # 3000万円
+        1056000  # 105.6万円（税込）
+        >>> calculate_brokerage_fee(5000000)  # 500万円
+        231000  # 23.1万円（税込）
+        >>> calculate_brokerage_fee(2000000)  # 200万円（空き家特例適用）
+        110000  # 11万円（税込）→ 特例上限33万円以下なのでそのまま
+    """
+    sale_price = to_float(sale_price)
+
+    if sale_price is None or sale_price <= 0:
+        return None
+
+    # 速算法で手数料を計算（税抜）
+    if sale_price > 4_000_000:
+        fee = sale_price * 0.03 + 60_000
+    elif sale_price > 2_000_000:
+        fee = sale_price * 0.04 + 20_000
+    else:
+        fee = sale_price * 0.05
+
+    # 消費税加算
+    fee_with_tax = fee * (1 + TAX_RATE)
+
+    # 空き家特例: 800万円以下の物件は上限33万円
+    if sale_price <= AKIYA_SPECIAL_PRICE_LIMIT:
+        fee_with_tax = min(fee_with_tax, AKIYA_SPECIAL_FEE_LIMIT)
+
+    return int(round(fee_with_tax))
