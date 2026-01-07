@@ -28,12 +28,19 @@
 
 | 項目 | 内容 |
 |------|------|
-| 作業中 | なし |
-| 完了 | Seg1〜Seg3a完了（地理データ/フィールド削除/自動計算） |
-| 残り | Seg3b: 月額費用JSON化、HOMES入稿、ZOHO画像同期 |
+| 作業中 | **Seg3b-2〜4**: API/フロント/クリーンアップ |
+| 完了 | Seg1〜Seg3a、Seg3b-1完了 |
+| 残り | Seg3b-2〜4、HOMES入稿、ZOHO画像同期 |
 | 更新 | 2026-01-07 |
 
 ### 今日完了した作業（2026-01-07）
+
+- **Seg3b-1: 月額費用JSON化（DB準備）**
+  - 新カラム: properties.monthly_costs (JSONB)
+  - データマイグレーション: 2,277件
+  - 旧フィールド非表示化: management_fee, repair_reserve_fund, repair_reserve_fund_base
+  - 本番DB適用済み
+  - テスト依頼書: docs/test_requests/2026-01-07_seg3b1_monthly_costs_db.md
 
 - **Seg2: 21フィールド非表示化**
   - column_labels.visible_for = '{}' で非表示化
