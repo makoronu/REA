@@ -204,6 +204,18 @@ const FieldVisibilityPage: React.FC = () => {
       return;
     }
 
+    // 空配列チェック（全物件種別OFFを防止）
+    for (const [key, value] of pendingChanges.entries()) {
+      if (Array.isArray(value) && value.length === 0) {
+        const [, columnName] = key.split('.');
+        const field = fields.find(f => f.column_name === columnName);
+        const fieldLabel = field?.japanese_label || columnName;
+        setMessage({ type: 'error', text: `「${fieldLabel}」は最低1つの物件種別を選択してください` });
+        setTimeout(() => setMessage(null), 5000);
+        return;
+      }
+    }
+
     setIsSaving(true);
     try {
       const updates = Array.from(pendingChanges.entries()).map(([key, value]) => {
