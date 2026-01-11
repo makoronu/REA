@@ -1,0 +1,25 @@
+{
+  "$schema": "mapping_schema",
+  "$description": "マッピング定義テンプレート",
+  "portal_name": "",
+  "version": "1.0.0",
+  "mappings": [
+    {
+      "portal_field_id": "field_001",
+      "portal_field_label": "",
+      "type": "direct",
+      "source": {
+        "table": "properties",
+        "column": ""
+      },
+      "transform_rule": null,
+      "static_value": null,
+      "compute_formula": null,
+      "concat_sources": null,
+      "fallback_value": null,
+      "notes": ""
+    }
+  ],
+  "unmapped_fields": [],
+  "ignored_fields": []
+}

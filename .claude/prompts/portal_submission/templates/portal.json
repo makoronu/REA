@@ -1,0 +1,16 @@
+{
+  "$schema": "portal_schema",
+  "$description": "ポータル基本情報テンプレート",
+  "portal_name": "",
+  "portal_name_ja": "",
+  "url": "",
+  "property_types": ["land", "house", "mansion", "business"],
+  "transaction_types": ["sale", "rent"],
+  "submission_method": "form",
+  "spec_document": null,
+  "contact": {
+    "support_url": "",
+    "support_phone": ""
+  },
+  "notes": ""
+}

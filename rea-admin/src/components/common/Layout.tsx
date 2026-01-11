@@ -205,9 +205,39 @@ const Layout: React.FC<LayoutProps> = ({ children, onOpenCommandPalette }) => {
           ))}
         </nav>
 
-        {/* 右側: 保存ステータス + ユーザー情報 */}
+        {/* 右側: 保存ステータス + ヘルプ + ユーザー情報 */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <SaveStatusIndicator />
+
+          {/* ヘルプボタン */}
+          <Link
+            to="/help"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '32px',
+              height: '32px',
+              backgroundColor: '#F3F4F6',
+              border: '1px solid #E5E7EB',
+              borderRadius: '8px',
+              color: '#6B7280',
+              textDecoration: 'none',
+              fontSize: '16px',
+              transition: 'all 200ms',
+            }}
+            title="ヘルプ"
+            onMouseOver={(e) => {
+              e.currentTarget.style.backgroundColor = '#E5E7EB';
+              e.currentTarget.style.color = '#374151';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.backgroundColor = '#F3F4F6';
+              e.currentTarget.style.color = '#6B7280';
+            }}
+          >
+            ?
+          </Link>
 
           {/* テナント名 + ユーザーメニュー */}
           {user && (

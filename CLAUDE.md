@@ -8,6 +8,8 @@
 | 全体プロトコル調査 | `.claude/prompts/1_audit/_main.md` |
 | 個別プロトコル調査 | `.claude/prompts/1_audit/individual/_main.md` |
 | デプロイ | `.claude/prompts/3_deploy/_main.md` |
+| ポータル入稿 | `.claude/prompts/portal_submission/_main.md` |
+| マニュアル作成 | `.claude/prompts/manual_creation/_main.md` |
 | 緊急 | `.claude/prompts/emergency.md` |
 
 ### プロトコル調査の使い分け

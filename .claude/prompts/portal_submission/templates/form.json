@@ -1,0 +1,41 @@
+{
+  "$schema": "form_schema",
+  "$description": "フォーム定義テンプレート",
+  "form_url": "",
+  "form_name": "",
+  "property_type": "",
+  "transaction_type": "",
+  "fields": [
+    {
+      "id": "field_001",
+      "label": "",
+      "db_hint": "properties.xxxxx",
+      "selector": "",
+      "type": "text",
+      "required": true,
+      "validation": {
+        "maxLength": null,
+        "minLength": null,
+        "min": null,
+        "max": null,
+        "pattern": null,
+        "format": null
+      },
+      "options": [],
+      "depends_on": null,
+      "dynamic": false,
+      "wait_after_input_ms": 0,
+      "notes": ""
+    }
+  ],
+  "submit_button": {
+    "selector": "",
+    "auto_click": false,
+    "confirm_message": "登録ボタンを押す準備ができました。内容を確認してください。"
+  },
+  "error_display": {
+    "type": "inline",
+    "selector": ""
+  },
+  "screenshots": []
+}
