@@ -10,6 +10,7 @@ required_for_publication で設定された必須項目が入力されている�
 - 0有効カラム: column_labels.zero_is_valid
 - 条件付き除外: column_labels.conditional_exclusion
 - 特殊フラグ: column_labels.special_flag_key
+- 最小選択数: column_labels.min_selections
 """
 from typing import Any, Dict, List, Optional, Set, Tuple
 from sqlalchemy.orm import Session
@@ -107,6 +108,33 @@ def get_special_flag_keys(db: Session) -> Dict[str, str]:
         logger.warning(f"Failed to load special_flag_keys from DB: {e}")
 
     return _DEFAULT_SPECIAL_FLAG_KEYS
+
+
+def get_min_selections(db: Session, column_name: str) -> Optional[int]:
+    """
+    カラムの最小選択数を取得
+
+    Args:
+        db: DBセッション
+        column_name: カラム名
+
+    Returns:
+        最小選択数（設定なしの場合はNone）
+    """
+    try:
+        query = text("""
+            SELECT min_selections
+            FROM column_labels
+            WHERE column_name = :column_name
+              AND min_selections IS NOT NULL
+            LIMIT 1
+        """)
+        result = db.execute(query, {"column_name": column_name}).fetchone()
+        if result and result.min_selections is not None:
+            return result.min_selections
+    except Exception as e:
+        logger.warning(f"Failed to get min_selections for {column_name}: {e}")
+    return None
 
 
 def get_conditional_exclusions(db: Session) -> Dict[str, Dict[str, Any]]:
@@ -254,6 +282,7 @@ def is_valid_value(
     zero_valid_columns: Set[str],
     special_flag_keys: Dict[str, str],
     valid_none_values: List[str],
+    min_selections: Optional[int] = None,
 ) -> bool:
     """
     値が有効（入力済み）かどうかを判定
@@ -264,6 +293,7 @@ def is_valid_value(
         zero_valid_columns: 0が有効なカラム集合
         special_flag_keys: 特殊フラグキーマッピング
         valid_none_values: 「なし」として有効なテキスト値
+        min_selections: 最小選択数（配列型フィールド用、Noneの場合は1以上）
 
     Returns:
         True: 有効な値（入力済み）
@@ -300,7 +330,9 @@ def is_valid_value(
 
     # 配列の場合
     if isinstance(value, list):
-        return len(value) > 0
+        # min_selectionsが設定されている場合はその値以上かチェック
+        required_count = min_selections if min_selections is not None else 1
+        return len(value) >= required_count
 
     return True
 
@@ -467,8 +499,11 @@ def validate_for_publication(
         # カラム別の「なし」有効値を取得
         valid_none_values = get_valid_none_text(db, column_name)
 
+        # 最小選択数を取得（配列型フィールド用）
+        min_selections = get_min_selections(db, column_name)
+
         # 有効値判定
-        if not is_valid_value(value, column_name, zero_valid_columns, special_flag_keys, valid_none_values):
+        if not is_valid_value(value, column_name, zero_valid_columns, special_flag_keys, valid_none_values, min_selections):
             missing_fields.append({
                 "label": field["japanese_label"],
                 "group": field["group_name"],
