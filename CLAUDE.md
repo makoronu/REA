@@ -29,9 +29,19 @@
 | 項目 | 内容 |
 |------|------|
 | 作業中 | **Seg3b-2〜4**: API/フロント/クリーンアップ |
-| 完了 | Seg1〜Seg3a、Seg3b-1完了 |
+| 完了 | Seg1〜Seg3a、Seg3b-1、min_selections完了 |
 | 残り | Seg3b-2〜4、HOMES入稿、ZOHO画像同期 |
-| 更新 | 2026-01-07 |
+| 更新 | 2026-01-11 |
+
+### 今日完了した作業（2026-01-11）
+
+- **min_selections: multi_select最小選択数バリデーション**
+  - 新カラム: column_labels.min_selections (INTEGER)
+  - get_min_selections関数追加
+  - is_valid_value関数にmin_selectionsチェック追加
+  - DBマイグレーション: add_min_selections.sql
+  - テスト依頼書: docs/test_requests/2026-01-11_min_selections_validation.md
+  - コミット: c11242a
 
 ### 今日完了した作業（2026-01-07）
 
