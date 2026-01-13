@@ -31,9 +31,20 @@
 | 項目 | 内容 |
 |------|------|
 | 作業中 | **Seg3b-2〜4**: API/フロント/クリーンアップ |
-| 完了 | Seg1〜Seg3a、Seg3b-1、min_selections完了 |
+| 完了 | Seg1〜Seg3a、Seg3b-1、min_selections完了、防火地域バリデーション修正 |
 | 残り | Seg3b-2〜4、HOMES入稿、ZOHO画像同期 |
-| 更新 | 2026-01-11 |
+| 更新 | 2026-01-13 |
+
+### 今日完了した作業（2026-01-13）
+
+- **防火地域バリデーション修正**
+  - 問題: 「指定なし」選択時にバリデーションエラーが発生
+  - 原因: fire_prevention_district（未使用）がバリデーション対象、fire_prevention_area（実使用）が対象外
+  - 修正: fire_prevention_districtを無効化、fire_prevention_areaをバリデーション対象に変更
+  - 追加修正: fire_prevention_areaのvisible_forをNULL（全ユーザー表示）に変更
+  - 本番DB: 適用済み
+  - テスト依頼書: docs/test_requests/2026-01-13_fire_prevention_validation_fix.md
+  - コミット: 0bbd518
 
 ### 今日完了した作業（2026-01-11）
 
