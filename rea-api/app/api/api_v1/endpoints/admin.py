@@ -5,16 +5,20 @@
 リファクタリング: 2025-12-15
 - 共通関数抽出
 - カスタム例外使用
+
+修正: 2026-01-14
+- updated_at, updated_by を設定するよう修正（プロトコル遵守）
 """
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.api import dependencies
 from app.core.exceptions import DatabaseError
+from shared.auth.middleware import get_current_user
 
 router = APIRouter()
 
@@ -39,7 +43,10 @@ class PropertyTypeInfo(BaseModel):
 # ========================================
 
 def _execute_field_settings_update(
-    db: Session, update: FieldVisibilityUpdate, field_type: str = "visibility"
+    db: Session,
+    update: FieldVisibilityUpdate,
+    field_type: str = "visibility",
+    updated_by: Optional[str] = None,
 ) -> None:
     """単一のフィールド設定を更新（共通処理）
 
@@ -62,23 +69,29 @@ def _execute_field_settings_update(
     if value is None:
         query = text(f"""
             UPDATE column_labels
-            SET {column_name_sql} = NULL
+            SET {column_name_sql} = NULL,
+                updated_at = NOW(),
+                updated_by = :updated_by
             WHERE table_name = :table_name AND column_name = :column_name
         """)
         db.execute(query, {
             "table_name": update.table_name,
             "column_name": update.column_name,
+            "updated_by": updated_by,
         })
     else:
         query = text(f"""
             UPDATE column_labels
-            SET {column_name_sql} = :value
+            SET {column_name_sql} = :value,
+                updated_at = NOW(),
+                updated_by = :updated_by
             WHERE table_name = :table_name AND column_name = :column_name
         """)
         db.execute(query, {
             "table_name": update.table_name,
             "column_name": update.column_name,
             "value": value,
+            "updated_by": updated_by,
         })
 
 
@@ -154,8 +167,9 @@ def get_field_visibility(
 @router.put("/field-visibility")
 def update_field_visibility(
     update: FieldVisibilityUpdate,
+    request: Request,
     field_type: str = "visibility",
-    db: Session = Depends(dependencies.get_db)
+    db: Session = Depends(dependencies.get_db),
 ) -> Dict[str, Any]:
     """フィールド設定を更新
 
@@ -163,7 +177,10 @@ def update_field_visibility(
         field_type: "visibility"（表示設定）または "required"（必須設定）
     """
     try:
-        _execute_field_settings_update(db, update, field_type)
+        user = get_current_user(request)
+        updated_by = user.get("email") if user else None
+
+        _execute_field_settings_update(db, update, field_type, updated_by)
         db.commit()
 
         result_value = (
@@ -184,8 +201,9 @@ def update_field_visibility(
 @router.put("/field-visibility/bulk")
 def update_field_visibility_bulk(
     updates: List[FieldVisibilityUpdate],
+    request: Request,
     field_type: str = "visibility",
-    db: Session = Depends(dependencies.get_db)
+    db: Session = Depends(dependencies.get_db),
 ) -> Dict[str, Any]:
     """フィールド設定を一括更新
 
@@ -193,8 +211,11 @@ def update_field_visibility_bulk(
         field_type: "visibility"（表示設定）または "required"（必須設定）
     """
     try:
+        user = get_current_user(request)
+        updated_by = user.get("email") if user else None
+
         for update in updates:
-            _execute_field_settings_update(db, update, field_type)
+            _execute_field_settings_update(db, update, field_type, updated_by)
 
         db.commit()
 
