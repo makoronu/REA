@@ -137,6 +137,51 @@ def get_min_selections(db: Session, column_name: str) -> Optional[int]:
     return None
 
 
+def get_validation_groups(db: Session, property_type: str) -> Dict[str, List[Dict[str, Any]]]:
+    """
+    validation_groupでグループ化されたフィールドを取得
+    同じグループのフィールドは「いずれか1つtrue」を要求
+
+    Args:
+        db: DBセッション
+        property_type: 物件種別
+
+    Returns:
+        {
+            "property_purpose": [
+                {"column_name": "is_residential", "japanese_label": "居住用"},
+                {"column_name": "is_commercial", "japanese_label": "事業用"},
+                {"column_name": "is_investment", "japanese_label": "投資用"},
+            ],
+            ...
+        }
+    """
+    try:
+        query = text("""
+            SELECT column_name, japanese_label, validation_group, group_name
+            FROM column_labels
+            WHERE validation_group IS NOT NULL
+              AND (visible_for IS NULL OR :property_type = ANY(visible_for))
+            ORDER BY validation_group, display_order
+        """)
+        result = db.execute(query, {"property_type": property_type})
+
+        groups: Dict[str, List[Dict[str, Any]]] = {}
+        for row in result:
+            group_key = row.validation_group
+            if group_key not in groups:
+                groups[group_key] = []
+            groups[group_key].append({
+                "column_name": row.column_name,
+                "japanese_label": row.japanese_label or row.column_name,
+                "group_name": row.group_name or "その他",
+            })
+        return groups
+    except Exception as e:
+        logger.warning(f"Failed to get validation_groups: {e}")
+        return {}
+
+
 def get_conditional_exclusions(db: Session) -> Dict[str, Dict[str, Any]]:
     """
     条件付き除外ルールを取得
@@ -507,6 +552,28 @@ def validate_for_publication(
             missing_fields.append({
                 "label": field["japanese_label"],
                 "group": field["group_name"],
+            })
+
+    if missing_fields:
+        return False, missing_fields
+
+    # validation_groupチェック（同じグループで「いずれか1つtrue」を要求）
+    validation_groups = get_validation_groups(db, property_type)
+    for group_name, group_fields in validation_groups.items():
+        # グループ内のフィールドで1つでもtrueがあればOK
+        has_true_value = False
+        for field in group_fields:
+            value = property_data.get(field["column_name"])
+            if value is True:
+                has_true_value = True
+                break
+
+        if not has_true_value:
+            # グループ内で1つもtrueがない場合はエラー
+            labels = [f["japanese_label"] for f in group_fields]
+            missing_fields.append({
+                "label": f"「{'」「'.join(labels)}」のいずれか",
+                "group": group_fields[0]["group_name"] if group_fields else "その他",
             })
 
     if missing_fields:
