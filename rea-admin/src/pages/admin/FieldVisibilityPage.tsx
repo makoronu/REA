@@ -123,6 +123,8 @@ const FieldVisibilityPage: React.FC = () => {
   const displayFields = selectedFieldGroup ? (groupedFields[selectedFieldGroup]?.fields || []) : [];
 
   // フィールドの設定変更（settingTypeに応じて切替）
+  // visibility: null = 全種別表示, [] = 非表示
+  // required: null = 必須ではない, [] = 必須ではない, 配列 = 指定種別で必須
   const handleToggle = (field: FieldVisibility, typeId: string) => {
     const key = `${field.table_name}.${field.column_name}`;
     const fieldValue = settingType === 'required'
@@ -133,14 +135,34 @@ const FieldVisibilityPage: React.FC = () => {
       : fieldValue;
 
     let newValue: string[] | null;
-    if (currentValue === null || currentValue === undefined) {
-      newValue = propertyTypes.map(pt => pt.id).filter(id => id !== typeId);
-    } else if (currentValue.includes(typeId)) {
-      newValue = currentValue.filter(id => id !== typeId);
-      if (newValue.length === 0) newValue = null;
+
+    if (settingType === 'required') {
+      // required: nullは「必須ではない」= チェックOFF状態
+      if (currentValue === null || currentValue === undefined) {
+        // 未選択状態からON → その種別だけ追加
+        newValue = [typeId];
+      } else if (currentValue.includes(typeId)) {
+        // 選択済みからOFF → 除外
+        newValue = currentValue.filter(id => id !== typeId);
+        // 空配列は空配列のまま（nullにしない）
+      } else {
+        // 未選択からON → 追加
+        newValue = [...currentValue, typeId];
+      }
     } else {
-      newValue = [...currentValue, typeId];
-      if (newValue.length === propertyTypes.length) newValue = null;
+      // visibility: nullは「全種別表示」= チェックON状態
+      if (currentValue === null || currentValue === undefined) {
+        // 全選択状態からOFF → その種別だけ除外
+        newValue = propertyTypes.map(pt => pt.id).filter(id => id !== typeId);
+      } else if (currentValue.includes(typeId)) {
+        // 選択済みからOFF → 除外
+        newValue = currentValue.filter(id => id !== typeId);
+        if (newValue.length === 0) newValue = null;
+      } else {
+        // 未選択からON → 追加
+        newValue = [...currentValue, typeId];
+        if (newValue.length === propertyTypes.length) newValue = null;
+      }
     }
 
     setPendingChanges(prev => {
@@ -162,22 +184,43 @@ const FieldVisibilityPage: React.FC = () => {
         const currentValue: string[] | null | undefined = next.has(key) ? next.get(key) : fieldValue;
 
         let newValue: string[] | null;
-        if (select) {
-          // 追加
-          if (currentValue === null || currentValue === undefined) {
-            newValue = null; // 既に全表示
-          } else if (currentValue.includes(typeId)) {
-            newValue = currentValue; // 既に含まれている
+
+        if (settingType === 'required') {
+          // required: nullは「必須ではない」
+          if (select) {
+            // ON: 追加
+            if (currentValue === null || currentValue === undefined) {
+              newValue = [typeId];
+            } else if (currentValue.includes(typeId)) {
+              newValue = currentValue;
+            } else {
+              newValue = [...currentValue, typeId];
+            }
           } else {
-            newValue = [...currentValue, typeId];
-            if (newValue.length === propertyTypes.length) newValue = null;
+            // OFF: 除外
+            if (currentValue === null || currentValue === undefined) {
+              newValue = null; // 既に未選択
+            } else {
+              newValue = currentValue.filter(id => id !== typeId);
+            }
           }
         } else {
-          // 除外
-          if (currentValue === null || currentValue === undefined) {
-            newValue = propertyTypes.map(pt => pt.id).filter(id => id !== typeId);
+          // visibility: nullは「全種別表示」
+          if (select) {
+            if (currentValue === null || currentValue === undefined) {
+              newValue = null;
+            } else if (currentValue.includes(typeId)) {
+              newValue = currentValue;
+            } else {
+              newValue = [...currentValue, typeId];
+              if (newValue.length === propertyTypes.length) newValue = null;
+            }
           } else {
-            newValue = currentValue.filter(id => id !== typeId);
+            if (currentValue === null || currentValue === undefined) {
+              newValue = propertyTypes.map(pt => pt.id).filter(id => id !== typeId);
+            } else {
+              newValue = currentValue.filter(id => id !== typeId);
+            }
           }
         }
         next.set(key, newValue);
@@ -191,7 +234,13 @@ const FieldVisibilityPage: React.FC = () => {
     const key = `${field.table_name}.${field.column_name}`;
     setPendingChanges(prev => {
       const next = new Map(prev);
-      next.set(key, select ? null : []);
+      if (settingType === 'required') {
+        // required: 全選択=全種別の配列, 全解除=空配列
+        next.set(key, select ? propertyTypes.map(pt => pt.id) : []);
+      } else {
+        // visibility: 全選択=null, 全解除=空配列
+        next.set(key, select ? null : []);
+      }
       return next;
     });
   };
@@ -258,9 +307,13 @@ const FieldVisibilityPage: React.FC = () => {
   };
 
   // チェック状態判定
+  // visibility: null = 全種別表示 → チェックON
+  // required: null = 必須ではない → チェックOFF
   const isChecked = (field: FieldVisibility, typeId: string): boolean => {
     const value = getCurrentValue(field);
-    if (value === null) return true;
+    if (value === null) {
+      return settingType === 'visibility';
+    }
     return value.includes(typeId);
   };
 
