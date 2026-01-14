@@ -7,6 +7,7 @@ import { ColumnWithLabel, metadataService } from '../../services/metadataService
 import { SelectableListModal, SelectableItem, Category } from '../common/SelectableListModal';
 import { API_BASE_URL } from '../../config';
 import { API_PATHS } from '../../constants/apiPaths';
+import { api } from '../../services/api';
 import { AUTO_SAVE_DELAY_MS, TAB_GROUPS, GEO_SEARCH_CONFIG } from '../../constants';
 import { RegulationTab } from './RegulationTab';
 import { RegistryTab } from '../registry/RegistryTab';
@@ -1046,6 +1047,40 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
   // フォームデータを監視
   const formData = form.watch();
 
+  // 公開前確認バリデーション用の個別watch（useEffect依存配列の安定化）
+  const watchedPubStatus = form.watch('publication_status');
+  const watchedPropId = form.watch('id');
+
+  // 初期バリデーション実行フラグ（Hooksルール: 条件付きリターンの前に宣言必須）
+  const initialValidationRan = React.useRef(false);
+
+  // 公開前確認ステータス時の初期バリデーション実行
+  useEffect(() => {
+    // 初回のみ実行（無限ループ防止）
+    if (initialValidationRan.current) return;
+    if (watchedPubStatus !== '公開前確認' || !watchedPropId) return;
+
+    initialValidationRan.current = true;
+
+    const runInitialValidation = async () => {
+      try {
+        const response = await api.get(
+          `${API_PATHS.PROPERTIES.validatePublication(watchedPropId)}?target_status=${encodeURIComponent('公開')}`
+        );
+        const result = response.data;
+        if (!result.is_valid) {
+          setPublicationValidationError({
+            message: result.message,
+            groups: result.groups,
+          });
+        }
+      } catch (err) {
+        console.error('Initial validation check failed:', err);
+      }
+    };
+    runInitialValidation();
+  }, [watchedPropId, watchedPubStatus]);
+
   // 自動保存フック
   const autoSaveEnabled = autoSave && !metadataLoading && !externalLoading;
 
@@ -1399,18 +1434,17 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
       // 公開/会員公開への変更時のみバリデーションを実行
       if (['公開', '会員公開'].includes(newStatus) && formData.id) {
         try {
-          const response = await fetch(
-            `${API_BASE_URL}${API_PATHS.PROPERTIES.validatePublication(formData.id)}?target_status=${encodeURIComponent(newStatus)}`,
-            { credentials: 'include' }
+          const response = await api.get(
+            `${API_PATHS.PROPERTIES.validatePublication(formData.id)}?target_status=${encodeURIComponent(newStatus)}`
           );
-          if (response.ok) {
-            const result = await response.json();
-            if (!result.is_valid) {
-              setPublicationValidationError({
-                message: result.message,
-                groups: result.groups,
-              });
-            }
+          const result = response.data;
+          if (!result.is_valid) {
+            setPublicationValidationError({
+              message: result.message,
+              groups: result.groups,
+            });
+            // バリデーションエラー時は「公開前確認」に戻す
+            form.setValue('publication_status', '公開前確認', { shouldDirty: true });
           }
         } catch (err) {
           console.error('Publication validation check failed:', err);
