@@ -30,12 +30,19 @@
 
 | 項目 | 内容 |
 |------|------|
-| 作業中 | **Seg3b-2〜4**: API/フロント/クリーンアップ |
-| 完了 | Seg1〜Seg3a、Seg3b-1、min_selections完了、防火地域修正、複数バグ修正、空き家特例修正 |
-| 残り | Seg3b-2〜4、HOMES入稿、ZOHO画像同期 |
+| 作業中 | **Seg3b-2,4**: API/クリーンアップ |
+| 完了 | Seg1〜Seg3a、Seg3b-1,3、min_selections完了、防火地域修正、複数バグ修正、空き家特例修正 |
+| 残り | Seg3b-2,4、HOMES入稿、ZOHO画像同期 |
 | 更新 | 2026-01-16 |
 
 ### 今日完了した作業（2026-01-16）
+
+- **Seg3b-3: 月額費用key_value型UIエディタ追加**
+  - KeyValueEditorコンポーネント追加（JsonEditors.tsx）
+  - FieldFactoryにkey_valueケース追加
+  - 動的に項目名・金額の追加・編集・削除が可能
+  - テスト依頼書: docs/test_requests/2026-01-16_seg3b3_key_value_ui.md
+  - コミット: 2168403
 
 - **空き家特例 仲介手数料修正**
   - 問題: 800万円以下で `min(計算結果, 33万円)` としていた
