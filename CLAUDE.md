@@ -30,12 +30,19 @@
 
 | 項目 | 内容 |
 |------|------|
-| 作業中 | **Seg3b-2,4**: API/クリーンアップ |
-| 完了 | Seg1〜Seg3a、Seg3b-1,3、min_selections完了、防火地域修正、複数バグ修正、空き家特例修正 |
-| 残り | Seg3b-2,4、HOMES入稿、ZOHO画像同期 |
+| 作業中 | **Seg3b-4**: クリーンアップ（旧カラム削除は後日） |
+| 完了 | Seg1〜Seg3a、Seg3b-1,2,3、min_selections完了、防火地域修正、複数バグ修正、空き家特例修正 |
+| 残り | Seg3b-4、HOMES入稿、ZOHO画像同期 |
 | 更新 | 2026-01-16 |
 
 ### 今日完了した作業（2026-01-16）
+
+- **Seg3b-2: 旧月額費用カラムバリデーション整理**
+  - column_labels: management_fee等のrequired_for_publicationをNULLに
+  - publication_validator.py: フォールバック定数から旧カラム参照を削除
+  - 本番DB: 適用済み
+  - テスト依頼書: docs/test_requests/2026-01-16_seg3b2_validation_cleanup.md
+  - コミット: e764a6b
 
 - **Seg3b-3: 月額費用key_value型UIエディタ追加**
   - KeyValueEditorコンポーネント追加（JsonEditors.tsx）
