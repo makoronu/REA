@@ -25,7 +25,9 @@ logger = logging.getLogger(__name__)
 
 _DEFAULT_PUBLICATION_STATUSES = ["公開", "会員公開"]
 _DEFAULT_VALID_NONE_VALUES = ["なし", "該当なし", "なし（学区外）"]
-_DEFAULT_ZERO_VALID_COLUMNS = {"management_fee", "repair_reserve_fund"}
+# 旧カラム(management_fee, repair_reserve_fund)は廃止済み
+# 現在zero_is_validなカラムはDBから読み込み
+_DEFAULT_ZERO_VALID_COLUMNS: set[str] = set()
 _DEFAULT_SPECIAL_FLAG_KEYS = {
     "road_info": "no_road_access",
     "transportation": "no_station",
