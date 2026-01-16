@@ -1010,3 +1010,201 @@ export const RenovationsEditor: React.FC<JsonEditorProps<Renovation>> = ({
     </div>
   );
 };
+
+// =================================================================
+// キーバリューエディタ（月額費用など）
+// =================================================================
+
+interface KeyValueEditorProps {
+  value: Record<string, number> | null;
+  onChange: (value: Record<string, number>) => void;
+  disabled?: boolean;
+}
+
+interface KeyValueItem {
+  key: string;
+  value: number | string;
+}
+
+export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
+  value,
+  onChange,
+  disabled
+}) => {
+  // オブジェクトを配列形式に変換（編集用）
+  const toArray = (obj: Record<string, number> | null): KeyValueItem[] => {
+    if (!obj || typeof obj !== 'object') return [];
+    return Object.entries(obj).map(([k, v]) => ({ key: k, value: v }));
+  };
+
+  // 配列をオブジェクト形式に変換（保存用）
+  const toObject = (arr: KeyValueItem[]): Record<string, number> => {
+    const result: Record<string, number> = {};
+    arr.forEach(item => {
+      if (item.key.trim()) {
+        const numValue = typeof item.value === 'string' ? parseInt(item.value, 10) : item.value;
+        if (!isNaN(numValue)) {
+          result[item.key.trim()] = numValue;
+        }
+      }
+    });
+    return result;
+  };
+
+  const [items, setItems] = useState<KeyValueItem[]>(toArray(value));
+
+  // 外部からのvalue変更に対応
+  useEffect(() => {
+    setItems(toArray(value));
+  }, [value]);
+
+  const handleChange = (newItems: KeyValueItem[]) => {
+    setItems(newItems);
+    onChange(toObject(newItems));
+  };
+
+  const addItem = () => {
+    handleChange([...items, { key: '', value: 0 }]);
+  };
+
+  const removeItem = (index: number) => {
+    handleChange(items.filter((_, i) => i !== index));
+  };
+
+  const updateItem = (index: number, field: 'key' | 'value', fieldValue: string | number) => {
+    const newItems = [...items];
+    newItems[index] = { ...newItems[index], [field]: fieldValue };
+    handleChange(newItems);
+  };
+
+  // 共通スタイル
+  const inputStyle: React.CSSProperties = {
+    width: '100%',
+    padding: '10px 12px',
+    fontSize: '14px',
+    border: '1px solid #E5E7EB',
+    borderRadius: '6px',
+    outline: 'none',
+    transition: 'border-color 150ms',
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      {items.map((item, index) => (
+        <div
+          key={index}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 120px 40px',
+            gap: '8px',
+            alignItems: 'center',
+          }}
+        >
+          {/* 項目名 */}
+          <input
+            type="text"
+            value={item.key}
+            onChange={(e) => updateItem(index, 'key', e.target.value)}
+            disabled={disabled}
+            placeholder="項目名（例: 管理費）"
+            style={{
+              ...inputStyle,
+              backgroundColor: disabled ? '#F9FAFB' : '#fff',
+            }}
+            onFocus={(e) => e.target.style.borderColor = '#3B82F6'}
+            onBlur={(e) => e.target.style.borderColor = '#E5E7EB'}
+          />
+          {/* 金額 */}
+          <div style={{ position: 'relative' }}>
+            <input
+              type="number"
+              value={item.value}
+              onChange={(e) => updateItem(index, 'value', e.target.value)}
+              disabled={disabled}
+              placeholder="0"
+              style={{
+                ...inputStyle,
+                paddingRight: '28px',
+                textAlign: 'right',
+                backgroundColor: disabled ? '#F9FAFB' : '#fff',
+              }}
+              onFocus={(e) => e.target.style.borderColor = '#3B82F6'}
+              onBlur={(e) => e.target.style.borderColor = '#E5E7EB'}
+            />
+            <span style={{
+              position: 'absolute',
+              right: '10px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              fontSize: '13px',
+              color: '#6B7280',
+              pointerEvents: 'none',
+            }}>
+              円
+            </span>
+          </div>
+          {/* 削除ボタン */}
+          <button
+            type="button"
+            onClick={() => removeItem(index)}
+            disabled={disabled}
+            style={{
+              width: '32px',
+              height: '32px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: 'none',
+              borderRadius: '6px',
+              backgroundColor: 'transparent',
+              color: '#9CA3AF',
+              cursor: disabled ? 'not-allowed' : 'pointer',
+              transition: 'all 150ms',
+            }}
+            onMouseEnter={(e) => {
+              if (!disabled) {
+                e.currentTarget.style.backgroundColor = '#FEE2E2';
+                e.currentTarget.style.color = '#DC2626';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+              e.currentTarget.style.color = '#9CA3AF';
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      ))}
+      {/* 追加ボタン */}
+      <button
+        type="button"
+        onClick={addItem}
+        disabled={disabled}
+        style={{
+          padding: '10px 16px',
+          fontSize: '13px',
+          color: '#6B7280',
+          backgroundColor: 'transparent',
+          border: '2px dashed #D1D5DB',
+          borderRadius: '6px',
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          transition: 'all 150ms',
+          marginTop: '4px',
+        }}
+        onMouseEnter={(e) => {
+          if (!disabled) {
+            e.currentTarget.style.borderColor = '#3B82F6';
+            e.currentTarget.style.color = '#3B82F6';
+          }
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = '#D1D5DB';
+          e.currentTarget.style.color = '#6B7280';
+        }}
+      >
+        ＋ 項目を追加
+      </button>
+    </div>
+  );
+};

@@ -6,7 +6,8 @@ import {
   FloorPlansEditor,
   FacilitiesEditor,
   TransportationEditor,
-  RenovationsEditor
+  RenovationsEditor,
+  KeyValueEditor
 } from './JsonEditors';
 import { ImageUploader } from './ImageUploader';
 import { geoService } from '../../services/geoService';
@@ -791,6 +792,21 @@ export const FieldFactory: React.FC<FieldFactoryProps> = ({ column, disabled = f
             render={({ field }) => (
               <ImageUploader
                 value={field.value || []}
+                onChange={field.onChange}
+                disabled={disabled || isReadOnly}
+              />
+            )}
+          />
+        );
+
+      case 'key_value':
+        return (
+          <Controller
+            name={column.column_name}
+            control={control}
+            render={({ field }) => (
+              <KeyValueEditor
+                value={field.value || {}}
                 onChange={field.onChange}
                 disabled={disabled || isReadOnly}
               />
