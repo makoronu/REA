@@ -274,13 +274,30 @@ const SchoolDistrictAutoFetchButton: React.FC = () => {
   );
 };
 
+// 最寄駅なしフラグ検出
+const isNoStation = (v: any): boolean => {
+  return v && typeof v === 'object' && !Array.isArray(v) && v.no_station === true;
+};
+
 // 駅自動取得・選択コンポーネント（モーダル版）
 const StationAutoFetchButton: React.FC = () => {
-  const { getValues, setValue } = useFormContext();
+  const { getValues, setValue, watch } = useFormContext();
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
+
+  // 最寄駅なしの状態を監視
+  const transportationValue = watch('transportation');
+  const noStation = isNoStation(transportationValue);
+
+  const handleNoStationChange = (checked: boolean) => {
+    if (checked) {
+      setValue('transportation', { no_station: true }, { shouldDirty: true });
+    } else {
+      setValue('transportation', [], { shouldDirty: true });
+    }
+  };
 
   const handleFetch = async () => {
     const lat = getValues('latitude');
@@ -374,92 +391,114 @@ const StationAutoFetchButton: React.FC = () => {
 
   return (
     <div style={{ marginBottom: '16px' }}>
-      {/* 選択済み駅リスト（常に表示） */}
-      {currentStations.length > 0 && (
-        <div style={{ marginBottom: '12px' }}>
-          <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '8px' }}>
-            登録済み駅 ({currentStations.length}件)
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {currentStations.map((s: any, index: number) => (
-              <div
-                key={index}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '10px 12px',
-                  backgroundColor: '#F9FAFB',
-                  border: '1px solid #E5E7EB',
-                  borderRadius: '8px',
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: '14px', color: '#1F2937' }}>
-                    {s.station_name}駅
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
-                    {s.line_name && `${s.line_name} ・ `}徒歩{s.walk_minutes}分
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleRemove({ id: `${s.station_name}_${s.line_name}`, name: s.station_name })}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#EF4444',
-                    cursor: 'pointer',
-                    padding: '4px 8px',
-                    fontSize: '13px',
-                  }}
-                >
-                  削除
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 駅追加ボタン */}
-      <button
-        type="button"
-        onClick={handleFetch}
-        disabled={isLoading}
-        style={{
-          width: '100%',
-          padding: '12px 16px',
-          backgroundColor: isLoading ? '#9CA3AF' : '#fff',
-          border: '1px dashed #D1D5DB',
-          borderRadius: '8px',
-          cursor: isLoading ? 'not-allowed' : 'pointer',
-          fontSize: '14px',
-          color: '#6B7280',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '8px',
-          transition: 'all 0.15s',
-        }}
-      >
-        {isLoading ? (
-          <>
-            <span style={{
-              display: 'inline-block',
-              width: '16px',
-              height: '16px',
-              border: '2px solid #9CA3AF',
-              borderTopColor: 'transparent',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite',
-            }} />
-            検索中...
-          </>
-        ) : (
-          <>🚃 最寄駅を追加</>
+      {/* 最寄駅なしチェックボックス */}
+      <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: noStation ? '#FEF3C7' : '#F9FAFB', borderRadius: '8px' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={noStation}
+            onChange={(e) => handleNoStationChange(e.target.checked)}
+            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+          />
+          <span style={{ fontWeight: 500 }}>最寄駅なし（離島・山間部等）</span>
+        </label>
+        {noStation && (
+          <p style={{ fontSize: '12px', color: '#92400E', marginTop: '8px', marginLeft: '26px' }}>
+            最寄駅がない物件として登録されます
+          </p>
         )}
-      </button>
+      </div>
+
+      {!noStation && (
+        <>
+          {/* 選択済み駅リスト */}
+          {currentStations.length > 0 && (
+            <div style={{ marginBottom: '12px' }}>
+              <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '8px' }}>
+                登録済み駅 ({currentStations.length}件)
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {currentStations.map((s: any, index: number) => (
+                  <div
+                    key={index}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '10px 12px',
+                      backgroundColor: '#F9FAFB',
+                      border: '1px solid #E5E7EB',
+                      borderRadius: '8px',
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: '14px', color: '#1F2937' }}>
+                        {s.station_name}駅
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
+                        {s.line_name && `${s.line_name} ・ `}徒歩{s.walk_minutes}分
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemove({ id: `${s.station_name}_${s.line_name}`, name: s.station_name })}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#EF4444',
+                        cursor: 'pointer',
+                        padding: '4px 8px',
+                        fontSize: '13px',
+                      }}
+                    >
+                      削除
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 駅追加ボタン */}
+          <button
+            type="button"
+            onClick={handleFetch}
+            disabled={isLoading}
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              backgroundColor: isLoading ? '#9CA3AF' : '#fff',
+              border: '1px dashed #D1D5DB',
+              borderRadius: '8px',
+              cursor: isLoading ? 'not-allowed' : 'pointer',
+              fontSize: '14px',
+              color: '#6B7280',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              transition: 'all 0.15s',
+            }}
+          >
+            {isLoading ? (
+              <>
+                <span style={{
+                  display: 'inline-block',
+                  width: '16px',
+                  height: '16px',
+                  border: '2px solid #9CA3AF',
+                  borderTopColor: 'transparent',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite',
+                }} />
+                検索中...
+              </>
+            ) : (
+              <>🚃 最寄駅を追加</>
+            )}
+          </button>
+        </>
+      )}
 
       {message && (
         <div style={{
@@ -496,13 +535,30 @@ const StationAutoFetchButton: React.FC = () => {
   );
 };
 
+// バス停なしフラグ検出
+const isNoBus = (v: any): boolean => {
+  return v && typeof v === 'object' && !Array.isArray(v) && v.no_bus === true;
+};
+
 // バス停自動取得・選択コンポーネント（モーダル版）
 const BusStopAutoFetchButton: React.FC = () => {
-  const { getValues, setValue } = useFormContext();
+  const { getValues, setValue, watch } = useFormContext();
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
+
+  // バス停なしの状態を監視
+  const busStopsValue = watch('bus_stops');
+  const noBus = isNoBus(busStopsValue);
+
+  const handleNoBusChange = (checked: boolean) => {
+    if (checked) {
+      setValue('bus_stops', { no_bus: true }, { shouldDirty: true });
+    } else {
+      setValue('bus_stops', [], { shouldDirty: true });
+    }
+  };
 
   const handleFetch = async () => {
     const lat = getValues('latitude');
@@ -594,92 +650,114 @@ const BusStopAutoFetchButton: React.FC = () => {
 
   return (
     <div style={{ marginBottom: '16px' }}>
-      {/* 選択済みバス停リスト（常に表示） */}
-      {currentBusStops.length > 0 && (
-        <div style={{ marginBottom: '12px' }}>
-          <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '8px' }}>
-            登録済みバス停 ({currentBusStops.length}件)
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {currentBusStops.map((bs: any, index: number) => (
-              <div
-                key={index}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '10px 12px',
-                  backgroundColor: '#F9FAFB',
-                  border: '1px solid #E5E7EB',
-                  borderRadius: '8px',
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: '14px', color: '#1F2937' }}>
-                    {bs.name}
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
-                    徒歩{bs.walk_minutes}分
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleRemove({ id: bs.name, name: bs.name })}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#EF4444',
-                    cursor: 'pointer',
-                    padding: '4px 8px',
-                    fontSize: '13px',
-                  }}
-                >
-                  削除
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* バス停追加ボタン */}
-      <button
-        type="button"
-        onClick={handleFetch}
-        disabled={isLoading}
-        style={{
-          width: '100%',
-          padding: '12px 16px',
-          backgroundColor: isLoading ? '#9CA3AF' : '#fff',
-          border: '1px dashed #D1D5DB',
-          borderRadius: '8px',
-          cursor: isLoading ? 'not-allowed' : 'pointer',
-          fontSize: '14px',
-          color: '#6B7280',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '8px',
-          transition: 'all 0.15s',
-        }}
-      >
-        {isLoading ? (
-          <>
-            <span style={{
-              display: 'inline-block',
-              width: '16px',
-              height: '16px',
-              border: '2px solid #9CA3AF',
-              borderTopColor: 'transparent',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite',
-            }} />
-            検索中...
-          </>
-        ) : (
-          <>🚌 バス停を追加</>
+      {/* バス停なしチェックボックス */}
+      <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: noBus ? '#FEF3C7' : '#F9FAFB', borderRadius: '8px' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={noBus}
+            onChange={(e) => handleNoBusChange(e.target.checked)}
+            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+          />
+          <span style={{ fontWeight: 500 }}>バス停なし（離島・山間部等）</span>
+        </label>
+        {noBus && (
+          <p style={{ fontSize: '12px', color: '#92400E', marginTop: '8px', marginLeft: '26px' }}>
+            バス停がない物件として登録されます
+          </p>
         )}
-      </button>
+      </div>
+
+      {!noBus && (
+        <>
+          {/* 選択済みバス停リスト */}
+          {currentBusStops.length > 0 && (
+            <div style={{ marginBottom: '12px' }}>
+              <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '8px' }}>
+                登録済みバス停 ({currentBusStops.length}件)
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {currentBusStops.map((bs: any, index: number) => (
+                  <div
+                    key={index}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '10px 12px',
+                      backgroundColor: '#F9FAFB',
+                      border: '1px solid #E5E7EB',
+                      borderRadius: '8px',
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: '14px', color: '#1F2937' }}>
+                        {bs.name}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
+                        徒歩{bs.walk_minutes}分
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemove({ id: bs.name, name: bs.name })}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#EF4444',
+                        cursor: 'pointer',
+                        padding: '4px 8px',
+                        fontSize: '13px',
+                      }}
+                    >
+                      削除
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* バス停追加ボタン */}
+          <button
+            type="button"
+            onClick={handleFetch}
+            disabled={isLoading}
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              backgroundColor: isLoading ? '#9CA3AF' : '#fff',
+              border: '1px dashed #D1D5DB',
+              borderRadius: '8px',
+              cursor: isLoading ? 'not-allowed' : 'pointer',
+              fontSize: '14px',
+              color: '#6B7280',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              transition: 'all 0.15s',
+            }}
+          >
+            {isLoading ? (
+              <>
+                <span style={{
+                  display: 'inline-block',
+                  width: '16px',
+                  height: '16px',
+                  border: '2px solid #9CA3AF',
+                  borderTopColor: 'transparent',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite',
+                }} />
+                検索中...
+              </>
+            ) : (
+              <>🚌 バス停を追加</>
+            )}
+          </button>
+        </>
+      )}
 
       {message && (
         <div style={{
