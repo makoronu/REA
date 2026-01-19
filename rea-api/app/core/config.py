@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     REINFOLIB_BASE_URL: str = "https://www.reinfolib.mlit.go.jp/ex-api/external"
     GSI_GEOCODE_URL: str = "https://msearch.gsi.go.jp/address-search/AddressSearch"
     NOMINATIM_GEOCODE_URL: str = "https://nominatim.openstreetmap.org/search"
+    GOOGLE_GEOCODE_URL: str = "https://maps.googleapis.com/maps/api/geocode/json"
+
+    # Google Maps API（ジオコーディング用）
+    GOOGLE_MAPS_API_KEY: Optional[str] = os.getenv("GOOGLE_MAPS_API_KEY")
 
     class Config:
         env_file = ".env"

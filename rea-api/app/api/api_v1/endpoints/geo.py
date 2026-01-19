@@ -277,6 +277,45 @@ def geocode_nominatim(address: str) -> Optional[dict]:
     return None
 
 
+def geocode_google(address: str) -> Optional[dict]:
+    """
+    Google Maps Geocoding API（有料・高精度）
+    優先使用
+    """
+    api_key = settings.GOOGLE_MAPS_API_KEY
+    if not api_key:
+        logger.debug("GOOGLE_MAPS_API_KEY not set, skipping Google Geocoding")
+        return None
+
+    try:
+        encoded_address = urllib.parse.quote(address)
+        url = f"{settings.GOOGLE_GEOCODE_URL}?address={encoded_address}&key={api_key}&language=ja&region=jp"
+
+        req = urllib.request.Request(url, headers={'User-Agent': 'REA/1.0'})
+        with urllib.request.urlopen(req, timeout=10) as response:
+            data = json.loads(response.read().decode('utf-8'))
+
+        if data.get('status') == 'OK' and data.get('results'):
+            result = data['results'][0]
+            location = result.get('geometry', {}).get('location', {})
+            if location.get('lat') and location.get('lng'):
+                return {
+                    'latitude': location['lat'],
+                    'longitude': location['lng'],
+                    'address': result.get('formatted_address', address),
+                    'source': 'google'
+                }
+        elif data.get('status') == 'ZERO_RESULTS':
+            logger.debug(f"Google Geocoding: no results for '{address}'")
+        else:
+            logger.warning(f"Google Geocoding status: {data.get('status')}")
+
+    except Exception as e:
+        logger.error(f"Google Geocoding error: {e}")
+
+    return None
+
+
 @router.get("/geocode", response_model=GeocodeResponse)
 async def geocode_address(
     address: str = Query(..., description="住所", min_length=3)
@@ -284,15 +323,21 @@ async def geocode_address(
     """
     住所から緯度経度を取得
 
-    1. 国土地理院APIを優先使用（無料・高精度）
-    2. 失敗時はNominatim（OSM）をフォールバック
+    1. Google Maps API（高精度・有料）
+    2. 国土地理院API（無料）
+    3. Nominatim（OSM・無料）
     """
-    # 1. 国土地理院API
+    # 1. Google Maps API（APIキー設定時のみ）
+    result = geocode_google(address)
+    if result:
+        return GeocodeResponse(**result)
+
+    # 2. 国土地理院API
     result = geocode_gsi(address)
     if result:
         return GeocodeResponse(**result)
 
-    # 2. Nominatimフォールバック
+    # 3. Nominatimフォールバック
     result = geocode_nominatim(address)
     if result:
         return GeocodeResponse(**result)
