@@ -31,9 +31,25 @@
 | 項目 | 内容 |
 |------|------|
 | 作業中 | なし |
-| 完了 | Seg1〜Seg3b完了、min_selections、防火地域修正、複数バグ修正、空き家特例修正 |
+| 完了 | 間取り不明・都市計画マッピング・Googleジオコーディング |
 | 残り | HOMES入稿、ZOHO画像同期 |
-| 更新 | 2026-01-16 |
+| 更新 | 2026-01-19 |
+
+### 今日完了した作業（2026-01-19）
+
+- **SegA: 間取り「不明」追加 + 都市計画api_aliases設定**
+  - 間取りタイプに「不明」オプション追加（バリデーション通過用）
+  - 都市計画api_aliasesを設定（reinfolib APIマッピング修正）
+  - マイグレーション: scripts/migrations/2026-01-19_sega_room_type_and_city_planning.sql
+  - 本番DB: 未適用（デプロイ待ち）
+
+- **SegB: Googleジオコーディング追加**
+  - geocode_google()関数追加（geo.py）
+  - 優先順位: Google → GSI → Nominatim
+  - 環境変数: GOOGLE_MAPS_API_KEY
+  - config.py: GOOGLE_GEOCODE_URL追加
+  - テスト依頼書: docs/test_requests/2026-01-19_sega_segb_options_and_geocode.md
+  - コミット: ab2c1b3
 
 ### 今日完了した作業（2026-01-16）
 
