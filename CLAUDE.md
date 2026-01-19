@@ -31,17 +31,32 @@
 | 項目 | 内容 |
 |------|------|
 | 作業中 | なし |
-| 完了 | 間取り不明・都市計画マッピング・Googleジオコーディング |
+| 完了 | 最寄駅なし/バス停なしUI、システム設定画面、間取り不明、Googleジオコーディング |
 | 残り | HOMES入稿、ZOHO画像同期 |
 | 更新 | 2026-01-19 |
 
 ### 今日完了した作業（2026-01-19）
 
+- **最寄駅なし・バス停なしチェックボックス追加**
+  - 問題: DynamicForm.tsx内のStationAutoFetchButton/BusStopAutoFetchButtonに「なし」オプションがなかった
+  - 修正: 両コンポーネントに「最寄駅なし」「バス停なし」チェックボックス追加
+  - 離島・山間部等で駅/バス停がない場合にバリデーションスキップ可能
+  - コミット: 0d88455
+  - 本番: デプロイ済み
+
+- **システム設定管理画面追加**
+  - system_settingsテーブル作成（API Key等の機密設定保存用）
+  - settings.py: CRUD API追加
+  - SystemSettingsPage.tsx: 管理UI追加（/settings/system）
+  - Google Maps APIキーをDB管理可能に
+  - コミット: ab92b2e, 2ad0f11
+  - 本番: デプロイ済み
+
 - **SegA: 間取り「不明」追加 + 都市計画api_aliases設定**
   - 間取りタイプに「不明」オプション追加（バリデーション通過用）
   - 都市計画api_aliasesを設定（reinfolib APIマッピング修正）
   - マイグレーション: scripts/migrations/2026-01-19_sega_room_type_and_city_planning.sql
-  - 本番DB: 未適用（デプロイ待ち）
+  - 本番DB: 適用済み
 
 - **SegB: Googleジオコーディング追加**
   - geocode_google()関数追加（geo.py）
