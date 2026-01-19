@@ -15,6 +15,7 @@ import ZohoImportPage from './pages/Import/ZohoImportPage';
 import ToukiImportPage from './pages/Import/ToukiImportPage';
 import IntegrationsPage from './pages/Settings/IntegrationsPage';
 import UsersPage from './pages/Settings/UsersPage';
+import SystemSettingsPage from './pages/Settings/SystemSettingsPage';
 import HelpIndexPage from './pages/Help/HelpIndexPage';
 import HelpDetailPage from './pages/Help/HelpDetailPage';
 import CommandPalette from './components/CommandPalette';
@@ -112,6 +113,13 @@ function AppContent() {
           <PrivateRoute requiredRoles={ADMIN_ROLES}>
             <Layout onOpenCommandPalette={() => setCommandPaletteOpen(true)}>
               <UsersPage />
+            </Layout>
+          </PrivateRoute>
+        } />
+        <Route path="/settings/system" element={
+          <PrivateRoute requiredRoles={ADMIN_ROLES}>
+            <Layout onOpenCommandPalette={() => setCommandPaletteOpen(true)}>
+              <SystemSettingsPage />
             </Layout>
           </PrivateRoute>
         } />

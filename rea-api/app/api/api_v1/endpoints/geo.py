@@ -277,12 +277,37 @@ def geocode_nominatim(address: str) -> Optional[dict]:
     return None
 
 
+def get_google_api_key() -> Optional[str]:
+    """
+    Google Maps APIキーを取得
+    DB設定 > 環境変数 の優先順位
+    """
+    # DBから取得を試みる
+    try:
+        db = READatabase()
+        conn = db.get_connection()
+        cur = conn.cursor()
+        try:
+            cur.execute("SELECT value FROM system_settings WHERE key = 'GOOGLE_MAPS_API_KEY'")
+            row = cur.fetchone()
+            if row and row[0]:
+                return row[0]
+        finally:
+            cur.close()
+            conn.close()
+    except Exception as e:
+        logger.debug(f"DB設定取得エラー（フォールバック使用）: {e}")
+
+    # 環境変数にフォールバック
+    return settings.GOOGLE_MAPS_API_KEY
+
+
 def geocode_google(address: str) -> Optional[dict]:
     """
     Google Maps Geocoding API（有料・高精度）
     優先使用
     """
-    api_key = settings.GOOGLE_MAPS_API_KEY
+    api_key = get_google_api_key()
     if not api_key:
         logger.debug("GOOGLE_MAPS_API_KEY not set, skipping Google Geocoding")
         return None

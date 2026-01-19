@@ -82,4 +82,10 @@ export const API_PATHS = {
   METADATA: {
     BASE: '/metadata',
   },
+
+  // システム設定
+  SETTINGS: {
+    LIST: '/settings/',
+    detail: (key: string) => `/settings/${key}`,
+  },
 } as const;
