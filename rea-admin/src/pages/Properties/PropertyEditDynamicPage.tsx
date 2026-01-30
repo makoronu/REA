@@ -80,15 +80,58 @@ export const PropertyEditDynamicPage: React.FC = () => {
     }
   };
 
+  // 画像保存処理
+  const saveImages = async (propertyId: number, images: any[]) => {
+    if (!images || images.length === 0) return;
+
+    // 新規画像（Fileオブジェクトを持つもの）
+    const newImages = images.filter((img) => img.file instanceof File);
+    // 既存画像（idを持ち、Fileオブジェクトを持たないもの）
+    const existingImages = images.filter((img) => img.id && !(img.file instanceof File));
+
+    // 新規画像をアップロード
+    if (newImages.length > 0) {
+      const uploadData = newImages.map((img) => ({
+        file: img.file,
+        image_type: img.image_type || '0',
+        display_order: img.display_order || 1,
+        caption: img.caption || '',
+        is_public: img.is_public !== false,
+      }));
+      await propertyService.uploadImages(propertyId, uploadData);
+    }
+
+    // 既存画像のメタデータを一括更新
+    if (existingImages.length > 0) {
+      const updateData = existingImages.map((img) => ({
+        id: img.id,
+        image_type: img.image_type,
+        display_order: img.display_order,
+        caption: img.caption,
+        is_public: img.is_public,
+      }));
+      await propertyService.bulkUpdateImages(propertyId, updateData);
+    }
+  };
+
   // フォーム送信ハンドラー
   const handleSubmit = async (data: any) => {
     setSaveStatus('saving');
     setError(null);
 
+    // 画像データを分離
+    const { property_images, ...propertyData } = data;
+
     try {
       if (isNew) {
         // 新規作成
-        const created = await propertyService.createProperty(data);
+        const created = await propertyService.createProperty(propertyData);
+
+        // 画像保存（物件作成後）
+        if (property_images && property_images.length > 0) {
+          await saveImages(created.id, property_images);
+        }
+
         setSaveStatus('saved');
 
         // 作成後は編集モードに遷移
@@ -97,7 +140,13 @@ export const PropertyEditDynamicPage: React.FC = () => {
         }, 500);
       } else {
         // 更新（APIレスポンスでpropertyを更新、連動ロジックの反映）
-        const updated = await propertyService.updateProperty(parseInt(id!), data);
+        const updated = await propertyService.updateProperty(parseInt(id!), propertyData);
+
+        // 画像保存
+        if (property_images) {
+          await saveImages(parseInt(id!), property_images);
+        }
+
         setProperty(updated);
         setSaveStatus('saved');
 

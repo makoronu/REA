@@ -201,6 +201,31 @@ class GenericCRUD:
             if key in result and result[key] is not None:
                 result[key] = str(result[key])
 
+        # property_imagesを取得（配列として追加）
+        images_result = self.db.execute(
+            text("""
+                SELECT id, property_id, image_type, file_path, file_url,
+                       display_order, caption, is_public, uploaded_at
+                FROM property_images
+                WHERE property_id = :pid AND deleted_at IS NULL
+                ORDER BY display_order, id
+            """),
+            {"pid": property_id}
+        )
+        images = []
+        for row in images_result:
+            images.append({
+                "id": row.id,
+                "property_id": row.property_id,
+                "image_type": str(row.image_type) if row.image_type else "0",
+                "file_path": row.file_path,
+                "file_url": row.file_url,
+                "display_order": row.display_order,
+                "caption": row.caption or "",
+                "is_public": row.is_public if row.is_public is not None else True,
+            })
+        result["property_images"] = images
+
         return result
 
     def get_list(

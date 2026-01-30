@@ -75,37 +75,92 @@ export const propertyService = {
     await api.delete(`/properties/${id}`);
   },
 
-  // 画像アップロード（複数対応）
-  async uploadImages(propertyId: number, files: File[]): Promise<string[]> {
-    const uploadPromises = files.map(async (file) => {
-      const formData = new FormData();
-      formData.append('image', file);
-      formData.append('property_id', propertyId.toString());
+  // 画像アップロード（単一）
+  async uploadImage(
+    propertyId: number,
+    file: File,
+    metadata?: {
+      image_type?: string;
+      display_order?: number;
+      caption?: string;
+      is_public?: boolean;
+    }
+  ): Promise<PropertyImage> {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (metadata?.image_type) formData.append('image_type', metadata.image_type);
+    if (metadata?.display_order !== undefined) formData.append('display_order', metadata.display_order.toString());
+    if (metadata?.caption) formData.append('caption', metadata.caption);
+    if (metadata?.is_public !== undefined) formData.append('is_public', metadata.is_public.toString());
 
-      const response = await api.post(`/properties/${propertyId}/images`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      return response.data.url;
+    const response = await api.post(`/properties/${propertyId}/images`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
     });
+
+    return response.data;
+  },
+
+  // 画像アップロード（複数対応）
+  async uploadImages(
+    propertyId: number,
+    images: Array<{ file: File; image_type?: string; display_order?: number; caption?: string; is_public?: boolean }>
+  ): Promise<PropertyImage[]> {
+    const uploadPromises = images.map((img) =>
+      this.uploadImage(propertyId, img.file, {
+        image_type: img.image_type,
+        display_order: img.display_order,
+        caption: img.caption,
+        is_public: img.is_public,
+      })
+    );
 
     return Promise.all(uploadPromises);
   },
 
-  // 画像削除
-  async deleteImage(propertyId: number, imageUrl: string): Promise<void> {
-    const fileName = imageUrl.split('/').pop();
-    await api.delete(`/properties/${propertyId}/images/${fileName}`);
+  // 画像メタデータ更新
+  async updateImageMetadata(
+    propertyId: number,
+    imageId: number,
+    data: { image_type?: string; display_order?: number; caption?: string; is_public?: boolean }
+  ): Promise<PropertyImage> {
+    const response = await api.put(`/properties/${propertyId}/images/${imageId}`, data);
+    return response.data;
   },
 
-  // 画像一覧を含む物件情報を更新
-  async updatePropertyWithImages(id: number, data: Partial<Property>, imageUrls: string[]): Promise<Property> {
-    const updateData = {
-      ...data,
-      images: imageUrls
-    };
-    return this.updateProperty(id, updateData);
+  // 画像メタデータ一括更新
+  async bulkUpdateImages(
+    propertyId: number,
+    images: Array<{ id: number; image_type?: string; display_order?: number; caption?: string; is_public?: boolean }>
+  ): Promise<{ updated: number; results: Array<{ id: number; status: string }> }> {
+    const response = await api.post(`/properties/${propertyId}/images/bulk`, images);
+    return response.data;
+  },
+
+  // 画像削除
+  async deleteImage(propertyId: number, imageId: number): Promise<void> {
+    await api.delete(`/properties/${propertyId}/images/${imageId}`);
+  },
+
+  // 画像一覧取得
+  async getImages(propertyId: number): Promise<PropertyImage[]> {
+    const response = await api.get(`/properties/${propertyId}/images`);
+    return response.data;
   },
 };
+
+// 画像型定義
+export interface PropertyImage {
+  id?: number;
+  property_id?: number;
+  image_type: string;
+  file_path?: string;
+  file_url?: string;
+  display_order: number;
+  caption: string;
+  is_public: boolean;
+  uploaded_at?: string;
+  file?: File;
+  preview?: string;
+}
