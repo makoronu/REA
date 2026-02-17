@@ -618,22 +618,30 @@ async def create_property_from_touki(request: CreatePropertyFromToukiRequest):
     if not record_ids:
         raise ValidationError("touki_record_ids", "登記レコードIDが必要です")
 
+    logger.info(f"create_property_from_touki: record_ids={record_ids}")
+
     with READatabase.cursor(commit=True) as (cur, conn):
         land_records = []
         building_records = []
 
+        # 登記レコード一括取得
+        placeholders = ','.join(['%s'] * len(record_ids))
+        cur.execute(f"""
+            SELECT id, real_estate_number, document_type, location,
+                   lot_number, land_category, land_area_m2,
+                   building_number, building_type, structure,
+                   floor_area_m2, floor_areas, construction_date, owners
+            FROM touki_records WHERE id IN ({placeholders})
+        """, tuple(record_ids))
+        rows = cur.fetchall()
+
+        # 存在しないIDのチェック
+        found_ids = {row[0] for row in rows}
         for rid in record_ids:
-            cur.execute("""
-                SELECT id, real_estate_number, document_type, location,
-                       lot_number, land_category, land_area_m2,
-                       building_number, building_type, structure,
-                       floor_area_m2, floor_areas, construction_date, owners
-                FROM touki_records WHERE id = %s
-            """, (rid,))
-            row = cur.fetchone()
-            if not row:
+            if rid not in found_ids:
                 raise ResourceNotFound("登記レコード", rid)
 
+        for row in rows:
             rec = {
                 'id': row[0], 'real_estate_number': row[1], 'document_type': row[2],
                 'location': row[3], 'lot_number': row[4], 'land_category': row[5],
@@ -700,6 +708,7 @@ async def create_property_from_touki(request: CreatePropertyFromToukiRequest):
             '\n'.join(remarks_parts)
         ))
         property_id = cur.fetchone()[0]
+        logger.info(f"create_property_from_touki: property created id={property_id}, type={property_type}")
 
         # land_info
         if land_records:
@@ -717,6 +726,7 @@ async def create_property_from_touki(request: CreatePropertyFromToukiRequest):
                 total_land_area,
                 land_records[0]['location']
             ))
+            logger.info(f"create_property_from_touki: land_info created for property_id={property_id}")
 
         # building_info
         if building_records:
@@ -741,7 +751,9 @@ async def create_property_from_touki(request: CreatePropertyFromToukiRequest):
                 br['construction_date'],
                 floors_above
             ))
+            logger.info(f"create_property_from_touki: building_info created for property_id={property_id}")
 
+        logger.info(f"create_property_from_touki: completed property_id={property_id}, land={len(land_records)}, building={len(building_records)}")
         return {
             "status": "success",
             "property_id": property_id,
@@ -761,6 +773,8 @@ async def apply_touki_to_property(request: ApplyToukiRequest):
     if not request.touki_record_ids:
         raise ValidationError("touki_record_ids", "登記レコードIDが必要です")
 
+    logger.info(f"apply_touki_to_property: property_id={request.property_id}, record_ids={request.touki_record_ids}")
+
     with READatabase.cursor(commit=True) as (cur, conn):
         # 物件存在確認
         cur.execute("SELECT id FROM properties WHERE id = %s", (request.property_id,))
@@ -770,19 +784,24 @@ async def apply_touki_to_property(request: ApplyToukiRequest):
         land_records = []
         building_records = []
 
-        # 登記レコード取得
+        # 登記レコード一括取得
+        placeholders = ','.join(['%s'] * len(request.touki_record_ids))
+        cur.execute(f"""
+            SELECT id, real_estate_number, document_type, location,
+                   lot_number, land_category, land_area_m2,
+                   building_number, building_type, structure,
+                   floor_area_m2, floor_areas, construction_date, owners
+            FROM touki_records WHERE id IN ({placeholders})
+        """, tuple(request.touki_record_ids))
+        rows = cur.fetchall()
+
+        # 存在しないIDのチェック
+        found_ids = {row[0] for row in rows}
         for rid in request.touki_record_ids:
-            cur.execute("""
-                SELECT id, real_estate_number, document_type, location,
-                       lot_number, land_category, land_area_m2,
-                       building_number, building_type, structure,
-                       floor_area_m2, floor_areas, construction_date, owners
-                FROM touki_records WHERE id = %s
-            """, (rid,))
-            row = cur.fetchone()
-            if not row:
+            if rid not in found_ids:
                 raise ResourceNotFound("登記レコード", rid)
 
+        for row in rows:
             rec = {
                 'id': row[0], 'real_estate_number': row[1], 'document_type': row[2],
                 'location': row[3], 'lot_number': row[4], 'land_category': row[5],
@@ -824,6 +843,7 @@ async def apply_touki_to_property(request: ApplyToukiRequest):
                 "UPDATE properties SET remarks = %s, updated_at = NOW() WHERE id = %s",
                 (new_remarks, request.property_id)
             )
+            logger.info(f"apply_touki_to_property: remarks updated for property_id={request.property_id}")
 
         # land_info更新（登記情報のみ。住所は上書きしない）
         if land_records:
@@ -846,12 +866,14 @@ async def apply_touki_to_property(request: ApplyToukiRequest):
                         updated_at = NOW()
                     WHERE property_id = %s
                 """, (chiban_list, land_category, total_land_area, request.property_id))
+                logger.info(f"apply_touki_to_property: land_info updated for property_id={request.property_id}")
             else:
                 # 新規作成（addressは空のまま）
                 cur.execute("""
                     INSERT INTO land_info (property_id, chiban, land_category, land_area)
                     VALUES (%s, %s, %s, %s)
                 """, (request.property_id, chiban_list, land_category, total_land_area))
+                logger.info(f"apply_touki_to_property: land_info created for property_id={request.property_id}")
 
         # building_info更新（既存値は上書きしない）
         if building_records:
@@ -877,17 +899,21 @@ async def apply_touki_to_property(request: ApplyToukiRequest):
                         updated_at = NOW()
                     WHERE property_id = %s
                 """, (structure_enum, br['floor_area_m2'], br['construction_date'], floors_above, request.property_id))
+                logger.info(f"apply_touki_to_property: building_info updated for property_id={request.property_id}")
             else:
                 # 新規作成
                 cur.execute("""
                     INSERT INTO building_info (property_id, building_structure, total_floor_area, construction_date, building_floors_above)
                     VALUES (%s, %s, %s, %s, %s)
                 """, (request.property_id, structure_enum, br['floor_area_m2'], br['construction_date'], floors_above))
+                logger.info(f"apply_touki_to_property: building_info created for property_id={request.property_id}")
 
-        # 登記レコード論理削除（処理済み）
-        for rid in request.touki_record_ids:
-            cur.execute("UPDATE touki_records SET deleted_at = NOW() WHERE id = %s AND deleted_at IS NULL", (rid,))
+        # 登記レコード論理削除（一括処理）
+        placeholders_del = ','.join(['%s'] * len(request.touki_record_ids))
+        cur.execute(f"UPDATE touki_records SET deleted_at = NOW() WHERE id IN ({placeholders_del}) AND deleted_at IS NULL", tuple(request.touki_record_ids))
+        logger.info(f"apply_touki_to_property: {len(request.touki_record_ids)} touki_records soft-deleted")
 
+        logger.info(f"apply_touki_to_property: completed property_id={request.property_id}, land={len(land_records)}, building={len(building_records)}")
         return {
             "status": "success",
             "property_id": request.property_id,
