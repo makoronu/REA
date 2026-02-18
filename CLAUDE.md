@@ -31,11 +31,19 @@
 | 項目 | 内容 |
 |------|------|
 | 作業中 | なし |
-| 完了 | Seg C: フロント定数集約、Seg B: N+1解消(validator+geo)、Seg A: touki.pyログ+N+1解消、物件画像保存機能、最寄駅なし/バス停なしUI、システム設定画面、間取り不明、Googleジオコーディング |
+| 完了 | Seg 1: セキュリティ修正、Seg C: フロント定数集約、Seg B: N+1解消(validator+geo)、Seg A: touki.pyログ+N+1解消、物件画像保存機能、最寄駅なし/バス停なしUI、システム設定画面、間取り不明、Googleジオコーディング |
 | 残り | HOMES入稿、ZOHO画像同期 |
 | 更新 | 2026-02-17 |
 
 ### 今日完了した作業（2026-02-17）
+
+- **Seg 1: セキュリティ修正**
+  - main.py: スタックトレースをAPIレスポンスから除去（ログには残す）
+  - settings.py: 3エンドポイントに認証チェック追加
+  - reinfolib.py: radiusパラメータに上限制約(le=5)追加
+  - ToukiImportPage/IntegrationsPage/SystemSettingsPage: fetch()→apiサービス置換（認証ヘッダー付与）
+  - テスト依頼書: docs/test_requests/2026-02-17_seg1_security_fixes.md
+  - コミット: 0c16c38
 
 - **Seg C-1: タイムアウト定数集約**
   - setTimeout(3000/5000)のハードコードをMESSAGE_TIMEOUT_MS/LONG_MESSAGE_TIMEOUT_MSに統一
