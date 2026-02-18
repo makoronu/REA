@@ -387,7 +387,7 @@ class GenericCRUD:
 
         return dict(result._mapping)
 
-    def update(self, table_name: str, id: int, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def update(self, table_name: str, id: int, data: Dict[str, Any], commit: bool = True) -> Optional[Dict[str, Any]]:
         """
         レコード更新
         """
@@ -411,7 +411,8 @@ class GenericCRUD:
         """
 
         result = self.db.execute(text(query), serialized_data).fetchone()
-        self.db.commit()
+        if commit:
+            self.db.commit()
 
         if result is None:
             return None
@@ -450,7 +451,7 @@ class GenericCRUD:
 
         # properties を更新
         if table_data["properties"]:
-            self.update("properties", property_id, table_data["properties"])
+            self.update("properties", property_id, table_data["properties"], commit=False)
 
         # 関連テーブルを更新（存在しなければ作成）
         for table_name in ["building_info", "land_info"]:

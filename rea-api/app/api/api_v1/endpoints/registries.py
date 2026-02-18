@@ -323,7 +323,7 @@ async def get_property_registries(property_id: int):
         cur.execute(f"""
             SELECT {', '.join(REGISTRY_COLUMNS)}
             FROM property_registries
-            WHERE property_id = %s
+            WHERE property_id = %s AND deleted_at IS NULL
             ORDER BY registry_type, id
         """, (property_id,))
         rows = cur.fetchall()
@@ -381,7 +381,7 @@ async def get_registry(registry_id: int):
         cur.execute(f"""
             SELECT {', '.join(REGISTRY_COLUMNS)}
             FROM property_registries
-            WHERE id = %s
+            WHERE id = %s AND deleted_at IS NULL
         """, (registry_id,))
 
         row = cur.fetchone()
@@ -403,7 +403,7 @@ async def update_registry(registry_id: int, data: RegistryUpdate):
     """登記情報を更新"""
     with READatabase.cursor(commit=True) as (cur, conn):
         # 存在確認
-        cur.execute("SELECT id FROM property_registries WHERE id = %s", (registry_id,))
+        cur.execute("SELECT id FROM property_registries WHERE id = %s AND deleted_at IS NULL", (registry_id,))
         if not cur.fetchone():
             raise HTTPException(status_code=404, detail="登記情報が見つかりません")
 
@@ -419,7 +419,7 @@ async def update_registry(registry_id: int, data: RegistryUpdate):
         cur.execute(f"""
             UPDATE property_registries
             SET {', '.join(set_clauses)}, updated_at = NOW()
-            WHERE id = %s
+            WHERE id = %s AND deleted_at IS NULL
             RETURNING {', '.join(REGISTRY_COLUMNS)}
         """, values)
 
@@ -465,7 +465,7 @@ async def get_kou_entries(registry_id: int):
         cur.execute(f"""
             SELECT {', '.join(KOU_COLUMNS)}
             FROM registry_kou_entries
-            WHERE registry_id = %s
+            WHERE registry_id = %s AND deleted_at IS NULL
             ORDER BY rank_number
         """, (registry_id,))
         rows = cur.fetchall()
@@ -486,7 +486,7 @@ async def create_kou_entry(registry_id: int, data: KouEntryCreate):
     """甲区エントリ追加"""
     with READatabase.cursor(commit=True) as (cur, conn):
         # 表題部存在確認
-        cur.execute("SELECT id FROM property_registries WHERE id = %s", (registry_id,))
+        cur.execute("SELECT id FROM property_registries WHERE id = %s AND deleted_at IS NULL", (registry_id,))
         if not cur.fetchone():
             raise HTTPException(status_code=404, detail="表題部が見つかりません")
 
@@ -527,7 +527,7 @@ async def update_kou_entry(entry_id: int, data: KouEntryCreate):
         cur.execute(f"""
             UPDATE registry_kou_entries
             SET {', '.join(set_clauses)}, updated_at = NOW()
-            WHERE id = %s
+            WHERE id = %s AND deleted_at IS NULL
             RETURNING {', '.join(KOU_COLUMNS)}
         """, values)
 
@@ -573,7 +573,7 @@ async def get_otsu_entries(registry_id: int):
         cur.execute(f"""
             SELECT {', '.join(OTSU_COLUMNS)}
             FROM registry_otsu_entries
-            WHERE registry_id = %s
+            WHERE registry_id = %s AND deleted_at IS NULL
             ORDER BY rank_number
         """, (registry_id,))
         rows = cur.fetchall()
@@ -594,7 +594,7 @@ async def create_otsu_entry(registry_id: int, data: OtsuEntryCreate):
     """乙区エントリ追加"""
     with READatabase.cursor(commit=True) as (cur, conn):
         # 表題部存在確認
-        cur.execute("SELECT id FROM property_registries WHERE id = %s", (registry_id,))
+        cur.execute("SELECT id FROM property_registries WHERE id = %s AND deleted_at IS NULL", (registry_id,))
         if not cur.fetchone():
             raise HTTPException(status_code=404, detail="表題部が見つかりません")
 
@@ -635,7 +635,7 @@ async def update_otsu_entry(entry_id: int, data: OtsuEntryCreate):
         cur.execute(f"""
             UPDATE registry_otsu_entries
             SET {', '.join(set_clauses)}, updated_at = NOW()
-            WHERE id = %s
+            WHERE id = %s AND deleted_at IS NULL
             RETURNING {', '.join(OTSU_COLUMNS)}
         """, values)
 
@@ -672,7 +672,7 @@ async def get_registry_full(registry_id: int):
         cur.execute(f"""
             SELECT {', '.join(REGISTRY_COLUMNS)}
             FROM property_registries
-            WHERE id = %s
+            WHERE id = %s AND deleted_at IS NULL
         """, (registry_id,))
         row = cur.fetchone()
         if not row:
@@ -687,7 +687,7 @@ async def get_registry_full(registry_id: int):
         cur.execute(f"""
             SELECT {', '.join(KOU_COLUMNS)}
             FROM registry_kou_entries
-            WHERE registry_id = %s
+            WHERE registry_id = %s AND deleted_at IS NULL
             ORDER BY rank_number
         """, (registry_id,))
         kou_rows = cur.fetchall()
@@ -703,7 +703,7 @@ async def get_registry_full(registry_id: int):
         cur.execute(f"""
             SELECT {', '.join(OTSU_COLUMNS)}
             FROM registry_otsu_entries
-            WHERE registry_id = %s
+            WHERE registry_id = %s AND deleted_at IS NULL
             ORDER BY rank_number
         """, (registry_id,))
         otsu_rows = cur.fetchall()

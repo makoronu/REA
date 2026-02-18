@@ -1,4 +1,5 @@
 # ユーザー管理API（会社管理者用）
+import logging
 import sys
 from pathlib import Path
 project_root = Path(__file__).resolve().parent.parent.parent.parent.parent.parent
@@ -18,6 +19,8 @@ from shared.auth.middleware import get_current_user
 from shared.auth.password import hash_password
 from shared.auth.constants import ADMIN_ROLES
 from shared.email import EmailService, EmailConfig
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -120,7 +123,7 @@ def create_user(
     org_id = admin['organization_id']
 
     # メールアドレス重複チェック
-    check_query = text("SELECT id FROM users WHERE email = :email")
+    check_query = text("SELECT id FROM users WHERE email = :email AND is_active = true")
     existing = db.execute(check_query, {"email": user_data.email}).fetchone()
     if existing:
         raise HTTPException(status_code=400, detail="このメールアドレスは既に登録されています")
@@ -163,8 +166,11 @@ def create_user(
 
     db.commit()
 
-    # ウェルカムメール送信
-    EmailService.send_welcome_email(user_data.email, user_data.name, token)
+    # ウェルカムメール送信（Eventual Consistency: 失敗してもユーザー作成は保持）
+    try:
+        EmailService.send_welcome_email(user_data.email, user_data.name, token)
+    except Exception as e:
+        logger.error(f"ウェルカムメール送信失敗: {user_data.email}, エラー: {e}")
 
     # ロール名取得
     role_query = text("SELECT name FROM m_roles WHERE id = :role_id")

@@ -544,10 +544,6 @@ def validate_for_publication(
     if new_publication_status not in validation_statuses:
         return True, []
 
-    # 既に同じ公開ステータスの場合はスキップ（ステータス変更なし）
-    if new_publication_status == current_publication_status:
-        return True, []
-
     # 物件種別を取得
     property_type = property_data.get("property_type")
     if not property_type:

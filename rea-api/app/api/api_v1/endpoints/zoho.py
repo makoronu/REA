@@ -458,7 +458,7 @@ def _get_property_full_data(cur, property_id: int) -> Optional[dict]:
     # properties
     prop_columns = _get_table_columns(cur, "properties")
     prop_columns_str = ", ".join(prop_columns)
-    cur.execute(f"SELECT {prop_columns_str} FROM properties WHERE id = %s", (property_id,))
+    cur.execute(f"SELECT {prop_columns_str} FROM properties WHERE id = %s AND deleted_at IS NULL", (property_id,))
     prop_row = cur.fetchone()
     if not prop_row:
         return None
@@ -468,7 +468,7 @@ def _get_property_full_data(cur, property_id: int) -> Optional[dict]:
     # land_info
     land_columns = _get_table_columns(cur, "land_info")
     land_columns_str = ", ".join(land_columns)
-    cur.execute(f"SELECT {land_columns_str} FROM land_info WHERE property_id = %s", (property_id,))
+    cur.execute(f"SELECT {land_columns_str} FROM land_info WHERE property_id = %s AND deleted_at IS NULL", (property_id,))
     land_row = cur.fetchone()
     if land_row:
         result["land_info"] = dict(zip(land_columns, land_row))
@@ -478,7 +478,7 @@ def _get_property_full_data(cur, property_id: int) -> Optional[dict]:
     # building_info
     building_columns = _get_table_columns(cur, "building_info")
     building_columns_str = ", ".join(building_columns)
-    cur.execute(f"SELECT {building_columns_str} FROM building_info WHERE property_id = %s", (property_id,))
+    cur.execute(f"SELECT {building_columns_str} FROM building_info WHERE property_id = %s AND deleted_at IS NULL", (property_id,))
     building_row = cur.fetchone()
     if building_row:
         result["building_info"] = dict(zip(building_columns, building_row))
