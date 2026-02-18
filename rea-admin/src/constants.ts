@@ -48,6 +48,34 @@ export const LONG_MESSAGE_TIMEOUT_MS = 5000;  // エラー・重要メッセー�
 // === 自動保存 ===
 export const AUTO_SAVE_DELAY_MS = 2000;
 
+// === 地図タイル ===
+export const MAP_TILES = {
+  /** 国土地理院 淡色地図 */
+  GSI_PALE: {
+    URL: 'https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',
+    ATTRIBUTION: '<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>',
+    MAX_ZOOM: 18,
+  },
+  /** OpenStreetMap */
+  OSM: {
+    URL: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    ATTRIBUTION: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  },
+} as const;
+
+// === Leafletアイコン ===
+export const LEAFLET_ICON_URLS = {
+  MARKER_RETINA: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  MARKER: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  SHADOW: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+} as const;
+
+// === 外部API ===
+export const EXTERNAL_API = {
+  /** 郵便番号検索（zipcloud） */
+  ZIPCLOUD: 'https://zipcloud.ibsnet.co.jp/api/search',
+} as const;
+
 // === 地理情報 ===
 export const DEFAULT_SEARCH_RADIUS_M = 2000;  // デフォルト検索半径（メートル）
 export const WALK_SPEED_M_PER_MIN = 80;       // 徒歩速度（メートル/分）

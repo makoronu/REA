@@ -8,6 +8,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { API_BASE_URL } from '../../config';
 import { API_PATHS } from '../../constants/apiPaths';
+import { MAP_TILES } from '../../constants';
 
 interface RegulationMapProps {
   lat: number;
@@ -223,9 +224,9 @@ export const RegulationMap: React.FC<RegulationMapProps> = ({ lat, lng }) => {
       scrollWheelZoom: true,
     }).setView([lat, lng], 16);
 
-    L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png', {
-      attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>',
-      maxZoom: 18,
+    L.tileLayer(MAP_TILES.GSI_PALE.URL, {
+      attribution: MAP_TILES.GSI_PALE.ATTRIBUTION,
+      maxZoom: MAP_TILES.GSI_PALE.MAX_ZOOM,
     }).addTo(map);
 
     // 物件マーカー

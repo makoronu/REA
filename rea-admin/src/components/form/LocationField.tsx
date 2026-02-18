@@ -4,14 +4,14 @@ import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-lea
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { geoService } from '../../services/geoService';
-import { MESSAGE_TIMEOUT_MS } from '../../constants';
+import { MESSAGE_TIMEOUT_MS, MAP_TILES, LEAFLET_ICON_URLS } from '../../constants';
 
 // Leafletのデフォルトアイコン問題を修正
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+  iconRetinaUrl: LEAFLET_ICON_URLS.MARKER_RETINA,
+  iconUrl: LEAFLET_ICON_URLS.MARKER,
+  shadowUrl: LEAFLET_ICON_URLS.SHADOW,
 });
 
 // 地図の中心を変更するコンポーネント
@@ -271,8 +271,8 @@ export const LocationField: React.FC<LocationFieldProps> = ({ disabled = false }
               style={{ height: '100%', width: '100%' }}
             >
               <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution={MAP_TILES.OSM.ATTRIBUTION}
+                url={MAP_TILES.OSM.URL}
               />
               <MapController center={mapCenter} zoom={hasValidCoords ? 16 : 10} />
               <MapClickHandler onPositionChange={handlePositionChange} />

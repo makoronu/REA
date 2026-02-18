@@ -1,6 +1,6 @@
 // 地理情報API
 import { api } from './api';
-import { DEFAULT_SEARCH_RADIUS_M, GEO_SEARCH_CONFIG } from '../constants';
+import { DEFAULT_SEARCH_RADIUS_M, GEO_SEARCH_CONFIG, EXTERNAL_API } from '../constants';
 
 // 郵便番号検索結果
 export interface PostalCodeResult {
@@ -51,7 +51,7 @@ export const geoService = {
 
     try {
       const response = await fetch(
-        `https://zipcloud.ibsnet.co.jp/api/search?zipcode=${cleanCode}`
+        `${EXTERNAL_API.ZIPCLOUD}?zipcode=${cleanCode}`
       );
       const data = await response.json();
 
