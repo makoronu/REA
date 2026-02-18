@@ -315,7 +315,7 @@ async def get_property_registries(property_id: int):
     """物件の登記情報一覧を取得"""
     with READatabase.cursor() as (cur, conn):
         # 物件存在確認
-        cur.execute("SELECT id FROM properties WHERE id = %s", (property_id,))
+        cur.execute("SELECT id FROM properties WHERE id = %s AND deleted_at IS NULL", (property_id,))
         if not cur.fetchone():
             raise HTTPException(status_code=404, detail="物件が見つかりません")
 
@@ -345,7 +345,7 @@ async def create_registry(property_id: int, data: RegistryCreate):
     """登記情報を追加"""
     with READatabase.cursor(commit=True) as (cur, conn):
         # 物件存在確認
-        cur.execute("SELECT id FROM properties WHERE id = %s", (property_id,))
+        cur.execute("SELECT id FROM properties WHERE id = %s AND deleted_at IS NULL", (property_id,))
         if not cur.fetchone():
             raise HTTPException(status_code=404, detail="物件が見つかりません")
 

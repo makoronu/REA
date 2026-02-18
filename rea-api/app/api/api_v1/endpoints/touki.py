@@ -401,9 +401,9 @@ async def list_touki_imports(
     """インポート一覧を取得"""
     with READatabase.cursor() as (cur, conn):
         # カウント
-        count_sql = "SELECT COUNT(*) FROM touki_imports"
+        count_sql = "SELECT COUNT(*) FROM touki_imports WHERE deleted_at IS NULL"
         if status:
-            count_sql += " WHERE status = %s"
+            count_sql += " AND status = %s"
             cur.execute(count_sql, (status,))
         else:
             cur.execute(count_sql)
@@ -413,10 +413,11 @@ async def list_touki_imports(
         sql = """
             SELECT id, file_name, status, raw_text, parsed_data, error_message, created_at
             FROM touki_imports
+            WHERE deleted_at IS NULL
         """
         params = []
         if status:
-            sql += " WHERE status = %s"
+            sql += " AND status = %s"
             params.append(status)
         sql += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
         params.extend([limit, offset])
@@ -447,7 +448,7 @@ async def get_touki_import(import_id: int):
         cur.execute("""
             SELECT id, file_name, status, raw_text, parsed_data, error_message, created_at
             FROM touki_imports
-            WHERE id = %s
+            WHERE id = %s AND deleted_at IS NULL
         """, (import_id,))
 
         row = cur.fetchone()
@@ -469,7 +470,7 @@ async def get_touki_import(import_id: int):
 async def parse_touki_import(import_id: int):
     """アップロード済みのテキストをパースして構造化し、touki_recordsに保存"""
     with READatabase.cursor(commit=True) as (cur, conn):
-        cur.execute("SELECT raw_text FROM touki_imports WHERE id = %s", (import_id,))
+        cur.execute("SELECT raw_text FROM touki_imports WHERE id = %s AND deleted_at IS NULL", (import_id,))
         row = cur.fetchone()
         if not row:
             raise ResourceNotFound("登記インポート", import_id)
@@ -516,10 +517,10 @@ async def list_touki_records(
 ):
     """登記レコード一覧"""
     with READatabase.cursor() as (cur, conn):
-        count_sql = "SELECT COUNT(*) FROM touki_records"
+        count_sql = "SELECT COUNT(*) FROM touki_records WHERE deleted_at IS NULL"
         params = []
         if document_type:
-            count_sql += " WHERE document_type = %s"
+            count_sql += " AND document_type = %s"
             params.append(document_type)
         cur.execute(count_sql, params)
         total = cur.fetchone()[0]
@@ -531,10 +532,11 @@ async def list_touki_records(
                    floor_area_m2, floor_areas, construction_date,
                    owners, mortgages, touki_import_id, created_at
             FROM touki_records
+            WHERE deleted_at IS NULL
         """
         params = []
         if document_type:
-            sql += " WHERE document_type = %s"
+            sql += " AND document_type = %s"
             params.append(document_type)
         sql += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
         params.extend([limit, offset])
@@ -578,7 +580,7 @@ async def get_touki_record(record_id: int):
                    building_number, building_type, structure,
                    floor_area_m2, floor_areas, construction_date,
                    owners, mortgages, touki_import_id, created_at
-            FROM touki_records WHERE id = %s
+            FROM touki_records WHERE id = %s AND deleted_at IS NULL
         """, (record_id,))
 
         row = cur.fetchone()
@@ -631,7 +633,7 @@ async def create_property_from_touki(request: CreatePropertyFromToukiRequest):
                    lot_number, land_category, land_area_m2,
                    building_number, building_type, structure,
                    floor_area_m2, floor_areas, construction_date, owners
-            FROM touki_records WHERE id IN ({placeholders})
+            FROM touki_records WHERE id IN ({placeholders}) AND deleted_at IS NULL
         """, tuple(record_ids))
         rows = cur.fetchall()
 
@@ -777,7 +779,7 @@ async def apply_touki_to_property(request: ApplyToukiRequest):
 
     with READatabase.cursor(commit=True) as (cur, conn):
         # 物件存在確認
-        cur.execute("SELECT id FROM properties WHERE id = %s", (request.property_id,))
+        cur.execute("SELECT id FROM properties WHERE id = %s AND deleted_at IS NULL", (request.property_id,))
         if not cur.fetchone():
             raise ResourceNotFound("物件", request.property_id)
 
@@ -791,7 +793,7 @@ async def apply_touki_to_property(request: ApplyToukiRequest):
                    lot_number, land_category, land_area_m2,
                    building_number, building_type, structure,
                    floor_area_m2, floor_areas, construction_date, owners
-            FROM touki_records WHERE id IN ({placeholders})
+            FROM touki_records WHERE id IN ({placeholders}) AND deleted_at IS NULL
         """, tuple(request.touki_record_ids))
         rows = cur.fetchall()
 
@@ -854,7 +856,7 @@ async def apply_touki_to_property(request: ApplyToukiRequest):
             # addressフィールドには触らない
 
             # 既存レコードがあるか確認
-            cur.execute("SELECT id, chiban, land_category, land_area FROM land_info WHERE property_id = %s", (request.property_id,))
+            cur.execute("SELECT id, chiban, land_category, land_area FROM land_info WHERE property_id = %s AND deleted_at IS NULL", (request.property_id,))
             existing = cur.fetchone()
             if existing:
                 # 更新（既存値がある場合は上書きしない）
@@ -887,7 +889,7 @@ async def apply_touki_to_property(request: ApplyToukiRequest):
             structure_enum = map_structure_to_enum(br['structure'])
 
             # 既存レコードがあるか確認
-            cur.execute("SELECT id FROM building_info WHERE property_id = %s", (request.property_id,))
+            cur.execute("SELECT id FROM building_info WHERE property_id = %s AND deleted_at IS NULL", (request.property_id,))
             if cur.fetchone():
                 # 更新（既存値がある場合は上書きしない）
                 cur.execute("""
@@ -926,11 +928,11 @@ async def apply_touki_to_property(request: ApplyToukiRequest):
 async def link_touki_to_property(request: LinkToukiRequest):
     """既存物件に登記レコードを紐付け（リンクのみ、データ更新なし）"""
     with READatabase.cursor(commit=True) as (cur, conn):
-        cur.execute("SELECT id FROM properties WHERE id = %s", (request.property_id,))
+        cur.execute("SELECT id FROM properties WHERE id = %s AND deleted_at IS NULL", (request.property_id,))
         if not cur.fetchone():
             raise ResourceNotFound("物件", request.property_id)
 
-        cur.execute("SELECT id FROM touki_records WHERE id = %s", (request.touki_record_id,))
+        cur.execute("SELECT id FROM touki_records WHERE id = %s AND deleted_at IS NULL", (request.touki_record_id,))
         if not cur.fetchone():
             raise ResourceNotFound("登記レコード", request.touki_record_id)
 

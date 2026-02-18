@@ -460,7 +460,7 @@ class GenericCRUD:
 
             # 既存レコードを確認
             existing = self.db.execute(
-                text(f"SELECT id FROM {table_name} WHERE property_id = :pid"),
+                text(f"SELECT id FROM {table_name} WHERE property_id = :pid AND deleted_at IS NULL"),
                 {"pid": property_id}
             ).fetchone()
 
