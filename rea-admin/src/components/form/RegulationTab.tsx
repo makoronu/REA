@@ -16,6 +16,7 @@ import { metadataService } from '../../services/metadataService';
 import { parseOptions } from '../../utils/options';
 import { OptionType } from '../../types/metadata';
 import { LEGAL_REGULATION_CATEGORIES } from '../../constants/legalRegulations';
+import { MESSAGE_TIMEOUT_MS } from '../../constants';
 
 // API返却の型定義
 interface RegulationCodes {
@@ -131,7 +132,7 @@ export const RegulationTab: React.FC = () => {
       } else {
         setMessage({ type: 'success', text: '法令制限情報を取得しました（該当データなし）' });
       }
-      setTimeout(() => setMessage(null), 3000);
+      setTimeout(() => setMessage(null), MESSAGE_TIMEOUT_MS);
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || '取得に失敗しました' });
     } finally {

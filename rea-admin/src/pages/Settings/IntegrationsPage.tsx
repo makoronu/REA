@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../../config';
 import { API_PATHS } from '../../constants/apiPaths';
+import { MESSAGE_TIMEOUT_MS, LONG_MESSAGE_TIMEOUT_MS } from '../../constants';
 
 interface Integration {
   id: number;
@@ -97,7 +98,7 @@ export const IntegrationsPage: React.FC = () => {
       // 再取得
       fetchData();
       setSuccessMessage(`${code}の設定を更新しました`);
-      setTimeout(() => setSuccessMessage(null), 3000);
+      setTimeout(() => setSuccessMessage(null), MESSAGE_TIMEOUT_MS);
     } catch (err: any) {
       setError(err.message);
     }
@@ -130,7 +131,7 @@ export const IntegrationsPage: React.FC = () => {
 
       const result = await response.json();
       setSuccessMessage(`同期完了: 成功 ${result.success}件, 失敗 ${result.failed}件`);
-      setTimeout(() => setSuccessMessage(null), 5000);
+      setTimeout(() => setSuccessMessage(null), LONG_MESSAGE_TIMEOUT_MS);
 
       // 状態を再取得
       fetchData();

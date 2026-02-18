@@ -4,6 +4,7 @@ import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-lea
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { geoService } from '../../services/geoService';
+import { MESSAGE_TIMEOUT_MS } from '../../constants';
 
 // Leafletのデフォルトアイコン問題を修正
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -149,7 +150,7 @@ export const LocationField: React.FC<LocationFieldProps> = ({ disabled = false }
       console.error('Geocode error:', err);
     } finally {
       setIsGeocoding(false);
-      setTimeout(() => setGeocodeStatus('idle'), 3000);
+      setTimeout(() => setGeocodeStatus('idle'), MESSAGE_TIMEOUT_MS);
     }
   };
 

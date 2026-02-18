@@ -5,6 +5,7 @@ import { propertyService } from '../../services/propertyService';
 import { Property } from '../../types/property';
 import { API_BASE_URL } from '../../config';
 import { API_PATHS } from '../../constants/apiPaths';
+import { MESSAGE_TIMEOUT_MS } from '../../constants';
 
 export const PropertyEditDynamicPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -60,7 +61,7 @@ export const PropertyEditDynamicPage: React.FC = () => {
       if (result.success > 0) {
         // 成功メッセージ
         setSaveStatus('saved');
-        setTimeout(() => setSaveStatus('idle'), 3000);
+        setTimeout(() => setSaveStatus('idle'), MESSAGE_TIMEOUT_MS);
 
         if (result.created > 0) {
           alert('ZOHOに新規作成しました');

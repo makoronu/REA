@@ -41,6 +41,10 @@ export const PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
 export const YEN_MAN = 10000;          // 万
 export const YEN_OKU = 100000000;      // 億
 
+// === メッセージ表示 ===
+export const MESSAGE_TIMEOUT_MS = 3000;       // 通常メッセージ自動消去（ms）
+export const LONG_MESSAGE_TIMEOUT_MS = 5000;  // エラー・重要メッセージ自動消去（ms）
+
 // === 自動保存 ===
 export const AUTO_SAVE_DELAY_MS = 2000;
 

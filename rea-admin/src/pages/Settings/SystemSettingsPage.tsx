@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../../config';
 import { API_PATHS } from '../../constants/apiPaths';
+import { MESSAGE_TIMEOUT_MS } from '../../constants';
 
 interface Setting {
   key: string;
@@ -64,7 +65,7 @@ export const SystemSettingsPage: React.FC = () => {
       }
 
       setSuccessMessage('設定を保存しました');
-      setTimeout(() => setSuccessMessage(null), 3000);
+      setTimeout(() => setSuccessMessage(null), MESSAGE_TIMEOUT_MS);
 
       // 編集状態をクリアして再取得
       setEditing(prev => {

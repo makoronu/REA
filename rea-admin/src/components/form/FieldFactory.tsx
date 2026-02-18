@@ -19,6 +19,7 @@ import { ZoningMapField } from './ZoningMapField';
 import { API_BASE_URL } from '../../config';
 import { API_PATHS } from '../../constants/apiPaths';
 import { parseOptions } from '../../utils/options';
+import { MESSAGE_TIMEOUT_MS, LONG_MESSAGE_TIMEOUT_MS } from '../../constants';
 
 interface FieldFactoryProps {
   column: ColumnWithLabel;
@@ -83,7 +84,7 @@ const PostalCodeField: React.FC<{ column: ColumnWithLabel; disabled: boolean }> 
       setIsSearching(false);
 
       // 3秒後にステータスをリセット
-      setTimeout(() => setSearchStatus('idle'), 3000);
+      setTimeout(() => setSearchStatus('idle'), MESSAGE_TIMEOUT_MS);
     }
   };
 
@@ -956,7 +957,7 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
 
       if (!fullAddress) {
         setZoningMessage({ type: 'error', text: '住所を先に入力してください' });
-        setTimeout(() => setZoningMessage(null), 5000);
+        setTimeout(() => setZoningMessage(null), LONG_MESSAGE_TIMEOUT_MS);
         return;
       }
 
@@ -978,14 +979,14 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
         } else {
           setZoningMessage({ type: 'error', text: '住所から座標を取得できませんでした' });
           setIsLoadingZoning(false);
-          setTimeout(() => setZoningMessage(null), 5000);
+          setTimeout(() => setZoningMessage(null), LONG_MESSAGE_TIMEOUT_MS);
           return;
         }
       } catch (err) {
         console.error('Geocode error:', err);
         setZoningMessage({ type: 'error', text: '住所から座標の取得に失敗しました' });
         setIsLoadingZoning(false);
-        setTimeout(() => setZoningMessage(null), 5000);
+        setTimeout(() => setZoningMessage(null), LONG_MESSAGE_TIMEOUT_MS);
         return;
       }
     } else {
@@ -1056,7 +1057,7 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
       setZoningMessage({ type: 'error', text: err.message || 'データの取得に失敗しました' });
     } finally {
       setIsLoadingZoning(false);
-      setTimeout(() => setZoningMessage(null), 5000);
+      setTimeout(() => setZoningMessage(null), LONG_MESSAGE_TIMEOUT_MS);
     }
   };
 

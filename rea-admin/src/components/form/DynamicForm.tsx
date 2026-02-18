@@ -8,7 +8,7 @@ import { SelectableListModal, SelectableItem, Category } from '../common/Selecta
 import { API_BASE_URL } from '../../config';
 import { API_PATHS } from '../../constants/apiPaths';
 import { api } from '../../services/api';
-import { AUTO_SAVE_DELAY_MS, TAB_GROUPS, GEO_SEARCH_CONFIG } from '../../constants';
+import { AUTO_SAVE_DELAY_MS, TAB_GROUPS, GEO_SEARCH_CONFIG, MESSAGE_TIMEOUT_MS } from '../../constants';
 import { RegulationTab } from './RegulationTab';
 import { RegistryTab } from '../registry/RegistryTab';
 
@@ -59,7 +59,7 @@ const SchoolDistrictAutoFetchButton: React.FC = () => {
 
     if (!lat || !lng) {
       setMessage({ type: 'error', text: '緯度・経度を先に入力してください' });
-      setTimeout(() => setMessage(null), 3000);
+      setTimeout(() => setMessage(null), MESSAGE_TIMEOUT_MS);
       return;
     }
 
@@ -83,7 +83,7 @@ const SchoolDistrictAutoFetchButton: React.FC = () => {
       setMessage({ type: 'success', text: '学校候補を取得しました。選択してください。' });
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || '学校情報の取得に失敗しました' });
-      setTimeout(() => setMessage(null), 3000);
+      setTimeout(() => setMessage(null), MESSAGE_TIMEOUT_MS);
     } finally {
       setIsLoading(false);
     }
@@ -305,7 +305,7 @@ const StationAutoFetchButton: React.FC = () => {
 
     if (!lat || !lng) {
       setMessage({ type: 'error', text: '緯度・経度を先に入力してください' });
-      setTimeout(() => setMessage(null), 3000);
+      setTimeout(() => setMessage(null), MESSAGE_TIMEOUT_MS);
       return;
     }
 
@@ -350,7 +350,7 @@ const StationAutoFetchButton: React.FC = () => {
       setIsModalOpen(true);
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || '駅情報の取得に失敗しました' });
-      setTimeout(() => setMessage(null), 3000);
+      setTimeout(() => setMessage(null), MESSAGE_TIMEOUT_MS);
     } finally {
       setIsLoading(false);
     }
@@ -566,7 +566,7 @@ const BusStopAutoFetchButton: React.FC = () => {
 
     if (!lat || !lng) {
       setMessage({ type: 'error', text: '緯度・経度を先に入力してください' });
-      setTimeout(() => setMessage(null), 3000);
+      setTimeout(() => setMessage(null), MESSAGE_TIMEOUT_MS);
       return;
     }
 
@@ -611,7 +611,7 @@ const BusStopAutoFetchButton: React.FC = () => {
       setIsModalOpen(true);
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || 'バス停情報の取得に失敗しました' });
-      setTimeout(() => setMessage(null), 3000);
+      setTimeout(() => setMessage(null), MESSAGE_TIMEOUT_MS);
     } finally {
       setIsLoading(false);
     }
@@ -808,7 +808,7 @@ const FacilityAutoFetchButton: React.FC = () => {
 
     if (!lat || !lng) {
       setMessage({ type: 'error', text: '緯度・経度を先に入力してください' });
-      setTimeout(() => setMessage(null), 3000);
+      setTimeout(() => setMessage(null), MESSAGE_TIMEOUT_MS);
       return;
     }
 
@@ -851,7 +851,7 @@ const FacilityAutoFetchButton: React.FC = () => {
       setIsModalOpen(true);
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || '施設情報の取得に失敗しました' });
-      setTimeout(() => setMessage(null), 3000);
+      setTimeout(() => setMessage(null), MESSAGE_TIMEOUT_MS);
     } finally {
       setIsLoading(false);
     }

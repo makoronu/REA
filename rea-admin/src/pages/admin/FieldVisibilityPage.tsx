@@ -7,6 +7,7 @@
 import React, { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../../config';
 import { API_PATHS } from '../../constants/apiPaths';
+import { MESSAGE_TIMEOUT_MS } from '../../constants';
 
 // 型定義
 interface PropertyType {
@@ -249,7 +250,7 @@ const FieldVisibilityPage: React.FC = () => {
   const handleSave = async () => {
     if (pendingChanges.size === 0) {
       setMessage({ type: 'error', text: '変更がありません' });
-      setTimeout(() => setMessage(null), 3000);
+      setTimeout(() => setMessage(null), MESSAGE_TIMEOUT_MS);
       return;
     }
 
@@ -291,7 +292,7 @@ const FieldVisibilityPage: React.FC = () => {
       setMessage({ type: 'error', text: '保存に失敗しました' });
     } finally {
       setIsSaving(false);
-      setTimeout(() => setMessage(null), 3000);
+      setTimeout(() => setMessage(null), MESSAGE_TIMEOUT_MS);
     }
   };
 

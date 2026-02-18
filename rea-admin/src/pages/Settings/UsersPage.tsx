@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../../config';
 import { API_PATHS } from '../../constants/apiPaths';
 import { STORAGE_KEYS } from '../../constants/storage';
+import { MESSAGE_TIMEOUT_MS, LONG_MESSAGE_TIMEOUT_MS } from '../../constants';
 
 interface User {
   id: number;
@@ -104,7 +105,7 @@ export const UsersPage: React.FC = () => {
       setShowCreateModal(false);
       setNewUser({ email: '', name: '', role_id: roles[0]?.id || 0 });
       fetchData();
-      setTimeout(() => setSuccessMessage(null), 5000);
+      setTimeout(() => setSuccessMessage(null), LONG_MESSAGE_TIMEOUT_MS);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -126,7 +127,7 @@ export const UsersPage: React.FC = () => {
 
       fetchData();
       setSuccessMessage(currentActive ? 'ユーザーを無効化しました' : 'ユーザーを有効化しました');
-      setTimeout(() => setSuccessMessage(null), 3000);
+      setTimeout(() => setSuccessMessage(null), MESSAGE_TIMEOUT_MS);
     } catch (err: any) {
       setError(err.message);
     }
