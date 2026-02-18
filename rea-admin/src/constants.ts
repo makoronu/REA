@@ -5,6 +5,7 @@
 
 // === 販売ステータス ===
 export const SALES_STATUS = {
+  ASSESSMENT: '査定中',
   SELLING: '販売中',
   SOLD: '成約済み',
   WITHDRAWN: '取下げ',
@@ -26,6 +27,8 @@ export const INACTIVE_SALES_STATUSES = [
 export const PUBLICATION_STATUS = {
   PUBLIC: '公開',
   PRIVATE: '非公開',
+  MEMBER: '会員公開',
+  PRE_CHECK: '公開前確認',
 } as const;
 
 // === ページ設定 ===
@@ -74,6 +77,24 @@ export const LEAFLET_ICON_URLS = {
 export const EXTERNAL_API = {
   /** 郵便番号検索（zipcloud） */
   ZIPCLOUD: 'https://zipcloud.ibsnet.co.jp/api/search',
+} as const;
+
+// === 用途地域カラーマッピング ===
+export const ZONE_COLORS: Record<number, string> = {
+  1: '#00FF00',   // 第一種低層住居専用
+  2: '#80FF00',   // 第二種低層住居専用
+  3: '#FFFF00',   // 第一種中高層住居専用
+  4: '#FFCC00',   // 第二種中高層住居専用
+  5: '#FF9900',   // 第一種住居
+  6: '#FF6600',   // 第二種住居
+  7: '#FF3300',   // 準住居
+  8: '#FF00FF',   // 近隣商業
+  9: '#FF0000',   // 商業
+  10: '#00FFFF',  // 準工業
+  11: '#0080FF',  // 工業
+  12: '#0000FF',  // 工業専用
+  21: '#90EE90',  // 田園住居
+  99: '#CCCCCC',  // 無指定
 } as const;
 
 // === 地理情報 ===

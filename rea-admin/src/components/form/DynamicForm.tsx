@@ -8,7 +8,7 @@ import { SelectableListModal, SelectableItem, Category } from '../common/Selecta
 import { API_BASE_URL } from '../../config';
 import { API_PATHS } from '../../constants/apiPaths';
 import { api } from '../../services/api';
-import { AUTO_SAVE_DELAY_MS, TAB_GROUPS, GEO_SEARCH_CONFIG, MESSAGE_TIMEOUT_MS } from '../../constants';
+import { AUTO_SAVE_DELAY_MS, TAB_GROUPS, GEO_SEARCH_CONFIG, MESSAGE_TIMEOUT_MS, PUBLICATION_STATUS, SALES_STATUS } from '../../constants';
 import { RegulationTab } from './RegulationTab';
 import { RegistryTab } from '../registry/RegistryTab';
 
@@ -1136,14 +1136,14 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
   useEffect(() => {
     // 初回のみ実行（無限ループ防止）
     if (initialValidationRan.current) return;
-    if (watchedPubStatus !== '公開前確認' || !watchedPropId) return;
+    if (watchedPubStatus !== PUBLICATION_STATUS.PRE_CHECK || !watchedPropId) return;
 
     initialValidationRan.current = true;
 
     const runInitialValidation = async () => {
       try {
         const response = await api.get(
-          `${API_PATHS.PROPERTIES.validatePublication(watchedPropId)}?target_status=${encodeURIComponent('公開')}`
+          `${API_PATHS.PROPERTIES.validatePublication(watchedPropId)}?target_status=${encodeURIComponent(PUBLICATION_STATUS.PUBLIC)}`
         );
         const result = response.data;
         if (!result.is_valid) {
@@ -1492,11 +1492,11 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
 
     // ステータス表示用（色設定はAPIから取得済み: salesStatusConfig, publicationStatusConfig）
 
-    const currentSalesStatus = formData.sales_status || '査定中';
-    const currentPublicationStatus = formData.publication_status || '非公開';
+    const currentSalesStatus = formData.sales_status || SALES_STATUS.ASSESSMENT;
+    const currentPublicationStatus = formData.publication_status || PUBLICATION_STATUS.PRIVATE;
 
     // 案件ステータスに応じて公開状態の選択肢を制限（販売中・商談中のみ公開可能）
-    const isPublicationEditable = ['販売中', '商談中'].includes(currentSalesStatus);
+    const isPublicationEditable = [SALES_STATUS.SELLING, SALES_STATUS.NEGOTIATING].includes(currentSalesStatus);
 
     // ステータス変更ハンドラー（連動ロジックはAPI側で一元管理）
     const handleSalesStatusChange = (newStatus: string) => {
@@ -1514,7 +1514,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
       setShowValidationErrorModal(false);
 
       // 公開/会員公開への変更時のみバリデーションを実行
-      if (['公開', '会員公開'].includes(newStatus) && formData.id) {
+      if (([PUBLICATION_STATUS.PUBLIC, PUBLICATION_STATUS.MEMBER] as string[]).includes(newStatus) && formData.id) {
         try {
           const response = await api.get(
             `${API_PATHS.PROPERTIES.validatePublication(formData.id)}?target_status=${encodeURIComponent(newStatus)}`
@@ -1526,7 +1526,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
               groups: result.groups,
             });
             // バリデーションエラー時は「公開前確認」に戻す
-            form.setValue('publication_status', '公開前確認', { shouldDirty: true });
+            form.setValue('publication_status', PUBLICATION_STATUS.PRE_CHECK, { shouldDirty: true });
           }
         } catch (err) {
           console.error('Publication validation check failed:', err);
@@ -1658,7 +1658,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                     <span style={{ fontSize: '11px', color: '#9CA3AF', fontWeight: 500, width: '32px' }}>公開</span>
                     <div style={{ display: 'flex', gap: '3px' }}>
                       {Object.entries(publicationStatusConfig).map(([status, config]) => {
-                        const isDisabled = !isPublicationEditable && status !== '非公開';
+                        const isDisabled = !isPublicationEditable && status !== PUBLICATION_STATUS.PRIVATE;
                         return (
                           <button
                             key={status}
