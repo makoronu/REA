@@ -8,8 +8,8 @@
  * - 物件登録
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { API_BASE_URL } from '../../config';
 import { API_PATHS } from '../../constants/apiPaths';
+import { api } from '../../services/api';
 
 // 型定義
 interface Owner {
@@ -74,18 +74,14 @@ export default function ToukiImportPage() {
     setError(null);
     try {
       // 登記レコード一覧を取得
-      const recordsRes = await fetch(`${API_BASE_URL}${API_PATHS.TOUKI.RECORDS_LIST}`);
-      if (!recordsRes.ok) throw new Error('登記レコードの取得に失敗しました');
-      const recordsData = await recordsRes.json();
-      setRecords(recordsData.items || []);
+      const recordsRes = await api.get(API_PATHS.TOUKI.RECORDS_LIST);
+      setRecords(recordsRes.data.items || []);
 
       // インポート一覧を取得
-      const importsRes = await fetch(`${API_BASE_URL}${API_PATHS.TOUKI.LIST}`);
-      if (!importsRes.ok) throw new Error('インポート一覧の取得に失敗しました');
-      const importsData = await importsRes.json();
-      setImports(importsData.imports || []);
+      const importsRes = await api.get(API_PATHS.TOUKI.LIST);
+      setImports(importsRes.data.imports || []);
     } catch (e: any) {
-      setError(e.message);
+      setError(e.response?.data?.detail || e.message);
     } finally {
       setLoading(false);
     }
@@ -108,20 +104,12 @@ export default function ToukiImportPage() {
         const formData = new FormData();
         formData.append('file', file);
 
-        const res = await fetch(`${API_BASE_URL}${API_PATHS.TOUKI.UPLOAD}`, {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.detail || 'アップロードに失敗しました');
-        }
+        await api.post(API_PATHS.TOUKI.UPLOAD, formData);
       }
       setSuccess(`${pdfFiles.length}件のPDFをアップロードしました`);
       await loadData();
     } catch (e: any) {
-      setError(e.message);
+      setError(e.response?.data?.detail || e.message);
     } finally {
       setUploading(false);
       if (fileInputRef.current) {
@@ -169,22 +157,14 @@ export default function ToukiImportPage() {
     setSuccess(null);
 
     try {
-      const res = await fetch(`${API_BASE_URL}${API_PATHS.TOUKI.parse(importId)}`, {
-        method: 'POST',
-      });
+      const res = await api.post(API_PATHS.TOUKI.parse(importId));
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || 'パースに失敗しました');
-      }
-
-      const result = await res.json();
-      const recordIds = result.touki_record_ids || [];
+      const recordIds = res.data.touki_record_ids || [];
 
       setSuccess(`解析完了: ${recordIds.length}件の登記レコードを作成しました`);
       await loadData();
     } catch (e: any) {
-      setError(e.message);
+      setError(e.response?.data?.detail || e.message);
     } finally {
       setParsingId(null);
     }
@@ -197,18 +177,11 @@ export default function ToukiImportPage() {
 
     setError(null);
     try {
-      const res = await fetch(`${API_BASE_URL}${API_PATHS.TOUKI.record(recordId)}`, {
-        method: 'DELETE',
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || '削除に失敗しました');
-      }
+      await api.delete(API_PATHS.TOUKI.record(recordId));
 
       await loadData();
     } catch (e: any) {
-      setError(e.message);
+      setError(e.response?.data?.detail || e.message);
     }
   };
 
@@ -230,23 +203,12 @@ export default function ToukiImportPage() {
     setSuccess(null);
 
     try {
-      const res = await fetch(`${API_BASE_URL}${API_PATHS.TOUKI.RECORDS_APPLY}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          property_id: propertyId,
-          touki_record_ids: Array.from(selectedIds)
-        }),
+      const res = await api.post(API_PATHS.TOUKI.RECORDS_APPLY, {
+        property_id: propertyId,
+        touki_record_ids: Array.from(selectedIds)
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || '反映に失敗しました');
-      }
-
-      const result = await res.json();
-
-      setSuccess(result.message);
+      setSuccess(res.data.message);
       setShowApplyModal(false);
       setApplyPropertyId('');
       setSelectedIds(new Set());
@@ -255,7 +217,7 @@ export default function ToukiImportPage() {
       // 物件編集ページを開く
       window.open(`/properties/${propertyId}/edit`, '_blank');
     } catch (e: any) {
-      setError(e.message);
+      setError(e.response?.data?.detail || e.message);
     } finally {
       setApplying(false);
     }
@@ -295,26 +257,15 @@ export default function ToukiImportPage() {
     setSuccess(null);
 
     try {
-      const res = await fetch(`${API_BASE_URL}${API_PATHS.TOUKI.RECORDS_CREATE}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          touki_record_ids: Array.from(selectedIds)
-        }),
+      const res = await api.post(API_PATHS.TOUKI.RECORDS_CREATE, {
+        touki_record_ids: Array.from(selectedIds)
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || '物件登録に失敗しました');
-      }
-
-      const result = await res.json();
+      const result = res.data;
 
       // 登記レコードを削除（一時データなので）
       for (const id of selectedIds) {
-        await fetch(`${API_BASE_URL}${API_PATHS.TOUKI.record(id)}`, {
-          method: 'DELETE',
-        });
+        await api.delete(API_PATHS.TOUKI.record(id));
       }
 
       setSuccess(result.message);
@@ -324,7 +275,7 @@ export default function ToukiImportPage() {
       // 編集ページを新しいタブで開く
       window.open(`/properties/${result.property_id}/edit`, '_blank');
     } catch (e: any) {
-      setError(e.message);
+      setError(e.response?.data?.detail || e.message);
     } finally {
       setRegistering(false);
     }

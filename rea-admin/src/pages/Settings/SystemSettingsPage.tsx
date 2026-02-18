@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../../config';
 import { API_PATHS } from '../../constants/apiPaths';
 import { MESSAGE_TIMEOUT_MS } from '../../constants';
+import { api } from '../../services/api';
 
 interface Setting {
   key: string;
@@ -26,14 +26,10 @@ export const SystemSettingsPage: React.FC = () => {
   const fetchSettings = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`${API_BASE_URL}${API_PATHS.SETTINGS.LIST}`);
-      if (!response.ok) {
-        throw new Error('設定の取得に失敗しました');
-      }
-      const data = await response.json();
-      setSettings(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '不明なエラー');
+      const response = await api.get(API_PATHS.SETTINGS.LIST);
+      setSettings(response.data);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || (err instanceof Error ? err.message : '不明なエラー'));
     } finally {
       setIsLoading(false);
     }
@@ -54,15 +50,7 @@ export const SystemSettingsPage: React.FC = () => {
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}${API_PATHS.SETTINGS.detail(key)}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ value })
-      });
-
-      if (!response.ok) {
-        throw new Error('設定の更新に失敗しました');
-      }
+      await api.put(API_PATHS.SETTINGS.detail(key), { value });
 
       setSuccessMessage('設定を保存しました');
       setTimeout(() => setSuccessMessage(null), MESSAGE_TIMEOUT_MS);
@@ -74,8 +62,8 @@ export const SystemSettingsPage: React.FC = () => {
         return next;
       });
       fetchSettings();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '不明なエラー');
+    } catch (err: any) {
+      setError(err.response?.data?.detail || (err instanceof Error ? err.message : '不明なエラー'));
     } finally {
       setSaving(null);
     }

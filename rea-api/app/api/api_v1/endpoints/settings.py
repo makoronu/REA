@@ -9,15 +9,24 @@ from typing import Optional
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 sys.path.insert(0, str(Path(__file__).parents[5]))
 from shared.database import READatabase
+from shared.auth.middleware import get_current_user
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def _require_auth(request: Request) -> dict:
+    """認証を要求"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="認証が必要です")
+    return user
 
 
 class SettingResponse(BaseModel):
@@ -44,12 +53,13 @@ def mask_value(value: Optional[str]) -> Optional[str]:
 
 
 @router.get("/")
-async def get_settings():
+async def get_settings(request: Request):
     """
     全設定一覧を取得
 
     値はマスキングして返却（セキュリティ対策）
     """
+    _require_auth(request)
     db = READatabase()
     conn = db.get_connection()
     cur = conn.cursor()
@@ -83,12 +93,13 @@ async def get_settings():
 
 
 @router.get("/{key}")
-async def get_setting(key: str):
+async def get_setting(key: str, request: Request):
     """
     特定の設定を取得
 
     値はマスキングして返却
     """
+    _require_auth(request)
     db = READatabase()
     conn = db.get_connection()
     cur = conn.cursor()
@@ -123,12 +134,13 @@ async def get_setting(key: str):
 
 
 @router.put("/{key}")
-async def update_setting(key: str, request: SettingUpdateRequest):
+async def update_setting(key: str, request_body: SettingUpdateRequest, request: Request):
     """
     設定を更新
 
     存在しないキーの場合は404を返す
     """
+    _require_auth(request)
     db = READatabase()
     conn = db.get_connection()
     cur = conn.cursor()
@@ -144,7 +156,7 @@ async def update_setting(key: str, request: SettingUpdateRequest):
             UPDATE system_settings
             SET value = %s, updated_at = NOW()
             WHERE key = %s
-        """, (request.value, key))
+        """, (request_body.value, key))
         conn.commit()
 
         logger.info(f"設定更新: {key}")

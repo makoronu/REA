@@ -226,7 +226,7 @@ async def get_tile_geojson(
     api_code: str,
     lat: float = Query(..., description="緯度"),
     lng: float = Query(..., description="経度"),
-    radius: int = Query(1, description="取得範囲（1=3x3タイル, 2=5x5タイル）")
+    radius: int = Query(1, ge=1, le=5, description="取得範囲（1=3x3タイル, 2=5x5タイル）")
 ):
     """
     指定APIのタイルデータ（GeoJSON）を取得

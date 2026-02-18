@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../../config';
 import { API_PATHS } from '../../constants/apiPaths';
 import { MESSAGE_TIMEOUT_MS, LONG_MESSAGE_TIMEOUT_MS } from '../../constants';
+import { api } from '../../services/api';
 
 interface Integration {
   id: number;
@@ -53,26 +53,16 @@ export const IntegrationsPage: React.FC = () => {
     try {
       setIsLoading(true);
       const [integrationsRes, summaryRes, statusRes] = await Promise.all([
-        fetch(`${API_BASE_URL}${API_PATHS.INTEGRATIONS.LIST}`),
-        fetch(`${API_BASE_URL}${API_PATHS.INTEGRATIONS.SYNC_SUMMARY}`),
-        fetch(`${API_BASE_URL}${API_PATHS.INTEGRATIONS.SYNC_STATUS}?limit=50`)
+        api.get(API_PATHS.INTEGRATIONS.LIST),
+        api.get(API_PATHS.INTEGRATIONS.SYNC_SUMMARY),
+        api.get(API_PATHS.INTEGRATIONS.SYNC_STATUS, { params: { limit: 50 } })
       ]);
 
-      if (!integrationsRes.ok || !summaryRes.ok || !statusRes.ok) {
-        throw new Error('データの取得に失敗しました');
-      }
-
-      const [integrationsData, summaryData, statusData] = await Promise.all([
-        integrationsRes.json(),
-        summaryRes.json(),
-        statusRes.json()
-      ]);
-
-      setIntegrations(integrationsData);
-      setSummary(summaryData);
-      setSyncStatuses(statusData.data);
+      setIntegrations(integrationsRes.data);
+      setSummary(summaryRes.data);
+      setSyncStatuses(statusRes.data.data);
     } catch (err: any) {
-      setError(err.message);
+      setError(err.response?.data?.detail || err.message);
     } finally {
       setIsLoading(false);
     }
@@ -85,22 +75,14 @@ export const IntegrationsPage: React.FC = () => {
   // 連携先の有効/無効切り替え
   const handleToggleActive = async (code: string, currentActive: boolean) => {
     try {
-      const response = await fetch(`${API_BASE_URL}${API_PATHS.INTEGRATIONS.detail(code)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_active: !currentActive })
-      });
-
-      if (!response.ok) {
-        throw new Error('更新に失敗しました');
-      }
+      await api.patch(API_PATHS.INTEGRATIONS.detail(code), { is_active: !currentActive });
 
       // 再取得
       fetchData();
       setSuccessMessage(`${code}の設定を更新しました`);
       setTimeout(() => setSuccessMessage(null), MESSAGE_TIMEOUT_MS);
     } catch (err: any) {
-      setError(err.message);
+      setError(err.response?.data?.detail || err.message);
     }
   };
 
@@ -115,21 +97,12 @@ export const IntegrationsPage: React.FC = () => {
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}${API_PATHS.INTEGRATIONS.BULK_SYNC}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          property_ids: selectedProperties,
-          integration_code: integrationCode
-        })
+      const response = await api.post(API_PATHS.INTEGRATIONS.BULK_SYNC, {
+        property_ids: selectedProperties,
+        integration_code: integrationCode
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || '同期に失敗しました');
-      }
-
-      const result = await response.json();
+      const result = response.data;
       setSuccessMessage(`同期完了: 成功 ${result.success}件, 失敗 ${result.failed}件`);
       setTimeout(() => setSuccessMessage(null), LONG_MESSAGE_TIMEOUT_MS);
 
@@ -137,7 +110,7 @@ export const IntegrationsPage: React.FC = () => {
       fetchData();
       setSelectedProperties([]);
     } catch (err: any) {
-      setError(err.message);
+      setError(err.response?.data?.detail || err.message);
     } finally {
       setIsSyncing(null);
     }

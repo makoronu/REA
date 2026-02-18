@@ -78,8 +78,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=500,
         content={
-            "detail": error_detail,
-            "traceback": error_traceback,
+            "detail": "サーバー内部エラーが発生しました",
             "path": str(request.url.path),
             "method": request.method
         }
