@@ -31,11 +31,19 @@
 | 項目 | 内容 |
 |------|------|
 | 作業中 | なし |
-| 完了 | Seg 8a: console.log削除+zoho datetime修正、Seg 7: naive datetime統一、Seg 6: deleted_at漏れ修正、Seg 4/5: エラー表示改善・コード品質修正、Seg 3: ロジックバグ修正、Seg 2: データ整合性修正、Seg 1: セキュリティ修正、Seg C: フロント定数集約、Seg B: N+1解消(validator+geo)、Seg A: touki.pyログ+N+1解消、物件画像保存機能、最寄駅なし/バス停なしUI、システム設定画面、間取り不明、Googleジオコーディング |
+| 完了 | Seg 8b: 定数整理・ハードコード排除、Seg 8a: console.log削除+zoho datetime修正、Seg 7: naive datetime統一、Seg 6: deleted_at漏れ修正、Seg 4/5: エラー表示改善・コード品質修正、Seg 3: ロジックバグ修正、Seg 2: データ整合性修正、Seg 1: セキュリティ修正、Seg C: フロント定数集約、Seg B: N+1解消(validator+geo)、Seg A: touki.pyログ+N+1解消、物件画像保存機能、最寄駅なし/バス停なしUI、システム設定画面、間取り不明、Googleジオコーディング |
 | 残り | HOMES入稿、ZOHO画像同期 |
 | 更新 | 2026-02-17 |
 
 ### 今日完了した作業（2026-02-17）
+
+- **Seg 8b: 定数整理・ハードコード排除**
+  - constants.ts: PUBLICATION_STATUS拡張（+会員公開/公開前確認）、SALES_STATUS拡張（+査定中）、ZONE_COLORS追加
+  - DynamicForm.tsx: ハードコード文字列8箇所を定数参照に置換
+  - ZoningMapField.tsx: ローカルZONE_COLORS削除→constants.tsからimport
+  - ZoningMapPage.tsx: ローカルZONE_COLORS削除→constants.tsからimport
+  - テスト依頼書: docs/test_requests/2026-02-17_seg8b_constants_consolidation.md
+  - コミット: c8051a5
 
 - **Seg 8a: console.log削除・zoho naive datetime修正**
   - DynamicForm.tsx: console.log('Save button clicked') 削除
