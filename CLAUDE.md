@@ -30,12 +30,18 @@
 
 | 項目 | 内容 |
 |------|------|
-| 作業中 | Seg B: publication_validator N+1解消 + geo.py N+1解消 |
-| 完了 | Seg A: touki.pyログ+N+1解消、物件画像保存機能、最寄駅なし/バス停なしUI、システム設定画面、間取り不明、Googleジオコーディング |
-| 残り | Seg B: publication_validator N+1解消、Seg C: フロント定数集約、HOMES入稿、ZOHO画像同期 |
+| 作業中 | なし |
+| 完了 | Seg B: N+1解消(validator+geo)、Seg A: touki.pyログ+N+1解消、物件画像保存機能、最寄駅なし/バス停なしUI、システム設定画面、間取り不明、Googleジオコーディング |
+| 残り | Seg C: フロント定数集約、HOMES入稿、ZOHO画像同期 |
 | 更新 | 2026-02-17 |
 
 ### 今日完了した作業（2026-02-17）
+
+- **Seg B: N+1クエリ解消（publication_validator + geo）**
+  - publication_validator: get_column_labels_batch()追加、ループ内個別クエリ→バッチ取得（約60回→1回）
+  - geo: get_facility_categories()をループ外に移動（N回→1回）
+  - テスト依頼書: docs/test_requests/2026-02-17_segb_n1_batch.md
+  - コミット: 330481a
 
 - **Seg A: touki.py ログ追加 + N+1クエリ解消**
   - create_property_from_touki(): ステップ別ログ追加、登記レコード取得をIN句バッチ化
