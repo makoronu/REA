@@ -31,11 +31,19 @@
 | 項目 | 内容 |
 |------|------|
 | 作業中 | なし |
-| 完了 | Seg 4/5: エラー表示改善・コード品質修正、Seg 3: ロジックバグ修正、Seg 2: データ整合性修正、Seg 1: セキュリティ修正、Seg C: フロント定数集約、Seg B: N+1解消(validator+geo)、Seg A: touki.pyログ+N+1解消、物件画像保存機能、最寄駅なし/バス停なしUI、システム設定画面、間取り不明、Googleジオコーディング |
+| 完了 | Seg 6: deleted_at漏れ修正、Seg 4/5: エラー表示改善・コード品質修正、Seg 3: ロジックバグ修正、Seg 2: データ整合性修正、Seg 1: セキュリティ修正、Seg C: フロント定数集約、Seg B: N+1解消(validator+geo)、Seg A: touki.pyログ+N+1解消、物件画像保存機能、最寄駅なし/バス停なしUI、システム設定画面、間取り不明、Googleジオコーディング |
 | 残り | HOMES入稿、ZOHO画像同期 |
 | 更新 | 2026-02-17 |
 
 ### 今日完了した作業（2026-02-17）
+
+- **Seg 6: deleted_at漏れ修正**
+  - registries.py: properties存在確認にdeleted_atフィルタ追加（2箇所）
+  - touki.py: 全SELECT（list/get/parse/apply/link）にdeleted_atフィルタ追加（14箇所）
+  - generic.py: 関連テーブル存在確認にdeleted_atフィルタ追加（1箇所）
+  - 個別プロトコル調査で追加1件発見・修正（create_property_from_touki）
+  - テスト依頼書: docs/test_requests/2026-02-17_seg6_deleted_at_fix.md
+  - コミット: 6352732
 
 - **Seg 4/5: エラー表示改善・コード品質修正**
   - E1: DynamicForm.tsx バリデーションAPIエラー時にユーザー通知追加
