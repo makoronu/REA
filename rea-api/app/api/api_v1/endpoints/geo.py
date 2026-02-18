@@ -822,12 +822,12 @@ async def get_nearest_facilities(
             LIMIT %s
         """.format(category_filter), params)
 
+        categories = get_facility_categories()
         facilities = []
         for row in cur.fetchall():
             fac_id, name, cat_code, address, distance_m = row
             distance_m = int(distance_m)
             walk_min = calc_walk_minutes(distance_m)
-            categories = get_facility_categories()
             facilities.append(FacilityCandidate(
                 id=fac_id,
                 name=name,

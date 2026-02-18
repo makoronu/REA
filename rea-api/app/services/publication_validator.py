@@ -139,6 +139,39 @@ def get_min_selections(db: Session, column_name: str) -> Optional[int]:
     return None
 
 
+def get_column_labels_batch(db: Session, column_names: List[str]) -> Dict[str, Dict[str, Any]]:
+    """
+    複数カラムのvalid_none_text・min_selectionsを一括取得（N+1解消用）
+
+    Args:
+        db: DBセッション
+        column_names: カラム名リスト
+
+    Returns:
+        {column_name: {"valid_none_text": [...], "min_selections": int|None}}
+    """
+    if not column_names:
+        return {}
+
+    try:
+        query = text("""
+            SELECT column_name, valid_none_text, min_selections
+            FROM column_labels
+            WHERE column_name = ANY(:column_names)
+        """)
+        result = db.execute(query, {"column_names": column_names})
+        labels = {}
+        for row in result:
+            labels[row.column_name] = {
+                "valid_none_text": row.valid_none_text if row.valid_none_text else None,
+                "min_selections": row.min_selections,
+            }
+        return labels
+    except Exception as e:
+        logger.warning(f"Failed to batch load column_labels: {e}")
+        return {}
+
+
 def get_validation_groups(db: Session, property_type: str) -> Dict[str, List[Dict[str, Any]]]:
     """
     validation_groupでグループ化されたフィールドを取得
@@ -532,6 +565,10 @@ def validate_for_publication(
     special_flag_keys = get_special_flag_keys(db)
     conditional_exclusions = get_conditional_exclusions(db)
 
+    # valid_none_text・min_selectionsを一括取得（N+1解消）
+    required_column_names = [f["column_name"] for f in required_fields]
+    column_labels_map = get_column_labels_batch(db, required_column_names)
+
     # 未入力フィールドをチェック
     missing_fields = []
     for field in required_fields:
@@ -543,11 +580,10 @@ def validate_for_publication(
 
         value = property_data.get(column_name)
 
-        # カラム別の「なし」有効値を取得
-        valid_none_values = get_valid_none_text(db, column_name)
-
-        # 最小選択数を取得（配列型フィールド用）
-        min_selections = get_min_selections(db, column_name)
+        # バッチ取得結果から読み出し（フォールバック付き）
+        col_info = column_labels_map.get(column_name, {})
+        valid_none_values = col_info.get("valid_none_text") or _DEFAULT_VALID_NONE_VALUES
+        min_selections = col_info.get("min_selections")
 
         # 有効値判定
         if not is_valid_value(value, column_name, zero_valid_columns, special_flag_keys, valid_none_values, min_selections):

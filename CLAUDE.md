@@ -30,7 +30,7 @@
 
 | 項目 | 内容 |
 |------|------|
-| 作業中 | なし |
+| 作業中 | Seg B: publication_validator N+1解消 + geo.py N+1解消 |
 | 完了 | Seg A: touki.pyログ+N+1解消、物件画像保存機能、最寄駅なし/バス停なしUI、システム設定画面、間取り不明、Googleジオコーディング |
 | 残り | Seg B: publication_validator N+1解消、Seg C: フロント定数集約、HOMES入稿、ZOHO画像同期 |
 | 更新 | 2026-02-17 |
