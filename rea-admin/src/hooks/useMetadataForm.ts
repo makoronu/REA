@@ -170,7 +170,6 @@ export const useMetadataForm = ({
   const handleSubmit = form.handleSubmit(
     async (data) => {
       try {
-        console.log('Form valid, calling onSubmit with:', Object.keys(data).length, 'fields');
         await onSubmit(data);
       } catch (error) {
         console.error('Form submission error:', error);
@@ -179,9 +178,11 @@ export const useMetadataForm = ({
     },
     (errors) => {
       console.error('Form validation errors:', JSON.stringify(errors, null, 2));
-      Object.keys(errors).forEach(key => {
+      const errorFields = Object.keys(errors);
+      errorFields.forEach(key => {
         console.error(`  - ${key}:`, errors[key]?.message || errors[key]);
       });
+      alert(`入力エラーがあります（${errorFields.length}件）: ${errorFields.join(', ')}`);
     }
   );
   

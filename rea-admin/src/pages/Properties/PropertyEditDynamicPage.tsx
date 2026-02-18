@@ -154,7 +154,7 @@ export const PropertyEditDynamicPage: React.FC = () => {
         // 成功メッセージを表示
         setTimeout(() => {
           setSaveStatus('idle');
-        }, 3000);
+        }, MESSAGE_TIMEOUT_MS);
       }
     } catch (err: any) {
       setSaveStatus('error');

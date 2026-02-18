@@ -1154,6 +1154,10 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
         }
       } catch (err) {
         console.error('Initial validation check failed:', err);
+        setPublicationValidationError({
+          message: 'バリデーションチェックに失敗しました',
+          groups: {},
+        });
       }
     };
     runInitialValidation();

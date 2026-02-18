@@ -945,8 +945,6 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
     let lat = getValues('latitude');
     let lng = getValues('longitude');
 
-    console.log('handleFetchZoning called, lat:', lat, 'lng:', lng);
-
     // 緯度経度がなければ、住所からジオコードして取得
     if (!lat || !lng) {
       const prefecture = getValues('prefecture') || '';
@@ -975,7 +973,6 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
           // フォームに緯度経度をセット
           setValue('latitude', lat, { shouldDirty: true });
           setValue('longitude', lng, { shouldDirty: true });
-          console.log('Geocoded:', lat, lng);
         } else {
           setZoningMessage({ type: 'error', text: '住所から座標を取得できませんでした' });
           setIsLoadingZoning(false);
@@ -995,8 +992,6 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
     }
 
     try {
-      console.log('Fetching zoning data for:', lat, lng);
-
       // 用途地域と都市計画区域を同時に取得
       const [zoningRes, urbanRes] = await Promise.all([
         fetch(`${API_BASE_URL}${API_PATHS.GEO.ZONING}?lat=${lat}&lng=${lng}`),
@@ -1006,16 +1001,12 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
       const zoningData = await zoningRes.json();
       const urbanData = await urbanRes.json();
 
-      console.log('Zoning data:', zoningData);
-      console.log('Urban data:', urbanData);
-
       const messages: string[] = [];
 
       // 用途地域を設定
       if (zoningData.zones && zoningData.zones.length > 0) {
         const primary = zoningData.zones.find((z: any) => z.is_primary) || zoningData.zones[0];
 
-        console.log('Setting use_district to:', primary.zone_code);
         setValue('use_district', String(primary.zone_code), { shouldDirty: true });
         if (primary.building_coverage_ratio) {
           setValue('building_coverage_ratio', primary.building_coverage_ratio, { shouldDirty: true });
@@ -1031,18 +1022,8 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
       if (urbanData.areas && urbanData.areas.length > 0) {
         const primaryUrban = urbanData.areas.find((a: any) => a.is_primary) || urbanData.areas[0];
 
-        console.log('Urban planning API response:', urbanData);
-        console.log('Primary urban area:', primaryUrban);
-        console.log('Setting city_planning to:', String(primaryUrban.layer_no), '(area_type:', primaryUrban.area_type, ')');
-
         // city_planningカラムに設定（layer_no: 1=市街化区域, 2=市街化調整区域）
         setValue('city_planning', String(primaryUrban.layer_no), { shouldDirty: true });
-
-        // 設定後の値を確認
-        setTimeout(() => {
-          const currentValue = getValues('city_planning');
-          console.log('city_planning after setValue:', currentValue);
-        }, 100);
 
         messages.push(primaryUrban.area_type);
       }

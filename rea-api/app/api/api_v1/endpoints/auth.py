@@ -285,7 +285,7 @@ async def confirm_password_reset(request: PasswordResetConfirm):
         if used_at:
             raise HTTPException(status_code=400, detail="このトークンは既に使用されています")
 
-        if datetime.now(timezone.utc) > expires_at.replace(tzinfo=timezone.utc):
+        if datetime.now(timezone.utc) > (expires_at.replace(tzinfo=timezone.utc) if expires_at.tzinfo is None else expires_at):
             raise HTTPException(status_code=400, detail="トークンの有効期限が切れています")
 
         # パスワード更新
@@ -332,7 +332,7 @@ async def verify_reset_token(token: str):
         if used_at:
             return {"valid": False, "message": "このトークンは既に使用されています"}
 
-        if datetime.now(timezone.utc) > expires_at.replace(tzinfo=timezone.utc):
+        if datetime.now(timezone.utc) > (expires_at.replace(tzinfo=timezone.utc) if expires_at.tzinfo is None else expires_at):
             return {"valid": False, "message": "トークンの有効期限が切れています"}
 
         return {"valid": True, "message": "有効なトークンです"}

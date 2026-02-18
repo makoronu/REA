@@ -264,11 +264,21 @@ export default function ToukiImportPage() {
       const result = res.data;
 
       // 登記レコードを削除（一時データなので）
+      let deleteFailCount = 0;
       for (const id of selectedIds) {
-        await api.delete(API_PATHS.TOUKI.record(id));
+        try {
+          await api.delete(API_PATHS.TOUKI.record(id));
+        } catch (deleteErr) {
+          console.error(`登記レコード削除失敗 (id: ${id}):`, deleteErr);
+          deleteFailCount++;
+        }
       }
 
-      setSuccess(result.message);
+      if (deleteFailCount > 0) {
+        setSuccess(`${result.message}（一時データ${deleteFailCount}件の削除に失敗）`);
+      } else {
+        setSuccess(result.message);
+      }
       setSelectedIds(new Set());
       await loadData();
 
