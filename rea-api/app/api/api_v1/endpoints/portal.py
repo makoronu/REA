@@ -58,8 +58,8 @@ async def export_homes_csv(request: ExportRequest):
         conn.close()
 
         # ファイル名
-        from datetime import datetime
-        filename = f"homes_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        from datetime import datetime, timezone
+        filename = f"homes_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv"
 
         return Response(
             content=csv_bytes,

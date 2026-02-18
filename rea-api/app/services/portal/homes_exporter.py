@@ -8,7 +8,8 @@ import csv
 import io
 import os
 import yaml
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 
@@ -79,7 +80,7 @@ class HomesExporter:
     def _format_datetime(self, dt: Any) -> str:
         """日時をyyyy/mm/dd hh:mm:ss形式に変換"""
         if dt is None:
-            return datetime.now().strftime('%Y/%m/%d %H:%M:%S')
+            return datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%Y/%m/%d %H:%M:%S')
         if isinstance(dt, str):
             return dt
         return dt.strftime('%Y/%m/%d %H:%M:%S')
@@ -88,7 +89,7 @@ class HomesExporter:
         """日付をyyyy/mm/dd形式に変換"""
         if dt is None:
             # 14日後をデフォルトに
-            return (datetime.now() + timedelta(days=14)).strftime('%Y/%m/%d')
+            return (datetime.now(ZoneInfo('Asia/Tokyo')) + timedelta(days=14)).strftime('%Y/%m/%d')
         if isinstance(dt, str):
             return dt
         return dt.strftime('%Y/%m/%d')
@@ -149,7 +150,7 @@ class HomesExporter:
             if value is None and 'fallback' in field_def:
                 fallback = field_def['fallback']
                 if fallback == '+14days':
-                    value = datetime.now() + timedelta(days=14)
+                    value = datetime.now(ZoneInfo('Asia/Tokyo')) + timedelta(days=14)
                 else:
                     value = self._get_value_from_source(property_data, fallback)
 

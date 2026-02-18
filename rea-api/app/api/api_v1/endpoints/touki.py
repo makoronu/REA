@@ -10,7 +10,7 @@ import logging
 import os
 import re
 import sys
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import List, Optional
 
 logger = logging.getLogger(__name__)
@@ -131,7 +131,7 @@ def simple_parse(raw_text: str) -> dict:
         'building_info': {},
         'owner_info': {},
         'mortgage_info': [],
-        'parsed_at': datetime.now().isoformat()
+        'parsed_at': datetime.now(timezone.utc).isoformat()
     }
 
     # 土地/建物判定
@@ -344,7 +344,7 @@ async def upload_touki_pdf(file: UploadFile = File(...)):
         raise DatabaseError("pdfplumber not installed")
 
     # ファイル保存
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    timestamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
     safe_filename = f"{timestamp}_{file.filename}"
     file_path = os.path.join(UPLOAD_DIR, safe_filename)
 
