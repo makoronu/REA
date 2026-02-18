@@ -419,7 +419,7 @@ const FieldVisibilityPage: React.FC = () => {
           {Object.entries(TABLE_LABELS).map(([key, label]) => (
             <button
               key={key}
-              onClick={() => setSelectedTable(key)}
+              onClick={() => { setPendingChanges(new Map()); setSelectedTable(key); }}
               style={{
                 padding: '8px 16px',
                 borderRadius: '8px',

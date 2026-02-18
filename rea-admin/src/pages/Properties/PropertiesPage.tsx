@@ -498,15 +498,22 @@ const PropertiesPage = () => {
       const updates: Record<string, string> = { [field]: value };
 
       // APIで更新し、各レスポンスでUI更新（連動ロジックはAPI側）
-      const results = await Promise.all(
+      const settled = await Promise.allSettled(
         Array.from(selectedIds).map(id => propertyService.updateProperty(id, updates))
       );
-      // レスポンスをマップ化
-      const updatedMap = new Map(results.map(r => [r.id, r]));
-      setProperties(prev => prev.map(p =>
-        updatedMap.has(p.id) ? { ...p, ...updatedMap.get(p.id) } : p
-      ));
+      const succeeded = settled.filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled').map(r => r.value);
+      const failedCount = settled.filter(r => r.status === 'rejected').length;
+      // 成功分のみUI反映
+      if (succeeded.length > 0) {
+        const updatedMap = new Map(succeeded.map(r => [r.id, r]));
+        setProperties(prev => prev.map(p =>
+          updatedMap.has(p.id) ? { ...p, ...updatedMap.get(p.id) } : p
+        ));
+      }
       setSelectedIds(new Set());
+      if (failedCount > 0) {
+        alert(`${succeeded.length}件成功、${failedCount}件失敗しました`);
+      }
     } catch (err) {
       console.error('一括更新エラー:', err);
       alert('一括更新に失敗しました');
@@ -521,12 +528,19 @@ const PropertiesPage = () => {
     try {
       // 取下げ時は非公開も明示（TODO: API側で連動ロジック一元化）
       const updates = { sales_status: SALES_STATUS.WITHDRAWN, publication_status: PUBLICATION_STATUS.PRIVATE };
-      const results = await Promise.all(Array.from(selectedIds).map(id => propertyService.updateProperty(id, updates)));
-      const updatedMap = new Map(results.map(r => [r.id, r]));
-      setProperties(prev => prev.map(p =>
-        updatedMap.has(p.id) ? { ...p, ...updatedMap.get(p.id) } : p
-      ));
+      const settled = await Promise.allSettled(Array.from(selectedIds).map(id => propertyService.updateProperty(id, updates)));
+      const succeeded = settled.filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled').map(r => r.value);
+      const failedCount = settled.filter(r => r.status === 'rejected').length;
+      if (succeeded.length > 0) {
+        const updatedMap = new Map(succeeded.map(r => [r.id, r]));
+        setProperties(prev => prev.map(p =>
+          updatedMap.has(p.id) ? { ...p, ...updatedMap.get(p.id) } : p
+        ));
+      }
       setSelectedIds(new Set());
+      if (failedCount > 0) {
+        alert(`${succeeded.length}件成功、${failedCount}件失敗しました`);
+      }
     } catch (err) {
       console.error('一括取下げエラー:', err);
       alert('一括取下げに失敗しました');

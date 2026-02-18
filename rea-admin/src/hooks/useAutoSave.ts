@@ -46,21 +46,31 @@ const setGlobalStatus = (status: SaveStatus, lastSaved?: Date | null) => {
 // デバウンス関数（lodash不要に）
 const debounce = <T extends (...args: any[]) => any>(fn: T, delay: number) => {
   let timeoutId: NodeJS.Timeout | null = null;
+  let lastArgs: Parameters<T> | null = null;
 
   const debouncedFn = (...args: Parameters<T>) => {
+    lastArgs = args;
     if (timeoutId) clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => fn(...args), delay);
+    timeoutId = setTimeout(() => {
+      fn(...args);
+      lastArgs = null;
+    }, delay);
   };
 
   debouncedFn.cancel = () => {
     if (timeoutId) clearTimeout(timeoutId);
     timeoutId = null;
+    lastArgs = null;
   };
 
   debouncedFn.flush = () => {
     if (timeoutId) {
       clearTimeout(timeoutId);
       timeoutId = null;
+      if (lastArgs) {
+        fn(...lastArgs);
+        lastArgs = null;
+      }
     }
   };
 

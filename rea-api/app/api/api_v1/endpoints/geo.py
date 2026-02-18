@@ -701,7 +701,7 @@ async def set_property_school_districts(property_id: int):
                 )
                 ORDER BY distance_m
                 LIMIT 1
-            """, (float(lng), float(lat), SCHOOL_TYPE_CODES['elementary'], float(lng), float(lat), DEFAULT_SEARCH_RADIUS['station']))
+            """, (float(lng), float(lat), SCHOOL_TYPE_CODES['elementary'], float(lng), float(lat), DEFAULT_SEARCH_RADIUS['school']))
             dist_row = cur.fetchone()
             if dist_row:
                 # 徒歩分数 = 距離(m) / 80m/分
@@ -738,7 +738,7 @@ async def set_property_school_districts(property_id: int):
                 )
                 ORDER BY distance_m
                 LIMIT 1
-            """, (float(lng), float(lat), SCHOOL_TYPE_CODES['junior_high'], float(lng), float(lat), DEFAULT_SEARCH_RADIUS['station']))
+            """, (float(lng), float(lat), SCHOOL_TYPE_CODES['junior_high'], float(lng), float(lat), DEFAULT_SEARCH_RADIUS['school']))
             dist_row = cur.fetchone()
             if dist_row:
                 # 徒歩分数 = 距離(m) / 80m/分
@@ -952,7 +952,7 @@ async def get_zoning(
                 ST_Area(geom::geography) as area_sq_m
             FROM m_zoning
             WHERE ST_Contains(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
-            ORDER BY area_sq_m ASC
+            ORDER BY area_sq_m DESC
         """, (lng, lat))
 
         rows = cur.fetchall()
@@ -966,7 +966,7 @@ async def get_zoning(
                 building_coverage_ratio=bcr,
                 floor_area_ratio=far,
                 city_name=city_name,
-                is_primary=(i == 0)  # 最初のものが面積最小（より詳細）
+                is_primary=(i == 0)  # 面積最大が主たる用途地域
             ))
 
         return ZoningResponse(

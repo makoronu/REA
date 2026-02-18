@@ -350,7 +350,7 @@ export const CommandPalette = ({ open, onOpenChange }: CommandPaletteProps) => {
                             <span>·</span>
                             <span className={
                               property.sales_status === '販売中' ? 'text-green-600' :
-                              property.sales_status === '成約済' ? 'text-blue-600' : ''
+                              property.sales_status === '成約済み' ? 'text-blue-600' : ''
                             }>
                               {property.sales_status}
                             </span>
