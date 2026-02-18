@@ -185,8 +185,6 @@ export const ZoningMapField: React.FC = () => {
       const numLat = Number(lat);
       const numLng = Number(lng);
 
-      console.log('ZoningMap: Initializing at', numLat, numLng);
-
       const map = L.map(container, { scrollWheelZoom: true }).setView([numLat, numLng], 17);
       mapInstanceRef.current = map;
 

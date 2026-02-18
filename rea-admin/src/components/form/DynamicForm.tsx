@@ -1691,7 +1691,6 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                       type="button"
                       disabled={!!publicationValidationError}
                       onClick={async () => {
-                        console.log('Save button clicked');
                         try {
                           await submitForm();
                           // 成功時はエラー状態をクリア

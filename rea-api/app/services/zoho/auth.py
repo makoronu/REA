@@ -15,7 +15,7 @@ API上限（24時間ローリングウィンドウ）:
 import os
 import httpx
 from typing import Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 # .envファイルを明示的に読み込む
@@ -88,7 +88,7 @@ class ZohoAuth:
             # アクセストークンをキャッシュ
             self._access_token = data.get("access_token")
             expires_in = data.get("expires_in", 3600)
-            self._token_expires_at = datetime.now() + timedelta(seconds=expires_in - 60)
+            self._token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in - 60)
 
             return data
 
@@ -96,7 +96,7 @@ class ZohoAuth:
         """有効なアクセストークンを取得（必要に応じてリフレッシュ）"""
         # キャッシュが有効ならそれを返す
         if self._access_token and self._token_expires_at:
-            if datetime.now() < self._token_expires_at:
+            if datetime.now(timezone.utc) < self._token_expires_at:
                 return self._access_token
 
         # リフレッシュトークンでアクセストークンを取得
@@ -118,7 +118,7 @@ class ZohoAuth:
 
             self._access_token = data.get("access_token")
             expires_in = data.get("expires_in", 3600)
-            self._token_expires_at = datetime.now() + timedelta(seconds=expires_in - 60)
+            self._token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in - 60)
 
             # APIドメインを更新
             if "api_domain" in data:

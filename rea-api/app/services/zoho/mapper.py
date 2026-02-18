@@ -8,7 +8,7 @@ DBテーブル（import_field_mappings, import_value_mappings）から
 """
 import json
 from typing import Dict, Any, Optional, List, Tuple
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import lru_cache
 
 
@@ -115,7 +115,7 @@ class MetaDrivenMapper:
         # ソースID保存（ZOHO用）
         if "id" in source_record:
             result["properties"]["zoho_id"] = str(source_record["id"])
-            result["properties"]["zoho_synced_at"] = datetime.now()
+            result["properties"]["zoho_synced_at"] = datetime.now(timezone.utc)
             result["properties"]["zoho_sync_status"] = "synced"
 
         # 各フィールドマッピングを適用
