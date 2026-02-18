@@ -230,7 +230,7 @@ def update_property_image(
                 SELECT id, property_id, image_type, file_path, file_url,
                        display_order, caption, is_public, uploaded_at
                 FROM property_images
-                WHERE id = :image_id
+                WHERE id = :image_id AND deleted_at IS NULL
             """),
             {"image_id": image_id}
         ).fetchone()

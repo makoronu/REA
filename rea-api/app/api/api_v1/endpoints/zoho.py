@@ -85,7 +85,7 @@ def _upsert_related_table(cur, table_name: str, property_id: int, data: dict):
         data["road_info"] = json.dumps(data["road_info"])
 
     # 既存レコードチェック
-    cur.execute(f"SELECT id FROM {table_name} WHERE property_id = %s", (property_id,))
+    cur.execute(f"SELECT id FROM {table_name} WHERE property_id = %s AND deleted_at IS NULL", (property_id,))
     existing = cur.fetchone()
 
     if existing:
@@ -336,7 +336,7 @@ async def import_properties(request: ZohoImportRequest):
                 building_info_data = rea_data["building_info"]
 
                 # 3. 既存物件チェック
-                cur.execute("SELECT id FROM properties WHERE zoho_id = %s", (zoho_id,))
+                cur.execute("SELECT id FROM properties WHERE zoho_id = %s AND deleted_at IS NULL", (zoho_id,))
                 existing = cur.fetchone()
 
                 if existing:
@@ -586,7 +586,7 @@ async def retry_failed_imports():
                 land_info_data = rea_data["land_info"]
                 building_info_data = rea_data["building_info"]
 
-                cur.execute("SELECT id FROM properties WHERE zoho_id = %s", (zoho_id,))
+                cur.execute("SELECT id FROM properties WHERE zoho_id = %s AND deleted_at IS NULL", (zoho_id,))
                 existing = cur.fetchone()
 
                 if existing:

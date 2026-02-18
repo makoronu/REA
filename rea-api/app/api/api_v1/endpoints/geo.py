@@ -507,7 +507,7 @@ async def set_property_nearest_stations(
     try:
         # 物件の緯度経度を取得
         cur.execute("""
-            SELECT latitude, longitude FROM properties WHERE id = %s
+            SELECT latitude, longitude FROM properties WHERE id = %s AND deleted_at IS NULL
         """, (property_id,))
         row = cur.fetchone()
 
@@ -651,7 +651,7 @@ async def set_property_school_districts(property_id: int):
     try:
         # 物件の緯度経度を取得
         cur.execute("""
-            SELECT latitude, longitude FROM properties WHERE id = %s
+            SELECT latitude, longitude FROM properties WHERE id = %s AND deleted_at IS NULL
         """, (property_id,))
         row = cur.fetchone()
 
@@ -995,7 +995,7 @@ async def set_property_zoning(property_id: int):
     try:
         # 物件の緯度経度を取得
         cur.execute("""
-            SELECT latitude, longitude FROM properties WHERE id = %s
+            SELECT latitude, longitude FROM properties WHERE id = %s AND deleted_at IS NULL
         """, (property_id,))
         row = cur.fetchone()
 

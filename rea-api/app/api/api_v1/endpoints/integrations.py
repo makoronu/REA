@@ -131,6 +131,7 @@ async def get_sync_status(limit: int = 100, offset: int = 0):
                 p.zoho_synced_at,
                 p.zoho_sync_status
             FROM properties p
+            WHERE p.deleted_at IS NULL
             ORDER BY p.updated_at DESC
             LIMIT %s OFFSET %s
         """, (limit, offset))
@@ -165,7 +166,7 @@ async def get_sync_status(limit: int = 100, offset: int = 0):
             })
 
         # 総件数
-        cur.execute("SELECT COUNT(*) FROM properties")
+        cur.execute("SELECT COUNT(*) FROM properties WHERE deleted_at IS NULL")
         total = cur.fetchone()[0]
 
         return {
@@ -182,11 +183,11 @@ async def get_sync_summary():
     """同期状態サマリーを取得"""
     with READatabase.cursor() as (cur, conn):
         # 総物件数
-        cur.execute("SELECT COUNT(*) FROM properties")
+        cur.execute("SELECT COUNT(*) FROM properties WHERE deleted_at IS NULL")
         total = cur.fetchone()[0]
 
         # ZOHO同期済み
-        cur.execute("SELECT COUNT(*) FROM properties WHERE zoho_id IS NOT NULL")
+        cur.execute("SELECT COUNT(*) FROM properties WHERE zoho_id IS NOT NULL AND deleted_at IS NULL")
         zoho_synced = cur.fetchone()[0]
 
         # アクティブな連携先

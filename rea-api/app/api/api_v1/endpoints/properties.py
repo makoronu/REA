@@ -440,6 +440,7 @@ def get_contractor_contacts(request: Request, db: Session = Depends(get_db)):
             COUNT(id) as property_count
         FROM properties
         WHERE contractor_company_name IS NOT NULL
+        AND deleted_at IS NULL
         GROUP BY
             contractor_company_name,
             contractor_contact_person,

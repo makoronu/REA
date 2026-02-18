@@ -835,7 +835,7 @@ async def apply_touki_to_property(request: ApplyToukiRequest):
 
         # propertiesのremarksを更新（追記）
         if remarks_parts:
-            cur.execute("SELECT remarks FROM properties WHERE id = %s", (request.property_id,))
+            cur.execute("SELECT remarks FROM properties WHERE id = %s AND deleted_at IS NULL", (request.property_id,))
             current_remarks = cur.fetchone()[0] or ''
             new_remarks = current_remarks
             if new_remarks and not new_remarks.endswith('\n'):

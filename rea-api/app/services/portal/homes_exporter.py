@@ -306,9 +306,9 @@ class HomesExporter:
                 bi.building_manager, bi.management_type, bi.management_association,
                 bi.room_floor, bi.room_count
             FROM properties p
-            LEFT JOIN land_info li ON p.id = li.property_id
-            LEFT JOIN building_info bi ON p.id = bi.property_id
-            WHERE p.id IN ({placeholders})
+            LEFT JOIN land_info li ON p.id = li.property_id AND li.deleted_at IS NULL
+            LEFT JOIN building_info bi ON p.id = bi.property_id AND bi.deleted_at IS NULL
+            WHERE p.id IN ({placeholders}) AND p.deleted_at IS NULL
         """, property_ids)
 
         columns = [desc[0] for desc in cur.description]
