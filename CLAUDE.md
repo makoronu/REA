@@ -50,6 +50,7 @@
     - config.py: 未使用コード削除（SECRET_KEY, BACKEND_CORS_ORIGINS）
   - テスト依頼書: docs/test_requests/2026-02-19_seg12_server_security.md
   - コミット: a17714f
+  - 本番: デプロイ済み
 
 ### 今日完了した作業（2026-02-17）
 
