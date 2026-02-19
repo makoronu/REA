@@ -25,8 +25,6 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://realestateautomation.net",
-        "http://localhost:5173",
-        "http://localhost:8005",
     ],
     allow_credentials=True,
     allow_methods=["*"],

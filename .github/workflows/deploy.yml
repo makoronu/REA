@@ -56,6 +56,7 @@ jobs:
             echo ""
             echo "=== 4/7 設定ファイル復元 ==="
             cp -f /tmp/env_backup .env || true
+            chmod 600 .env
             cp -f /tmp/env_production_backup rea-admin/.env.production || true
             echo "完了"
 
