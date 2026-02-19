@@ -4,7 +4,7 @@ REA不動産業務専用ユーティリティ
 """
 
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 
@@ -163,7 +163,7 @@ def calculate_property_age(construction_year: Optional[int]) -> Optional[int]:
     if construction_year is None:
         return None
 
-    current_year = datetime.now().year
+    current_year = datetime.now(timezone.utc).year
     age = current_year - construction_year
     return max(0, age)  # 負の値にはならない
 
@@ -389,7 +389,7 @@ def format_building_age(construction_date) -> str:
         # date or datetime
         year = construction_date.year
 
-    current_year = datetime.now().year
+    current_year = datetime.now(timezone.utc).year
     age = current_year - year
     wareki = format_wareki_year(year)
     return f"築{age}年（{wareki}築）"

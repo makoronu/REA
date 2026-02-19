@@ -964,7 +964,7 @@ async def delete_touki_import(import_id: int):
         if not row:
             raise ResourceNotFound("登記インポート", import_id)
 
-        cur.execute("UPDATE touki_imports SET deleted_at = NOW() WHERE id = %s", (import_id,))
+        cur.execute("UPDATE touki_imports SET deleted_at = NOW() WHERE id = %s AND deleted_at IS NULL", (import_id,))
 
         # ファイルは論理削除後も保持（復元可能性のため）
         # 物理削除が必要な場合は別途クリーンアップジョブで対応

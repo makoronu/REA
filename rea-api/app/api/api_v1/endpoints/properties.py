@@ -48,6 +48,11 @@ def get_status_trigger_codes(db: Session, trigger_type: str) -> List[int]:
     Returns:
         [8, 9, 10] 等（空リストの場合は連動しない）
     """
+    VALID_TRIGGER_TYPES = {"triggers_unpublish", "triggers_pre_check"}
+    if trigger_type not in VALID_TRIGGER_TYPES:
+        logger.error(f"Invalid trigger_type: {trigger_type}")
+        return []
+
     try:
         query = text(f"""
             SELECT mo.option_code
