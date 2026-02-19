@@ -45,7 +45,8 @@
   - fill_dummy_property.py: ダミーデータからゴーストカラム削除
   - テスト依頼書: docs/test_requests/2026-02-17_seg13a_ghost_column_code_cleanup.md
   - コミット: 1ec3ca9
-  - 次: Seg 13bでDB物理削除（デプロイ後）
+  - 本番: デプロイ済み
+  - 次: Seg 13bでDB物理削除
 
 ### 今日完了した作業（2026-02-19）
 
