@@ -36,32 +36,32 @@ jobs:
             cd /opt/REA
 
             echo ""
-            echo "=== 1/7 設定ファイルバックアップ ==="
+            echo "=== 1/8 設定ファイルバックアップ ==="
             cp -f .env /tmp/env_backup || true
             cp -f rea-admin/.env.production /tmp/env_production_backup || true
             echo "完了"
 
             echo ""
-            echo "=== 2/7 DBバックアップ ==="
+            echo "=== 2/8 DBバックアップ ==="
             BACKUP_FILE="/tmp/rea_backup_$(date +%Y%m%d_%H%M%S).sql"
             sudo -u postgres pg_dump real_estate_db > $BACKUP_FILE
             echo "バックアップ: $BACKUP_FILE"
 
             echo ""
-            echo "=== 3/7 コード更新 ==="
+            echo "=== 3/8 コード更新 ==="
             git fetch origin main
             git reset --hard origin/main
             echo "完了"
 
             echo ""
-            echo "=== 4/7 設定ファイル復元 ==="
+            echo "=== 4/8 設定ファイル復元 ==="
             cp -f /tmp/env_backup .env || true
             chmod 600 .env
             cp -f /tmp/env_production_backup rea-admin/.env.production || true
             echo "完了"
 
             echo ""
-            echo "=== 5/7 フロントエンドビルド ==="
+            echo "=== 5/8 フロントエンドビルド ==="
             cd rea-admin
             npm install --legacy-peer-deps
             npm run build
@@ -75,7 +75,8 @@ jobs:
 
             echo ""
             echo "=== 7/8 Geo API再起動 ==="
-            if systemctl is-enabled rea-geo >/dev/null 2>&1; then
+            GEO_ENABLED=$(systemctl is-enabled rea-geo 2>/dev/null || true)
+            if [ "$GEO_ENABLED" = "enabled" ]; then
               sudo systemctl restart rea-geo
               echo "完了"
             else
