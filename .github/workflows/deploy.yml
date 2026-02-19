@@ -75,8 +75,7 @@ jobs:
 
             echo ""
             echo "=== 7/8 Geo API再起動 ==="
-            GEO_ENABLED=$(systemctl is-enabled rea-geo 2>/dev/null || true)
-            if [ "$GEO_ENABLED" = "enabled" ]; then
+            if [ -f /etc/systemd/system/rea-geo.service ]; then
               sudo systemctl restart rea-geo
               echo "完了"
             else
