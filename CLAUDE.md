@@ -420,6 +420,8 @@
 
 | タスク | ファイル | 状態 |
 |--------|---------|------|
+| Geo API分離（3サービス化） | `docs/roadmap_geo_api_separation.md` | 🔧計画中 |
+| UX改善（geo系ポップアップ化等） | `docs/roadmap_ux_improvements.md` | 📋未着手 |
 | 該当なし対応 | `docs/roadmap_publication_validation_none_option.md` | ✅デプロイ完了 |
 | ハードコーディング撲滅 | `docs/roadmap_hardcoding_elimination.md` | ✅デプロイ完了 |
 | デプロイ 2026-01-04 | `docs/roadmap_deploy_20260104.md` | ✅完了 |
