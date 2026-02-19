@@ -31,11 +31,18 @@
 | 項目 | 内容 |
 |------|------|
 | 作業中 | なし |
-| 完了 | Seg 10b: バックエンドハードコード排除+未使用コード削除、Seg 10a: フロント ハードコード排除+ZONE_COLORS+準備中バグ修正、Seg 9: deleted_at全コードベース修正(14件)、Seg 8b: 定数整理・ハードコード排除、Seg 8a: console.log削除+zoho datetime修正、Seg 7: naive datetime統一、Seg 6: deleted_at漏れ修正、Seg 4/5: エラー表示改善・コード品質修正、Seg 3: ロジックバグ修正、Seg 2: データ整合性修正、Seg 1: セキュリティ修正、Seg C: フロント定数集約、Seg B: N+1解消(validator+geo)、Seg A: touki.pyログ+N+1解消、物件画像保存機能、最寄駅なし/バス停なしUI、システム設定画面、間取り不明、Googleジオコーディング |
+| 完了 | Seg 11: deleted_at漏れ+naive datetime+SQLi防御、Seg 10b: バックエンドハードコード排除+未使用コード削除、Seg 10a: フロント ハードコード排除+ZONE_COLORS+準備中バグ修正、Seg 9: deleted_at全コードベース修正(14件)、Seg 8b: 定数整理・ハードコード排除、Seg 8a: console.log削除+zoho datetime修正、Seg 7: naive datetime統一、Seg 6: deleted_at漏れ修正、Seg 4/5: エラー表示改善・コード品質修正、Seg 3: ロジックバグ修正、Seg 2: データ整合性修正、Seg 1: セキュリティ修正、Seg C: フロント定数集約、Seg B: N+1解消(validator+geo)、Seg A: touki.pyログ+N+1解消、物件画像保存機能、最寄駅なし/バス停なしUI、システム設定画面、間取り不明、Googleジオコーディング |
 | 残り | HOMES入稿、ZOHO画像同期 |
 | 更新 | 2026-02-17 |
 
 ### 今日完了した作業（2026-02-17）
+
+- **Seg 11: deleted_at漏れ+naive datetime+SQLi防御**
+  - touki.py:967: UPDATE文にAND deleted_at IS NULL追加
+  - real_estate_utils.py:166,392: datetime.now()→datetime.now(timezone.utc)
+  - properties.py:51-55: trigger_typeホワイトリスト検証追加
+  - テスト依頼書: docs/test_requests/2026-02-17_seg11_bugfix_security.md
+  - コミット: f57f91b
 
 - **Seg 10b: バックエンドハードコード排除+未使用コード削除**
   - properties.py: 公開ステータス文字列3箇所→モジュールレベル定数（PUB_STATUS_*）
