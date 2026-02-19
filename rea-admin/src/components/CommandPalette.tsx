@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { propertyService } from '../services/propertyService';
 import { metadataService } from '../services/metadataService';
 import { Property } from '../types/property';
-import { parseJapanesePrice, formatPrice } from '../constants';
+import { parseJapanesePrice, formatPrice, SALES_STATUS } from '../constants';
 import { STORAGE_KEYS } from '../constants/storage';
 
 // フィルターオプションの型
@@ -349,8 +349,8 @@ export const CommandPalette = ({ open, onOpenChange }: CommandPaletteProps) => {
                           <>
                             <span>·</span>
                             <span className={
-                              property.sales_status === '販売中' ? 'text-green-600' :
-                              property.sales_status === '成約済み' ? 'text-blue-600' : ''
+                              property.sales_status === SALES_STATUS.SELLING ? 'text-green-600' :
+                              property.sales_status === SALES_STATUS.SOLD ? 'text-blue-600' : ''
                             }>
                               {property.sales_status}
                             </span>

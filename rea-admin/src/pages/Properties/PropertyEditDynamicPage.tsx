@@ -5,7 +5,7 @@ import { propertyService } from '../../services/propertyService';
 import { Property } from '../../types/property';
 import { API_BASE_URL } from '../../config';
 import { API_PATHS } from '../../constants/apiPaths';
-import { MESSAGE_TIMEOUT_MS } from '../../constants';
+import { MESSAGE_TIMEOUT_MS, SALES_STATUS, PUBLICATION_STATUS } from '../../constants';
 
 export const PropertyEditDynamicPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -372,8 +372,8 @@ export const PropertyEditDynamicPage: React.FC = () => {
           key={isNew ? 'new' : `edit-${id}-${property ? 'loaded' : 'loading'}`}
           onSubmit={handleSubmit}
           defaultValues={property || {
-            sales_status: '準備中',
-            publication_status: '非公開',
+            sales_status: SALES_STATUS.PREPARING,
+            publication_status: PUBLICATION_STATUS.PRIVATE,
             price_status: '1',
             tax_type: '税込',
             is_residential: true,

@@ -93,8 +93,8 @@ const DEFAULT_FILTERS: FilterState = {
 
 const DEFAULT_VIEWS: SavedView[] = [
   { id: 'all', name: 'すべて', columns: DEFAULT_COLUMNS, filters: DEFAULT_FILTERS, sortBy: 'id', sortOrder: 'desc' },
-  { id: 'selling', name: '販売中', columns: DEFAULT_COLUMNS, filters: { ...DEFAULT_FILTERS, sales_status: '販売中' }, sortBy: 'id', sortOrder: 'desc' },
-  { id: 'published', name: '公開中', columns: DEFAULT_COLUMNS, filters: { ...DEFAULT_FILTERS, publication_status: '公開' }, sortBy: 'id', sortOrder: 'desc' },
+  { id: 'selling', name: '販売中', columns: DEFAULT_COLUMNS, filters: { ...DEFAULT_FILTERS, sales_status: SALES_STATUS.SELLING }, sortBy: 'id', sortOrder: 'desc' },
+  { id: 'published', name: '公開中', columns: DEFAULT_COLUMNS, filters: { ...DEFAULT_FILTERS, publication_status: PUBLICATION_STATUS.PUBLIC }, sortBy: 'id', sortOrder: 'desc' },
 ];
 
 // メタデータ駆動: ステータスオプションはAPIから取得（filterOptionsを使用）
@@ -677,7 +677,7 @@ const PropertiesPage = () => {
         return typeId ? (propertyTypeMap[typeId] || typeId) : '-';
       }
       case 'sales_status': return property.sales_status || '未設定';
-      case 'publication_status': return property.publication_status || '非公開';
+      case 'publication_status': return property.publication_status || PUBLICATION_STATUS.PRIVATE;
       case 'prefecture': return property.prefecture || '-';
       case 'city': return property.city || '-';
       case 'address_detail': return property.address_detail || '-';
@@ -1214,7 +1214,7 @@ const PropertiesPage = () => {
                               <button
                                 onClick={(e) => openStatusDropdown(e, property.id, 'sales_status')}
                                 className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-gray-300 transition-all
-                                  ${value === '販売中' ? 'bg-green-50 text-green-700' : value === '成約済み' ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-600'}`}
+                                  ${value === SALES_STATUS.SELLING ? 'bg-green-50 text-green-700' : value === SALES_STATUS.SOLD ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-600'}`}
                               >
                                 {value}
                               </button>
@@ -1222,7 +1222,7 @@ const PropertiesPage = () => {
                               <button
                                 onClick={(e) => openStatusDropdown(e, property.id, 'publication_status')}
                                 className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-gray-300 transition-all
-                                  ${value === '公開' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'}`}
+                                  ${value === PUBLICATION_STATUS.PUBLIC ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'}`}
                               >
                                 {value}
                               </button>
@@ -1290,12 +1290,12 @@ const PropertiesPage = () => {
               </div>
               <div className="flex gap-2 mb-2">
                 <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full
-                  ${property.sales_status === '販売中' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                  ${property.sales_status === SALES_STATUS.SELLING ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
                   {property.sales_status || '未設定'}
                 </span>
                 <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full
-                  ${property.publication_status === '公開' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                  {property.publication_status || '非公開'}
+                  ${property.publication_status === PUBLICATION_STATUS.PUBLIC ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                  {property.publication_status || PUBLICATION_STATUS.PRIVATE}
                 </span>
               </div>
               <div className="text-sm text-gray-500">

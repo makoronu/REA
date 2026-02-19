@@ -8,30 +8,12 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { API_BASE_URL } from '../../config';
 import { API_PATHS } from '../../constants/apiPaths';
-import { MAP_TILES } from '../../constants';
+import { MAP_TILES, ZONE_COLORS } from '../../constants';
 
 interface RegulationMapProps {
   lat: number;
   lng: number;
 }
-
-// 用途地域の色マッピング（youto_id → 色）
-const ZONE_COLORS: Record<number, string> = {
-  1: '#00FF00',   // 第一種低層住居専用
-  2: '#80FF00',   // 第二種低層住居専用
-  3: '#FFFF00',   // 第一種中高層住居専用
-  4: '#FFCC00',   // 第二種中高層住居専用
-  5: '#FF9900',   // 第一種住居
-  6: '#FF6600',   // 第二種住居
-  7: '#FF3300',   // 準住居
-  8: '#FF00FF',   // 近隣商業
-  9: '#FF0000',   // 商業
-  10: '#00FFFF',  // 準工業
-  11: '#0080FF',  // 工業
-  12: '#0000FF',  // 工業専用
-  21: '#90EE90',  // 田園住居
-  99: '#CCCCCC',  // 無指定
-};
 
 // 用途地域凡例
 const ZONE_LEGEND = [
