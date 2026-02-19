@@ -75,12 +75,7 @@ jobs:
 
             echo ""
             echo "=== 7/8 Geo API再起動 ==="
-            if [ -f /etc/systemd/system/rea-geo.service ]; then
-              sudo systemctl restart rea-geo
-              echo "完了"
-            else
-              echo "rea-geo未設定（スキップ）"
-            fi
+            test -f /etc/systemd/system/rea-geo.service && sudo systemctl restart rea-geo && echo "完了" || echo "rea-geo未設定（スキップ）"
 
             echo ""
             echo "=== 8/8 ヘルスチェック ==="
