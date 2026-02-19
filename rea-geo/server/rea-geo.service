@@ -1,0 +1,15 @@
+[Unit]
+Description=REA Geo API
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/REA/rea-geo
+Environment=PYTHONPATH=/opt/REA
+ExecStart=/opt/REA/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8007
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -69,19 +69,35 @@ jobs:
             echo "完了"
 
             echo ""
-            echo "=== 6/7 API再起動 ==="
+            echo "=== 6/8 API再起動 ==="
             sudo systemctl restart rea-api
             echo "完了"
 
             echo ""
-            echo "=== 7/7 ヘルスチェック ==="
-            sleep 3
+            echo "=== 7/8 Geo API再起動 ==="
+            if systemctl is-enabled rea-geo >/dev/null 2>&1; then
+              sudo systemctl restart rea-geo
+              echo "完了"
+            else
+              echo "rea-geo未設定（スキップ）"
+            fi
+
+            echo ""
+            echo "=== 8/8 ヘルスチェック ==="
+            sleep 5
             HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8005/health)
             if [ "$HTTP_CODE" = "200" ]; then
-              echo "ヘルスチェック OK (HTTP $HTTP_CODE)"
+              echo "Core API ヘルスチェック OK (HTTP $HTTP_CODE)"
             else
-              echo "ヘルスチェック失敗 (HTTP $HTTP_CODE)"
+              echo "Core API ヘルスチェック失敗 (HTTP $HTTP_CODE)"
               exit 1
+            fi
+
+            GEO_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8007/health 2>/dev/null || echo "000")
+            if [ "$GEO_CODE" = "200" ]; then
+              echo "Geo API ヘルスチェック OK (HTTP $GEO_CODE)"
+            else
+              echo "Geo API ヘルスチェック: $GEO_CODE（未設定時はスキップ）"
             fi
 
             echo ""
