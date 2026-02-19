@@ -314,7 +314,6 @@ export interface MasterOption {
   allows_publication?: boolean;
   linked_status?: string;
   ui_color?: string;
-  shows_contractor?: boolean;
   category_icon?: string;
   metadata?: Record<string, any>;
 }
@@ -338,9 +337,6 @@ export interface StatusSettings {
       label: string;
       ui_color?: string;
     }[];
-  };
-  transaction_type: {
-    contractor_required: string[];
   };
 }
 

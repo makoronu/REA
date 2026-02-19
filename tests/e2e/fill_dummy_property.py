@@ -22,37 +22,18 @@ DUMMY_DATA = {
     "property_type": "一戸建て",
     "is_new_construction": False,  # 中古
     "property_name": "北見市北進町 中古一戸建て",
-    "property_name_kana": "きたみしほくしんちょう ちゅうこいっこだて",
     "company_property_number": "REA-2024-001",
-    "affiliated_group": "本店",
 
     # 価格
     "sale_price": "12000000",
     "price_status": "確定",  # radio
     "tax_type": "税込",  # radio
-    "parking_fee": "0",
 
     # 取引
     "current_status": "販売中",
     "delivery_timing": "即入居可",
     "transaction_type": "売主",
     "brokerage_fee": "396000",
-    "commission_split_ratio": "50",
-    "brokerage_contract_date": "2024-12-01",
-    "listing_start_date": "2024-12-01",
-    "listing_confirmation_date": "2024-12-14",
-
-    # 元請会社
-    "contractor_company_name": "サンプル不動産株式会社",
-    "contractor_contact_person": "山田太郎",
-    "contractor_phone": "0157-23-4567",
-    "contractor_email": "yamada@sample-fudosan.co.jp",
-    "contractor_address": "北海道北見市中央町1-1-1",
-    "contractor_license_number": "北海道知事(1)第12345号",
-
-    # 担当
-    "property_manager_name": "担当: 佐藤",
-    "internal_memo": "【内部メモ】オーナー様は平日午前中のみ対応可能。駐車場2台分あり。",
 
     # === 住所・立地 ===
     "postal_code": "090-0061",

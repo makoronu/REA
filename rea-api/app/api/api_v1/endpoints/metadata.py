@@ -696,7 +696,6 @@ def get_options_by_category(
     - allows_publication: 公開可能か
     - linked_status: 連動する公開ステータス
     - ui_color: UI表示色（Tailwindクラス）
-    - shows_contractor: 元請会社表示が必要か
     """
     try:
         query = text("""
@@ -708,7 +707,6 @@ def get_options_by_category(
                 mo.allows_publication,
                 mo.linked_status,
                 mo.ui_color,
-                mo.shows_contractor,
                 mo.metadata,
                 mc.icon as category_icon
             FROM master_options mo
@@ -739,8 +737,6 @@ def get_options_by_category(
                 opt["linked_status"] = row.linked_status
             if row.ui_color:
                 opt["ui_color"] = row.ui_color
-            if row.shows_contractor is not None:
-                opt["shows_contractor"] = row.shows_contractor
             if row.category_icon:
                 opt["category_icon"] = row.category_icon
             # metadataがあれば展開
@@ -872,24 +868,6 @@ def get_status_settings(db: Session = Depends(dependencies.get_db)) -> Dict[str,
         result["publication_status"] = {
             "default": pub_default,
             "options": pub_options,
-        }
-
-        # 取引形態設定（元請会社表示が必要な形態）
-        trans_query = text("""
-            SELECT mo.option_value
-            FROM master_options mo
-            JOIN master_categories mc ON mo.category_id = mc.id
-            WHERE mc.category_code = 'transaction_type'
-            AND mo.is_active = true
-            AND mo.deleted_at IS NULL
-            AND mo.shows_contractor = true
-            ORDER BY mo.display_order
-        """)
-        trans_result = db.execute(trans_query)
-        contractor_required = [row.option_value for row in trans_result]
-
-        result["transaction_type"] = {
-            "contractor_required": contractor_required,
         }
 
         return result
