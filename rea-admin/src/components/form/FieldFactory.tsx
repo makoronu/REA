@@ -1050,8 +1050,8 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
 
   return (
     <div style={{
-      marginBottom: '32px',
-      padding: '24px',
+      marginBottom: '20px',
+      padding: '16px',
       backgroundColor: '#FAFAFA',
       borderRadius: '12px',
     }}>
@@ -1163,8 +1163,8 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(2, 1fr)',
-              gap: '24px',
-              marginBottom: isLocationGroup || jsonFields.length > 0 || checkboxFields.length > 0 || textareaFields.length > 0 ? '24px' : 0,
+              gap: '16px',
+              marginBottom: isLocationGroup || jsonFields.length > 0 || checkboxFields.length > 0 || textareaFields.length > 0 ? '16px' : 0,
             }}>
               {filteredRegularFields.map(column => (
                 <div key={column.column_name}>

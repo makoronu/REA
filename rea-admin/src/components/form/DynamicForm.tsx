@@ -1212,7 +1212,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
   // ローディング - スケルトン
   if (isLoading) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '24px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '16px' }}>
         <div className="skeleton" style={{ width: '200px', height: '32px' }} />
         <div style={{ display: 'flex', gap: '12px' }}>
           {[1, 2, 3, 4].map(i => (
@@ -1249,7 +1249,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
     return (
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 16px' }}>
         <FormProvider {...form}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {Object.entries(groupedColumns).map(([groupName, groupColumns]) => (
               <FieldGroup
                 key={groupName}
@@ -1823,7 +1823,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
             <div style={{
               backgroundColor: '#ffffff',
               borderRadius: '12px',
-              padding: '24px',
+              padding: '16px',
               marginTop: '16px',
               minHeight: '400px',
               boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
@@ -1836,7 +1836,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                   {/* 特殊タブ：法令制限 */}
                   {tabGroup.tableName === 'regulations' ? (
                     <>
-                      <div style={{ marginBottom: '24px' }}>
+                      <div style={{ marginBottom: '12px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           <span style={{ fontSize: '32px' }}>{tabGroup.tableIcon}</span>
                           <div>
@@ -1854,7 +1854,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                   ) : tabGroup.tableName === 'registries' ? (
                     /* 特殊タブ：登記情報 */
                     <>
-                      <div style={{ marginBottom: '24px' }}>
+                      <div style={{ marginBottom: '12px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           <span style={{ fontSize: '32px' }}>{tabGroup.tableIcon}</span>
                           <div>
@@ -1888,7 +1888,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                     /* 通常タブ */
                     <>
                       {/* タブタイトル */}
-                      <div style={{ marginBottom: '24px' }}>
+                      <div style={{ marginBottom: '12px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           <span style={{ fontSize: '32px' }}>{tabGroup.tableIcon}</span>
                           <div>
@@ -1903,7 +1903,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                       </div>
 
                       {/* フィールドグループ */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                         {Object.entries(tabGroup.groups).map(([groupName, groupColumns]) => {
                           // 元請会社グループは仲介（3:専任媒介, 4:一般媒介, 5:専属専任）の場合のみ表示
                           if (groupName === '元請会社') {
@@ -1960,7 +1960,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
 
             {/* ナビゲーションボタン（保存ボタンなし） */}
             <div style={{
-              marginTop: '24px',
+              marginTop: '12px',
               padding: '16px',
               backgroundColor: '#F9FAFB',
               borderRadius: '12px',
