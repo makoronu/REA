@@ -30,8 +30,8 @@
 
 | 項目 | 内容 |
 |------|------|
-| 作業中 | Seg 13b: ゴーストカラムDB物理削除（デプロイ後に実施） |
-| 完了 | Seg 13a: ゴーストカラムコード参照削除、Seg 12: サーバーセキュリティ強化、Seg 11: deleted_at漏れ+naive datetime+SQLi防御、Seg 10b: バックエンドハードコード排除+未使用コード削除、Seg 10a: フロント ハードコード排除+ZONE_COLORS+準備中バグ修正、Seg 9: deleted_at全コードベース修正(14件)、Seg 8b: 定数整理・ハードコード排除、Seg 8a: console.log削除+zoho datetime修正、Seg 7: naive datetime統一、Seg 6: deleted_at漏れ修正、Seg 4/5: エラー表示改善・コード品質修正、Seg 3: ロジックバグ修正、Seg 2: データ整合性修正、Seg 1: セキュリティ修正、Seg C: フロント定数集約、Seg B: N+1解消(validator+geo)、Seg A: touki.pyログ+N+1解消、物件画像保存機能、最寄駅なし/バス停なしUI、システム設定画面、間取り不明、Googleジオコーディング |
+| 作業中 | なし |
+| 完了 | Seg 13b: ゴーストカラムDB物理削除(25カラム)、Seg 13a: ゴーストカラムコード参照削除、Seg 12: サーバーセキュリティ強化、Seg 11: deleted_at漏れ+naive datetime+SQLi防御、Seg 10b: バックエンドハードコード排除+未使用コード削除、Seg 10a: フロント ハードコード排除+ZONE_COLORS+準備中バグ修正、Seg 9: deleted_at全コードベース修正(14件)、Seg 8b: 定数整理・ハードコード排除、Seg 8a: console.log削除+zoho datetime修正、Seg 7: naive datetime統一、Seg 6: deleted_at漏れ修正、Seg 4/5: エラー表示改善・コード品質修正、Seg 3: ロジックバグ修正、Seg 2: データ整合性修正、Seg 1: セキュリティ修正、Seg C: フロント定数集約、Seg B: N+1解消(validator+geo)、Seg A: touki.pyログ+N+1解消、物件画像保存機能、最寄駅なし/バス停なしUI、システム設定画面、間取り不明、Googleジオコーディング |
 | 残り | HOMES入稿、ZOHO画像同期 |
 | 更新 | 2026-02-19 |
 
@@ -47,6 +47,13 @@
   - コミット: 1ec3ca9
   - 本番: デプロイ済み
   - 次: Seg 13bでDB物理削除
+
+- **Seg 13b: ゴーストカラムDB物理削除**
+  - properties: 24カラムDROP（property_name_kana, property_name_public, external_property_id, affiliated_group, brokerage_contract_date, listing_start_date, listing_confirmation_date, internal_memo, property_url, contractor_company_name, contractor_address, contractor_contact_person, contractor_license_number, management_fee, repair_reserve_fund, repair_reserve_fund_base, parking_fee, housing_insurance, investment_property, commission_split_ratio, priority_score, property_manager_name, contractor_email, contractor_phone）
+  - land_info: 1カラムDROP（fire_prevention_district）
+  - column_labels: 25行DELETE
+  - バックアップ: /tmp/rea_backup_seg13b_20260219_124113.sql
+  - 本番: 実行済み
 
 ### 今日完了した作業（2026-02-19）
 
