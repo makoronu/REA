@@ -14,15 +14,6 @@ export const SALES_STATUS = {
   PREPARING: '販売準備',
 } as const;
 
-// 販売中とみなすステータス
-export const ACTIVE_SALES_STATUSES = [SALES_STATUS.SELLING] as const;
-// 非公開にすべきステータス
-export const INACTIVE_SALES_STATUSES = [
-  SALES_STATUS.SOLD,
-  SALES_STATUS.WITHDRAWN,
-  SALES_STATUS.ENDED,
-] as const;
-
 // === 公開ステータス ===
 export const PUBLICATION_STATUS = {
   PUBLIC: '公開',
@@ -99,7 +90,6 @@ export const ZONE_COLORS: Record<number, string> = {
 
 // === 地理情報 ===
 export const DEFAULT_SEARCH_RADIUS_M = 2000;  // デフォルト検索半径（メートル）
-export const WALK_SPEED_M_PER_MIN = 80;       // 徒歩速度（メートル/分）
 
 // === 検索パラメータ設定 ===
 export const GEO_SEARCH_CONFIG = {
@@ -180,49 +170,3 @@ export const TAB_GROUPS: {
   /** 法令制限タブで表示（land_infoから除外） */
   regulationFromLandInfo: ['法規制（自動取得）', 'ハザード情報（自動取得）'],
 };
-
-/**
- * タブ情報定義
- */
-export const TAB_INFO = {
-  location: {
-    tableName: 'properties_location',
-    label: '所在地・周辺情報',
-    icon: '📍',
-  },
-  basicInfo: {
-    tableName: 'properties_basic',
-    label: '基本情報',
-    icon: '🏠',
-  },
-  priceDeal: {
-    tableName: 'properties_price',
-    label: '価格・取引',
-    icon: '💰',
-  },
-  management: {
-    tableName: 'properties_management',
-    label: '管理・費用',
-    icon: '📋',
-  },
-  landInfo: {
-    tableName: 'land_info',
-    label: '土地情報',
-    icon: '🗺️',
-  },
-  buildingInfo: {
-    tableName: 'building_info',
-    label: '建物情報',
-    icon: '🏗️',
-  },
-  regulation: {
-    tableName: 'properties_regulation',
-    label: '法令制限',
-    icon: '📜',
-  },
-  registry: {
-    tableName: 'properties_registry',
-    label: '登記情報',
-    icon: '📑',
-  },
-} as const;

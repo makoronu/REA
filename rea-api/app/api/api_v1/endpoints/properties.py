@@ -26,6 +26,13 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# 公開ステータス定数
+PUB_STATUS_PUBLIC = "公開"
+PUB_STATUS_PRIVATE = "非公開"
+PUB_STATUS_MEMBER = "会員公開"
+PUB_STATUS_PRE_CHECK = "公開前確認"
+VALID_PUBLICATION_STATUSES = [PUB_STATUS_PUBLIC, PUB_STATUS_PRIVATE, PUB_STATUS_MEMBER, PUB_STATUS_PRE_CHECK]
+
 
 # =============================================================================
 # DB設定読み込み関数（ステータス連動）
@@ -265,7 +272,6 @@ def update_property(
         raise HTTPException(status_code=400, detail="publication_statusをnullにすることはできません")
 
     # publication_statusの値バリデーション
-    VALID_PUBLICATION_STATUSES = ["公開", "非公開", "会員公開", "公開前確認"]
     if "publication_status" in property_data and property_data["publication_status"] is not None:
         if property_data["publication_status"] not in VALID_PUBLICATION_STATUSES:
             raise HTTPException(
@@ -290,12 +296,12 @@ def update_property(
             # 公開前確認連動（DB駆動）
             pre_check_codes = get_status_trigger_codes(db, 'triggers_pre_check')
             if sales_code in pre_check_codes:
-                property_data["publication_status"] = "公開前確認"
+                property_data["publication_status"] = PUB_STATUS_PRE_CHECK
             else:
                 # 非公開連動（DB駆動）
                 unpublish_codes = get_status_trigger_codes(db, 'triggers_unpublish')
                 if sales_code in unpublish_codes:
-                    property_data["publication_status"] = "非公開"
+                    property_data["publication_status"] = PUB_STATUS_PRIVATE
 
     # 自動計算: 坪単価・仲介手数料
     # マージしたデータから計算（更新データ優先）
