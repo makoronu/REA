@@ -43,6 +43,7 @@
   - properties.py:51-55: trigger_typeホワイトリスト検証追加
   - テスト依頼書: docs/test_requests/2026-02-17_seg11_bugfix_security.md
   - コミット: f57f91b
+  - 本番: デプロイ済み
 
 - **Seg 10b: バックエンドハードコード排除+未使用コード削除**
   - properties.py: 公開ステータス文字列3箇所→モジュールレベル定数（PUB_STATUS_*）
