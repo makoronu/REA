@@ -110,6 +110,10 @@ export const GEO_SEARCH_CONFIG = {
   PROPERTY_STATIONS: {
     LIMIT: 3,            // 物件に保存する最寄駅数
   },
+  // バス停設定（物件保存用）
+  PROPERTY_BUS_STOPS: {
+    LIMIT: 5,            // 物件に保存するバス停数
+  },
   // geoService用デフォルト
   API_DEFAULT: {
     LIMIT: 10,           // API呼び出しのデフォルトlimit
