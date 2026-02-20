@@ -54,6 +54,7 @@
   - Frontend: useMetadataForm.ts createZodSchemaでis_required+テキスト型フィールドにmin(1)バリデーション追加
   - メタデータ駆動: is_requiredフラグ + label_jaでエラーメッセージ自動生成
   - テスト依頼書: docs/test_requests/2026-02-20_seg17b_property_name_required.md
+  - 本番: デプロイ済み
 
 ### 今日完了した作業（2026-02-20 Seg 17a）
 
@@ -75,6 +76,7 @@
   - ImageUploader: alert()2箇所→ErrorBanner
   - useMetadataForm: alert()→onValidationErrorコールバック化
   - テスト依頼書: docs/test_requests/2026-02-20_seg17a_error_ui_improvement.md
+  - 本番: デプロイ済み
 
 ### 今日完了した作業（2026-02-20）
 
