@@ -458,9 +458,9 @@ export const GeoPanel: React.FC<GeoPanelProps> = ({ isOpen, onClose, schoolDistr
     if (results.busStops.length > 0) {
       const topBusStops = results.busStops.slice(0, GEO_SEARCH_CONFIG.PROPERTY_BUS_STOPS.LIMIT);
       const busData = topBusStops.map(bs => ({
-        name: bs.name,
+        bus_stop_name: bs.name,
+        line_name: (bs.routes || []).join('・'),
         walk_minutes: bs.walk_minutes,
-        routes: bs.routes,
       }));
       setValue('bus_stops', busData, { shouldDirty: true });
     }
@@ -468,11 +468,9 @@ export const GeoPanel: React.FC<GeoPanelProps> = ({ isOpen, onClose, schoolDistr
     // 施設（全件設定）
     if (results.facilities.length > 0) {
       const facilityData = results.facilities.map(f => ({
-        id: f.id,
-        name: f.name,
+        facility_name: f.name,
         category: f.category,
-        category_name: f.category_name,
-        address: f.address,
+        distance_meters: f.distance_meters || Math.round((f.walk_minutes || 0) * 80),
         walk_minutes: f.walk_minutes,
       }));
       setValue('nearby_facilities', facilityData, { shouldDirty: true });
