@@ -45,6 +45,24 @@
 
 - Seg 18完了後: HOMES入稿、ZOHO画像同期など残タスク
 
+### 今日完了した作業（2026-02-20 デプロイ: Seg 17c-1 + 17c-2 + 17c-3）
+
+- **デプロイ完了**（6コミット、フロントエンドのみ、DB変更なし）
+  - Seg 17c-1: Geoフィールド表示復元+LocationFieldマップ削除
+  - Seg 17c-2: GeoPanelマップウィザード化
+  - Seg 17c-3: RegulationPanel分離（法令制限タブ→モーダル化）
+  - 本番: GitHub Actions成功、ヘルスチェックOK
+
+### 今日完了した作業（2026-02-20 Seg 17c-3）
+
+- **Seg 17c-3: RegulationPanel分離**（コミット: 4abd666）
+  - RegulationTab.tsx削除（508行）
+  - RegulationPanel.tsx新規作成（325行、モーダル）
+  - DynamicForm.tsx: 法令制限タブ除去、土地情報タブに自動取得ボタン追加
+  - constants.ts: regulationFromLandInfo空配列化（法規制フィールドがland_infoタブに復帰）
+  - fetch直接使用→api.get()に統一
+  - テスト依頼書: docs/test_requests/2026-02-20_seg17c3_regulation_panel.md
+
 ### 今日完了した作業（2026-02-20 Seg 17c-2）
 
 - **Seg 17c-2: GeoPanelマップウィザード化**（コミット: 64f2e2a）
