@@ -47,6 +47,7 @@
   - constants.ts: TAB_GROUPS.location→['所在地']のみ、GEO_GROUPS定数追加
   - 所在地タブに「周辺情報を管理（学区・駅・バス・施設）」ボタン追加
   - テスト依頼書: docs/test_requests/2026-02-20_seg17c_geo_ui_separation.md
+  - 本番: デプロイ済み（GitHub Actions run #22212975611）
 
 ### 今日完了した作業（2026-02-20 Seg 17b）
 
