@@ -7,7 +7,7 @@ import { ColumnWithLabel, metadataService } from '../../services/metadataService
 import { API_PATHS } from '../../constants/apiPaths';
 import { api } from '../../services/api';
 import { AUTO_SAVE_DELAY_MS, TAB_GROUPS, PUBLICATION_STATUS, SALES_STATUS } from '../../constants';
-import { RegulationTab } from './RegulationTab';
+import { RegulationPanel } from './RegulationPanel';
 import { RegistryTab } from '../registry/RegistryTab';
 import ErrorBanner from '../ErrorBanner';
 import { GeoPanel } from './GeoPanel';
@@ -62,6 +62,8 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
   const [showValidationErrorModal, setShowValidationErrorModal] = useState(false);
   // Geo情報管理パネル
   const [isGeoPanelOpen, setIsGeoPanelOpen] = useState(false);
+  // 法令制限パネル
+  const [isRegulationPanelOpen, setIsRegulationPanelOpen] = useState(false);
 
   // ステータス色設定（メタデータ駆動）
   const [salesStatusConfig, setSalesStatusConfig] = useState<Record<string, { label: string; color: string; bg: string }>>({});
@@ -455,13 +457,6 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
           });
         }
 
-        // 法令制限タブを追加
-        tabGroups.push({
-          tableName: 'regulations',
-          tableLabel: '法令制限',
-          tableIcon: '⚖️',
-          groups: {} // 特殊タブ：RegulationTabコンポーネントを使用
-        });
         return;
       }
 
@@ -566,9 +561,6 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
         } else if (tab.tableName === 'building_info') {
           groupToTabIndex['建物情報'] = index;
           groupToTabIndex['建物'] = index;
-        } else if (tab.tableName === 'regulations') {
-          groupToTabIndex['法規制（自動取得）'] = index;
-          groupToTabIndex['ハザード情報（自動取得）'] = index;
         }
       });
 
@@ -843,25 +835,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                   key={tabGroup.tableName}
                   style={{ display: activeTab === index ? 'block' : 'none' }}
                 >
-                  {/* 特殊タブ：法令制限 */}
-                  {tabGroup.tableName === 'regulations' ? (
-                    <>
-                      <div style={{ marginBottom: '12px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <span style={{ fontSize: '32px' }}>{tabGroup.tableIcon}</span>
-                          <div>
-                            <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1A1A1A', margin: 0 }}>
-                              {tabGroup.tableLabel}
-                            </h2>
-                            <p style={{ fontSize: '13px', color: '#9CA3AF', margin: '4px 0 0' }}>
-                              用途地域・ハザード情報を自動取得
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                      <RegulationTab />
-                    </>
-                  ) : tabGroup.tableName === 'registries' ? (
+                  {tabGroup.tableName === 'registries' ? (
                     /* 特殊タブ：登記情報 */
                     <>
                       <div style={{ marginBottom: '12px' }}>
@@ -911,6 +885,34 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                           </div>
                         </div>
                       </div>
+
+                      {/* 土地情報タブの場合、法令制限自動取得ボタンを表示 */}
+                      {tabGroup.tableName === 'land_info' && (
+                        <div style={{ marginBottom: '16px' }}>
+                          <button
+                            type="button"
+                            onClick={() => setIsRegulationPanelOpen(true)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              padding: '12px 20px',
+                              backgroundColor: '#FFFBEB',
+                              border: '1px solid #FCD34D',
+                              borderRadius: '8px',
+                              cursor: 'pointer',
+                              fontSize: '14px',
+                              fontWeight: 500,
+                              color: '#92400E',
+                              width: '100%',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <span style={{ fontSize: '18px' }}>⚖️</span>
+                            法令制限を自動取得（用途地域・建ぺい率等）
+                          </button>
+                        </div>
+                      )}
 
                       {/* 所在地タブの場合、周辺情報自動取得ボタンを表示 */}
                       {tabGroup.tableName === 'properties_location' && (
@@ -1174,6 +1176,12 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
               isOpen={isGeoPanelOpen}
               onClose={() => setIsGeoPanelOpen(false)}
               schoolDistrictColumns={schoolDistrictColumns}
+            />
+
+            {/* 法令制限パネル（FormProvider内に配置） */}
+            <RegulationPanel
+              isOpen={isRegulationPanelOpen}
+              onClose={() => setIsRegulationPanelOpen(false)}
             />
           </div>
         </FormProvider>

@@ -174,6 +174,6 @@ export const TAB_GROUPS: {
   /** 除外グループ（ヘッダーや専用タブで表示） */
   excluded: ['ステータス', 'システム'],
 
-  /** 法令制限タブで表示（land_infoから除外） */
-  regulationFromLandInfo: ['法規制（自動取得）', 'ハザード情報（自動取得）'],
+  /** 法令制限（RegulationPanel経由で自動取得、フィールドはland_infoタブで表示） */
+  regulationFromLandInfo: [],
 };
