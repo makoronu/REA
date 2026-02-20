@@ -221,7 +221,7 @@ def create_property(request: Request, property_data: Dict[str, Any], db: Session
 
     # property_nameは必須
     if not property_data.get("property_name"):
-        raise HTTPException(status_code=400, detail="property_name is required")
+        raise HTTPException(status_code=400, detail="物件名は必須です")
 
     try:
         result = crud.create("properties", property_data)

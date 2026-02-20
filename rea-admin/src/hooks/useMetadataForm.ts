@@ -4,14 +4,27 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { metadataService, ColumnWithLabel, TableInfo } from '../services/metadataService';
 
+// テキスト型かどうか判定
+const isTextType = (dataType: string): boolean => {
+  return ['character varying', 'text', 'character', 'varchar'].includes(dataType.toLowerCase());
+};
+
 // バリデーションルールからZodスキーマを生成
-// 注意: 現在はバリデーションを緩くして、任意の値を許可（保守性のため）
+// メタデータ駆動: is_requiredフラグに基づき必須テキストフィールドのみ事前検証
+// それ以外のバリデーションはバックエンドで実施
 const createZodSchema = (columns: ColumnWithLabel[]): z.ZodObject<any> => {
   const schemaFields: Record<string, z.ZodTypeAny> = {};
 
   columns.forEach(column => {
-    // すべてのフィールドで任意の型を許可（バリデーションはバックエンドで実施）
-    schemaFields[column.column_name] = z.any().optional();
+    if (column.is_required && isTextType(column.data_type)) {
+      // 必須テキストフィールド: null/undefined→空文字変換後、空文字を禁止
+      schemaFields[column.column_name] = z.preprocess(
+        (val) => (val === null || val === undefined ? '' : val),
+        z.string().min(1, `${column.label_ja || column.column_name}は必須です`)
+      );
+    } else {
+      schemaFields[column.column_name] = z.any().optional();
+    }
   });
 
   return z.object(schemaFields).passthrough();
