@@ -144,7 +144,7 @@ export const parseJapanesePrice = (text: string): number | null => {
  * 各タブに含めるグループ名の配列
  * group_name は column_labels テーブルの値と一致させること
  */
-/** Geo関連グループ（GeoPanel内で表示、フォームタブから除外） */
+/** Geo関連グループ（将来サブスク制御用） */
 export const GEO_GROUPS: readonly string[] = ['学区', '電車・鉄道', 'バス', '周辺施設'];
 
 export const TAB_GROUPS: {
@@ -155,8 +155,8 @@ export const TAB_GROUPS: {
   excluded: readonly string[];
   regulationFromLandInfo: readonly string[];
 } = {
-  /** 所在地タブ（Geo関連はGeoPanel経由で表示） */
-  location: ['所在地'],
+  /** 所在地・周辺情報タブ */
+  location: ['所在地', '学区', '電車・鉄道', 'バス', '周辺施設'],
 
   /** 基本情報タブ */
   basicInfo: ['物件種別', '基本情報', 'キャッチコピー'],

@@ -6,7 +6,7 @@ import { useAutoSave } from '../../hooks/useAutoSave';
 import { ColumnWithLabel, metadataService } from '../../services/metadataService';
 import { API_PATHS } from '../../constants/apiPaths';
 import { api } from '../../services/api';
-import { AUTO_SAVE_DELAY_MS, TAB_GROUPS, GEO_GROUPS, PUBLICATION_STATUS, SALES_STATUS } from '../../constants';
+import { AUTO_SAVE_DELAY_MS, TAB_GROUPS, PUBLICATION_STATUS, SALES_STATUS } from '../../constants';
 import { RegulationTab } from './RegulationTab';
 import { RegistryTab } from '../registry/RegistryTab';
 import ErrorBanner from '../ErrorBanner';
@@ -322,7 +322,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
       );
     }
 
-    // propertiesから所在地タブを分離してタブを構築
+    // propertiesから所在地・周辺情報を分離してタブを構築
     const tabGroups: Array<{
       tableName: string;
       tableLabel: string;
@@ -330,14 +330,14 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
       groups: Record<string, ColumnWithLabel[]>;
     }> = [];
 
-    // 所在地タブ用のデータを先に準備
+    // 所在地・周辺情報タブ用のデータを先に準備
     const locationColumns = propertiesColumns.filter(col =>
       locationGroups.includes(col.group_name || '') &&
       isFieldVisibleForPropertyType(col.visible_for, currentPropertyType, col.column_name)
     );
     const locationTabData = locationColumns.length > 0 ? {
       tableName: 'properties_location',
-      tableLabel: '所在地',
+      tableLabel: '所在地・周辺情報',
       tableIcon: '📍',
       groups: locationColumns.reduce((acc, column) => {
         const groupName = column.group_name || '所在地';
@@ -355,14 +355,14 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
       isFieldVisibleForPropertyType(col.visible_for, currentPropertyType, col.column_name)
     );
 
-    // タブを追加（propertiesは所在地・Geoグループを除外）
+    // タブを追加（propertiesは所在地・周辺情報を除外）
     orderedTables.forEach(table => {
       const tableColumns = allColumns?.[table.table_name] || [];
 
       // 物件種別フィルタリング（全テーブルに適用）
       const filteredColumns = tableColumns.filter(col => {
-        // propertiesの場合は所在地グループ・Geoグループを除外
-        if (table.table_name === 'properties' && (locationGroups.includes(col.group_name || '') || GEO_GROUPS.includes(col.group_name || ''))) {
+        // propertiesの場合は所在地・周辺情報グループを除外（locationタブで表示）
+        if (table.table_name === 'properties' && locationGroups.includes(col.group_name || '')) {
           return false;
         }
         // 除外グループ（ステータス、システム）はヘッダーで表示
@@ -388,7 +388,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
 
       // propertiesテーブルの処理
       if (table.table_name === 'properties') {
-        // 所在地タブを先に追加（ユーザー要望：所在地を最初に）
+        // 所在地・周辺情報タブを先に追加（ユーザー要望：所在地を最初に）
         if (locationTabData) {
           tabGroups.push(locationTabData);
         }
@@ -912,7 +912,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                         </div>
                       </div>
 
-                      {/* 所在地タブの場合、周辺情報管理ボタンを表示 */}
+                      {/* 所在地タブの場合、周辺情報自動取得ボタンを表示 */}
                       {tabGroup.tableName === 'properties_location' && (
                         <div style={{ marginBottom: '16px' }}>
                           <button
@@ -935,7 +935,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                             }}
                           >
                             <span style={{ fontSize: '18px' }}>🗺️</span>
-                            周辺情報を管理（学区・駅・バス・施設）
+                            周辺情報を自動取得（学区・駅・バス・施設）
                           </button>
                         </div>
                       )}
