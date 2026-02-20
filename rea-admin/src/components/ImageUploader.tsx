@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
+import ErrorBanner from './ErrorBanner';
 
 interface ImageFile {
   id: string;
@@ -35,12 +36,13 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
     }))
   );
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [bannerMessage, setBannerMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
 
   // 画像アップロード処理
   const handleImageUpload = useCallback(async (acceptedFiles: File[]) => {
     // 最大枚数チェック
     if (imageFiles.length + acceptedFiles.length > maxImages) {
-      alert(`画像は最大${maxImages}枚までアップロードできます`);
+      setBannerMessage({ type: 'error', text: `画像は最大${maxImages}枚までアップロードできます` });
       return;
     }
 
@@ -136,7 +138,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
         
       } catch (error) {
         console.error('画像削除エラー:', error);
-        alert('画像の削除に失敗しました');
+        setBannerMessage({ type: 'error', text: '画像の削除に失敗しました' });
       }
     }
   };
@@ -174,6 +176,10 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
 
   return (
     <div className="space-y-4">
+      {/* メッセージ */}
+      {bannerMessage && (
+        <ErrorBanner type={bannerMessage.type} message={bannerMessage.text} onClose={() => setBannerMessage(null)} />
+      )}
       {/* ドロップゾーン */}
       <div
         {...getRootProps()}

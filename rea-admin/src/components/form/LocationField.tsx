@@ -129,6 +129,7 @@ export const LocationField: React.FC<LocationFieldProps> = ({ disabled = false }
 
     setIsGeocoding(true);
     setGeocodeStatus('idle');
+    let hasError = false;
 
     try {
       const result = await geoService.geocode(fullAddress);
@@ -145,12 +146,16 @@ export const LocationField: React.FC<LocationFieldProps> = ({ disabled = false }
       setGeocodeMessage('座標を取得しました');
       setShowMap(true);
     } catch (err) {
+      hasError = true;
       setGeocodeStatus('error');
       setGeocodeMessage('座標の取得に失敗しました');
       console.error('Geocode error:', err);
     } finally {
       setIsGeocoding(false);
-      setTimeout(() => setGeocodeStatus('idle'), MESSAGE_TIMEOUT_MS);
+      // 成功メッセージのみ自動消去（エラーは手動×で閉じる）
+      if (!hasError) {
+        setTimeout(() => setGeocodeStatus('idle'), MESSAGE_TIMEOUT_MS);
+      }
     }
   };
 
@@ -254,7 +259,10 @@ export const LocationField: React.FC<LocationFieldProps> = ({ disabled = false }
           <span style={{ fontSize: '12px', color: '#10B981' }}>✓ {geocodeMessage}</span>
         )}
         {geocodeStatus === 'error' && (
-          <span style={{ fontSize: '12px', color: '#EF4444' }}>✗ {geocodeMessage}</span>
+          <span style={{ fontSize: '12px', color: '#EF4444', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            ✗ {geocodeMessage}
+            <button type="button" onClick={() => setGeocodeStatus('idle')} style={{ cursor: 'pointer', background: 'none', border: 'none', color: '#EF4444', fontWeight: 'bold', padding: '0 2px' }}>×</button>
+          </span>
         )}
       </div>
 

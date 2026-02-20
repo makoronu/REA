@@ -53,6 +53,7 @@ interface UseMetadataFormOptions {
   tableNames?: string[]; // 複数テーブル対応
   onSubmit: (data: any) => void | Promise<void>;
   defaultValues?: DefaultValues<FieldValues>;
+  onValidationError?: (message: string) => void;
 }
 
 interface UseMetadataFormReturn {
@@ -72,7 +73,8 @@ export const useMetadataForm = ({
   tableName,
   tableNames,
   onSubmit,
-  defaultValues: userDefaultValues
+  defaultValues: userDefaultValues,
+  onValidationError,
 }: UseMetadataFormOptions): UseMetadataFormReturn => {
   const [columns, setColumns] = useState<ColumnWithLabel[]>([]);
   const [groupedColumns, setGroupedColumns] = useState<Record<string, ColumnWithLabel[]>>({});
@@ -182,7 +184,9 @@ export const useMetadataForm = ({
       errorFields.forEach(key => {
         console.error(`  - ${key}:`, errors[key]?.message || errors[key]);
       });
-      alert(`入力エラーがあります（${errorFields.length}件）: ${errorFields.join(', ')}`);
+      if (onValidationError) {
+        onValidationError(`入力エラーがあります（${errorFields.length}件）: ${errorFields.join(', ')}`);
+      }
     }
   );
   

@@ -6,6 +6,7 @@ import { Property } from '../../types/property';
 import { API_BASE_URL } from '../../config';
 import { API_PATHS } from '../../constants/apiPaths';
 import { MESSAGE_TIMEOUT_MS, SALES_STATUS, PUBLICATION_STATUS } from '../../constants';
+import ErrorBanner from '../../components/ErrorBanner';
 
 export const PropertyEditDynamicPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +20,7 @@ export const PropertyEditDynamicPage: React.FC = () => {
   const [errorDetail, setErrorDetail] = useState<{ detail: string; traceback?: string; path?: string } | null>(null);
   const [isSyncingToZoho, setIsSyncingToZoho] = useState(false);
   const [showErrorDetail, setShowErrorDetail] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // 既存データの取得（関連テーブル含む）
   useEffect(() => {
@@ -64,11 +66,11 @@ export const PropertyEditDynamicPage: React.FC = () => {
         setTimeout(() => setSaveStatus('idle'), MESSAGE_TIMEOUT_MS);
 
         if (result.created > 0) {
-          alert('ZOHOに新規作成しました');
+          setSuccessMessage('ZOHOに新規作成しました');
           // ページをリロードしてzoho_idを反映
           window.location.reload();
         } else {
-          alert('ZOHOに同期しました');
+          setSuccessMessage('ZOHOに同期しました');
         }
       } else {
         throw new Error(result.errors?.[0]?.message || 'ZOHOへの同期に失敗しました');
@@ -342,7 +344,7 @@ export const PropertyEditDynamicPage: React.FC = () => {
                 onClick={() => {
                   const text = `エラー: ${errorDetail.detail}\n\nPath: ${errorDetail.path || 'N/A'}\n\nTraceback:\n${errorDetail.traceback || 'N/A'}`;
                   navigator.clipboard.writeText(text);
-                  alert('クリップボードにコピーしました');
+                  setSuccessMessage('クリップボードにコピーしました');
                 }}
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700"
               >
@@ -359,11 +361,12 @@ export const PropertyEditDynamicPage: React.FC = () => {
         </div>
       )}
 
-      {/* エラー表示 */}
+      {/* エラー/成功表示 */}
       {error && saveStatus !== 'error' && (
-        <div className="mb-4 bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded">
-          {error}
-        </div>
+        <ErrorBanner type="error" message={error} onClose={() => setError(null)} />
+      )}
+      {successMessage && (
+        <ErrorBanner type="success" message={successMessage} onClose={() => setSuccessMessage(null)} />
       )}
 
       {/* 動的フォーム（全タブ統合済み） */}

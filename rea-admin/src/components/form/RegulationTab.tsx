@@ -243,8 +243,12 @@ export const RegulationTab: React.FC = () => {
           backgroundColor: message.type === 'success' ? '#D1FAE5' : '#FEE2E2',
           color: message.type === 'success' ? '#065F46' : '#991B1B',
           fontSize: '13px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
         }}>
-          {message.text}
+          <span>{message.text}</span>
+          <button type="button" onClick={() => setMessage(null)} style={{ cursor: 'pointer', background: 'none', border: 'none', color: 'inherit', fontWeight: 'bold', padding: '0 4px', fontSize: '16px' }}>×</button>
         </div>
       )}
 

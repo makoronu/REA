@@ -7,9 +7,10 @@ import { ColumnWithLabel, metadataService } from '../../services/metadataService
 import { SelectableListModal, SelectableItem, Category } from '../common/SelectableListModal';
 import { API_PATHS } from '../../constants/apiPaths';
 import { api } from '../../services/api';
-import { AUTO_SAVE_DELAY_MS, TAB_GROUPS, GEO_SEARCH_CONFIG, MESSAGE_TIMEOUT_MS, PUBLICATION_STATUS, SALES_STATUS } from '../../constants';
+import { AUTO_SAVE_DELAY_MS, TAB_GROUPS, GEO_SEARCH_CONFIG, PUBLICATION_STATUS, SALES_STATUS } from '../../constants';
 import { RegulationTab } from './RegulationTab';
 import { RegistryTab } from '../registry/RegistryTab';
+import ErrorBanner from '../ErrorBanner';
 
 // 学校候補の型
 interface SchoolCandidate {
@@ -167,7 +168,6 @@ const SchoolDistrictAutoFetchButton: React.FC = () => {
 
     if (!lat || !lng) {
       setMessage({ type: 'error', text: '緯度・経度を先に入力してください' });
-      setTimeout(() => setMessage(null), MESSAGE_TIMEOUT_MS);
       return;
     }
 
@@ -188,7 +188,6 @@ const SchoolDistrictAutoFetchButton: React.FC = () => {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '学校情報の取得に失敗しました';
       setMessage({ type: 'error', text: message });
-      setTimeout(() => setMessage(null), MESSAGE_TIMEOUT_MS);
     } finally {
       setIsLoading(false);
     }
@@ -328,8 +327,12 @@ const SchoolDistrictAutoFetchButton: React.FC = () => {
           fontSize: '13px',
           backgroundColor: message.type === 'success' ? '#D1FAE5' : '#FEE2E2',
           color: message.type === 'success' ? '#065F46' : '#991B1B',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
         }}>
-          {message.text}
+          <span>{message.text}</span>
+          <button onClick={() => setMessage(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', lineHeight: 1, padding: '0 4px', color: 'inherit' }}>&times;</button>
         </div>
       )}
 
@@ -410,7 +413,6 @@ const StationAutoFetchButton: React.FC = () => {
 
     if (!lat || !lng) {
       setMessage({ type: 'error', text: '緯度・経度を先に入力してください' });
-      setTimeout(() => setMessage(null), MESSAGE_TIMEOUT_MS);
       return;
     }
 
@@ -452,7 +454,6 @@ const StationAutoFetchButton: React.FC = () => {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '駅情報の取得に失敗しました';
       setMessage({ type: 'error', text: message });
-      setTimeout(() => setMessage(null), MESSAGE_TIMEOUT_MS);
     } finally {
       setIsLoading(false);
     }
@@ -686,7 +687,6 @@ const BusStopAutoFetchButton: React.FC = () => {
 
     if (!lat || !lng) {
       setMessage({ type: 'error', text: '緯度・経度を先に入力してください' });
-      setTimeout(() => setMessage(null), MESSAGE_TIMEOUT_MS);
       return;
     }
 
@@ -728,7 +728,6 @@ const BusStopAutoFetchButton: React.FC = () => {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'バス停情報の取得に失敗しました';
       setMessage({ type: 'error', text: message });
-      setTimeout(() => setMessage(null), MESSAGE_TIMEOUT_MS);
     } finally {
       setIsLoading(false);
     }
@@ -943,7 +942,6 @@ const FacilityAutoFetchButton: React.FC = () => {
 
     if (!lat || !lng) {
       setMessage({ type: 'error', text: '緯度・経度を先に入力してください' });
-      setTimeout(() => setMessage(null), MESSAGE_TIMEOUT_MS);
       return;
     }
 
@@ -983,7 +981,6 @@ const FacilityAutoFetchButton: React.FC = () => {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '施設情報の取得に失敗しました';
       setMessage({ type: 'error', text: message });
-      setTimeout(() => setMessage(null), MESSAGE_TIMEOUT_MS);
     } finally {
       setIsLoading(false);
     }
@@ -1205,6 +1202,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
   autoSaveDelay = AUTO_SAVE_DELAY_MS,
 }) => {
   const [activeTab, setActiveTab] = useState(0);
+  const [validationError, setValidationError] = useState<string | null>(null);
   // 公開バリデーションエラー状態（全モードで必要なため、早期リターン前に定義）
   const [publicationValidationError, setPublicationValidationError] = useState<{
     message: string;
@@ -1268,7 +1266,8 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
     tableName,
     tableNames,
     onSubmit,
-    defaultValues
+    defaultValues,
+    onValidationError: (msg: string) => setValidationError(msg),
   });
 
   // フォームデータを監視
@@ -1732,6 +1731,10 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
     return (
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 16px' }}>
         <FormProvider {...form}>
+          {/* バリデーションエラー */}
+          {validationError && (
+            <ErrorBanner type="error" message={validationError} onClose={() => setValidationError(null)} />
+          )}
           <div style={{ width: '100%' }}>
 
             {/* 固定ヘッダー：タブ + ステータス */}
