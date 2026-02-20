@@ -11,7 +11,7 @@
 """
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -100,8 +100,11 @@ def _execute_field_settings_update(
 # ========================================
 
 @router.get("/property-types", response_model=List[PropertyTypeInfo])
-def get_property_types(db: Session = Depends(dependencies.get_db)) -> List[PropertyTypeInfo]:
+def get_property_types(request: Request, db: Session = Depends(dependencies.get_db)) -> List[PropertyTypeInfo]:
     """物件種別一覧を取得（グループ付き）"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="認証が必要です")
     try:
         query = text("""
             SELECT id, label, group_name
@@ -119,10 +122,14 @@ def get_property_types(db: Session = Depends(dependencies.get_db)) -> List[Prope
 
 @router.get("/field-visibility", response_model=List[Dict[str, Any]])
 def get_field_visibility(
+    request: Request,
     table_name: Optional[str] = None,
-    db: Session = Depends(dependencies.get_db)
+    db: Session = Depends(dependencies.get_db),
 ) -> List[Dict[str, Any]]:
     """フィールド設定一覧を取得（表示設定・必須設定両方含む）"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="認証が必要です")
     try:
         if table_name:
             query = text("""

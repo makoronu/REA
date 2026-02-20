@@ -13,10 +13,13 @@ API上限（24時間ローリングウィンドウ）:
 エラー時: TOO_MANY_REQUESTS
 """
 import os
+import logging
 import httpx
 from typing import Optional
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # .envファイルを明示的に読み込む
 from dotenv import load_dotenv
@@ -60,7 +63,7 @@ class ZohoAuth:
 
     async def exchange_code_for_tokens(self, code: str) -> dict:
         """認証コードをアクセストークンとリフレッシュトークンに交換"""
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=10) as client:
             response = await client.post(
                 self.TOKEN_URL,
                 data={
@@ -77,13 +80,12 @@ class ZohoAuth:
             # リフレッシュトークンを取得したら保存（手動で.envに設定が必要）
             if "refresh_token" in data:
                 self.refresh_token = data["refresh_token"]
-                print(f"[ZOHO] リフレッシュトークン取得: {data['refresh_token']}")
-                print("[ZOHO] このトークンを .env の ZOHO_REFRESH_TOKEN に設定してください")
+                logger.info("[ZOHO] リフレッシュトークン取得（.envのZOHO_REFRESH_TOKENに設定してください）")
 
             # APIドメインを保存（これを使ってAPI呼び出しを行う）
             if "api_domain" in data:
                 self._api_domain = data["api_domain"]
-                print(f"[ZOHO] APIドメイン: {self._api_domain}")
+                logger.info(f"[ZOHO] APIドメイン: {self._api_domain}")
 
             # アクセストークンをキャッシュ
             self._access_token = data.get("access_token")
@@ -103,7 +105,7 @@ class ZohoAuth:
         if not self.refresh_token:
             raise ValueError("リフレッシュトークンが設定されていません。先にOAuth認証を完了してください。")
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=10) as client:
             response = await client.post(
                 self.TOKEN_URL,
                 data={

@@ -7,7 +7,7 @@ import pickle
 import random
 import re
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 from urllib.parse import urljoin
@@ -378,7 +378,7 @@ def create_property_base_data(url: str, site_name: str) -> Dict[str, Any]:
         "source_url": url,
         "listing_id": extract_listing_id(url, site_name),
         "transaction_type": "売買",
-        "scraped_at": datetime.now().isoformat(),
+        "scraped_at": datetime.now(timezone.utc).isoformat(),
     }
 
 

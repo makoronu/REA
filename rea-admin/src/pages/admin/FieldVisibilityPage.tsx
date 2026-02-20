@@ -5,7 +5,7 @@
  * レイアウト: 物件種別が行、フィールドが列（横スクロール不要）
  */
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../../config';
+import { api } from '../../services/api';
 import { API_PATHS } from '../../constants/apiPaths';
 import { MESSAGE_TIMEOUT_MS } from '../../constants';
 
@@ -65,33 +65,28 @@ const FieldVisibilityPage: React.FC = () => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const ptRes = await fetch(`${API_BASE_URL}${API_PATHS.ADMIN.PROPERTY_TYPES}`);
-        if (ptRes.ok) {
-          const ptData = await ptRes.json();
-          setPropertyTypes(ptData);
-        }
+        const ptRes = await api.get(API_PATHS.ADMIN.PROPERTY_TYPES);
+        setPropertyTypes(ptRes.data);
 
-        const fvRes = await fetch(`${API_BASE_URL}${API_PATHS.ADMIN.FIELD_VISIBILITY}?table_name=${selectedTable}`);
-        if (fvRes.ok) {
-          const fvData = await fvRes.json();
-          setFields(fvData);
-          // 最初のグループを選択（group_orderでソート）
-          if (fvData.length > 0) {
-            // グループ名とその最小group_orderを取得
-            const groupOrders = new Map<string, number>();
-            fvData.forEach((f: FieldVisibility) => {
-              const group = f.group_name || 'その他';
-              const existing = groupOrders.get(group);
-              if (existing === undefined || f.group_order < existing) {
-                groupOrders.set(group, f.group_order);
-              }
-            });
-            // group_orderでソート
-            const sorted = Array.from(groupOrders.entries())
-              .sort((a, b) => a[1] - b[1])
-              .map(([name]) => name);
-            setSelectedFieldGroup(sorted[0] || null);
-          }
+        const fvRes = await api.get(API_PATHS.ADMIN.FIELD_VISIBILITY, { params: { table_name: selectedTable } });
+        const fvData = fvRes.data;
+        setFields(fvData);
+        // 最初のグループを選択（group_orderでソート）
+        if (fvData.length > 0) {
+          // グループ名とその最小group_orderを取得
+          const groupOrders = new Map<string, number>();
+          fvData.forEach((f: FieldVisibility) => {
+            const group = f.group_name || 'その他';
+            const existing = groupOrders.get(group);
+            if (existing === undefined || f.group_order < existing) {
+              groupOrders.set(group, f.group_order);
+            }
+          });
+          // group_orderでソート
+          const sorted = Array.from(groupOrders.entries())
+            .sort((a, b) => a[1] - b[1])
+            .map(([name]) => name);
+          setSelectedFieldGroup(sorted[0] || null);
         }
       } catch (err) {
         console.error('データ取得エラー:', err);
@@ -267,27 +262,16 @@ const FieldVisibilityPage: React.FC = () => {
         return { table_name, column_name, visible_for: value };
       });
 
-      const res = await fetch(
-        `${API_BASE_URL}${API_PATHS.ADMIN.FIELD_VISIBILITY_BULK}?field_type=${settingType}`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updates),
-        }
+      await api.put(
+        `${API_PATHS.ADMIN.FIELD_VISIBILITY_BULK}?field_type=${settingType}`,
+        updates,
       );
 
-      if (res.ok) {
-        const label = settingType === 'required' ? '必須設定' : '表示設定';
-        setMessage({ type: 'success', text: `${updates.length}件の${label}を保存しました` });
-        setPendingChanges(new Map());
-        const fvRes = await fetch(`${API_BASE_URL}${API_PATHS.ADMIN.FIELD_VISIBILITY}?table_name=${selectedTable}`);
-        if (fvRes.ok) {
-          const fvData = await fvRes.json();
-          setFields(fvData);
-        }
-      } else {
-        setMessage({ type: 'error', text: '保存に失敗しました' });
-      }
+      const label = settingType === 'required' ? '必須設定' : '表示設定';
+      setMessage({ type: 'success', text: `${updates.length}件の${label}を保存しました` });
+      setPendingChanges(new Map());
+      const fvRes = await api.get(API_PATHS.ADMIN.FIELD_VISIBILITY, { params: { table_name: selectedTable } });
+      setFields(fvRes.data);
     } catch (err) {
       setMessage({ type: 'error', text: '保存に失敗しました' });
     } finally {

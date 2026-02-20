@@ -386,11 +386,12 @@ async def get_staging_status():
         cur.execute("""
             SELECT import_status, COUNT(*)
             FROM zoho_import_staging
+            WHERE deleted_at IS NULL
             GROUP BY import_status
         """)
         status_counts = {row[0]: row[1] for row in cur.fetchall()}
 
-        cur.execute("SELECT COUNT(*) FROM zoho_import_staging")
+        cur.execute("SELECT COUNT(*) FROM zoho_import_staging WHERE deleted_at IS NULL")
         total = cur.fetchone()[0]
 
         return {
@@ -409,7 +410,7 @@ async def get_failed_records():
             SELECT zoho_id, error_message, created_at,
                    raw_data->>'Name' as property_name
             FROM zoho_import_staging
-            WHERE import_status = 'failed'
+            WHERE import_status = 'failed' AND deleted_at IS NULL
             ORDER BY created_at DESC
         """)
         failed = [
