@@ -5,7 +5,6 @@ import { useMetadataForm } from '../../hooks/useMetadataForm';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { ColumnWithLabel, metadataService } from '../../services/metadataService';
 import { SelectableListModal, SelectableItem, Category } from '../common/SelectableListModal';
-import { API_BASE_URL } from '../../config';
 import { API_PATHS } from '../../constants/apiPaths';
 import { api } from '../../services/api';
 import { AUTO_SAVE_DELAY_MS, TAB_GROUPS, GEO_SEARCH_CONFIG, MESSAGE_TIMEOUT_MS, PUBLICATION_STATUS, SALES_STATUS } from '../../constants';
@@ -176,22 +175,19 @@ const SchoolDistrictAutoFetchButton: React.FC = () => {
     setMessage(null);
 
     try {
-      const response = await fetch(
-        `${API_BASE_URL}${API_PATHS.GEO.SCHOOL_DISTRICTS}?lat=${lat}&lng=${lng}`
-      );
+      const response = await api.get(API_PATHS.GEO.SCHOOL_DISTRICTS, {
+        params: { lat, lng }
+      });
 
-      if (!response.ok) {
-        throw new Error('学校情報の取得に失敗しました');
-      }
-
-      const data = await response.json();
+      const data = response.data;
       setElementaryCandidates(data.elementary || []);
       setJuniorHighCandidates(data.junior_high || []);
       setShowCandidates(true);
 
       setMessage({ type: 'success', text: '学校候補を取得しました。選択してください。' });
-    } catch (err: any) {
-      setMessage({ type: 'error', text: err.message || '学校情報の取得に失敗しました' });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '学校情報の取得に失敗しました';
+      setMessage({ type: 'error', text: message });
       setTimeout(() => setMessage(null), MESSAGE_TIMEOUT_MS);
     } finally {
       setIsLoading(false);
@@ -422,15 +418,11 @@ const StationAutoFetchButton: React.FC = () => {
     setMessage(null);
 
     try {
-      const response = await fetch(
-        `${API_BASE_URL}${API_PATHS.GEO.NEAREST_STATIONS}?lat=${lat}&lng=${lng}&radius=${GEO_SEARCH_CONFIG.STATION.RADIUS_M}&limit=${GEO_SEARCH_CONFIG.STATION.LIMIT}`
-      );
+      const response = await api.get(API_PATHS.GEO.NEAREST_STATIONS, {
+        params: { lat, lng, radius: GEO_SEARCH_CONFIG.STATION.RADIUS_M, limit: GEO_SEARCH_CONFIG.STATION.LIMIT }
+      });
 
-      if (!response.ok) {
-        throw new Error('駅情報の取得に失敗しました');
-      }
-
-      const data = await response.json();
+      const data = response.data;
       const stations = data.stations || [];
 
       // 路線別にグループ化
@@ -457,8 +449,9 @@ const StationAutoFetchButton: React.FC = () => {
 
       setCategories(categoriesData);
       setIsModalOpen(true);
-    } catch (err: any) {
-      setMessage({ type: 'error', text: err.message || '駅情報の取得に失敗しました' });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '駅情報の取得に失敗しました';
+      setMessage({ type: 'error', text: message });
       setTimeout(() => setMessage(null), MESSAGE_TIMEOUT_MS);
     } finally {
       setIsLoading(false);
@@ -701,15 +694,11 @@ const BusStopAutoFetchButton: React.FC = () => {
     setMessage(null);
 
     try {
-      const response = await fetch(
-        `${API_BASE_URL}${API_PATHS.GEO.NEAREST_BUS_STOPS}?lat=${lat}&lng=${lng}&limit=${GEO_SEARCH_CONFIG.BUS_STOP.LIMIT}`
-      );
+      const response = await api.get(API_PATHS.GEO.NEAREST_BUS_STOPS, {
+        params: { lat, lng, limit: GEO_SEARCH_CONFIG.BUS_STOP.LIMIT }
+      });
 
-      if (!response.ok) {
-        throw new Error('バス停情報の取得に失敗しました');
-      }
-
-      const data = await response.json();
+      const data = response.data;
       const busStops = data.bus_stops || [];
 
       // バス種別でグループ化
@@ -736,8 +725,9 @@ const BusStopAutoFetchButton: React.FC = () => {
 
       setCategories(categoriesData);
       setIsModalOpen(true);
-    } catch (err: any) {
-      setMessage({ type: 'error', text: err.message || 'バス停情報の取得に失敗しました' });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'バス停情報の取得に失敗しました';
+      setMessage({ type: 'error', text: message });
       setTimeout(() => setMessage(null), MESSAGE_TIMEOUT_MS);
     } finally {
       setIsLoading(false);
@@ -961,15 +951,11 @@ const FacilityAutoFetchButton: React.FC = () => {
     setMessage(null);
 
     try {
-      const response = await fetch(
-        `${API_BASE_URL}${API_PATHS.GEO.NEAREST_FACILITIES}?lat=${lat}&lng=${lng}&limit_per_category=${GEO_SEARCH_CONFIG.FACILITY.LIMIT_PER_CATEGORY}`
-      );
+      const response = await api.get(API_PATHS.GEO.NEAREST_FACILITIES, {
+        params: { lat, lng, limit_per_category: GEO_SEARCH_CONFIG.FACILITY.LIMIT_PER_CATEGORY }
+      });
 
-      if (!response.ok) {
-        throw new Error('施設情報の取得に失敗しました');
-      }
-
-      const data = await response.json();
+      const data = response.data;
 
       // APIレスポンスをモーダル用のCategory形式に変換
       const categoriesData: Category[] = Object.entries(data.categories || {}).map(
@@ -994,8 +980,9 @@ const FacilityAutoFetchButton: React.FC = () => {
 
       setCategories(categoriesData);
       setIsModalOpen(true);
-    } catch (err: any) {
-      setMessage({ type: 'error', text: err.message || '施設情報の取得に失敗しました' });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '施設情報の取得に失敗しました';
+      setMessage({ type: 'error', text: message });
       setTimeout(() => setMessage(null), MESSAGE_TIMEOUT_MS);
     } finally {
       setIsLoading(false);

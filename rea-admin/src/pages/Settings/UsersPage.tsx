@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../../config';
+import { api } from '../../services/api';
 import { API_PATHS } from '../../constants/apiPaths';
-import { STORAGE_KEYS } from '../../constants/storage';
 import { MESSAGE_TIMEOUT_MS, LONG_MESSAGE_TIMEOUT_MS } from '../../constants';
 
 interface User {
@@ -34,42 +33,27 @@ export const UsersPage: React.FC = () => {
   const [newUser, setNewUser] = useState({ email: '', name: '', role_id: 0 });
   const [isCreating, setIsCreating] = useState(false);
 
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    };
-  };
-
   const fetchData = async () => {
     try {
       setIsLoading(true);
       const [usersRes, rolesRes] = await Promise.all([
-        fetch(`${API_BASE_URL}${API_PATHS.USERS.LIST}`, { headers: getAuthHeaders() }),
-        fetch(`${API_BASE_URL}${API_PATHS.USERS.ROLES}`, { headers: getAuthHeaders() })
+        api.get(API_PATHS.USERS.LIST),
+        api.get(API_PATHS.USERS.ROLES),
       ]);
 
-      if (!usersRes.ok) {
-        if (usersRes.status === 403) {
-          throw new Error('管理者権限が必要です');
-        }
-        throw new Error('データの取得に失敗しました');
-      }
+      setUsers(usersRes.data.users);
+      setRoles(rolesRes.data);
 
-      const usersData = await usersRes.json();
-      const rolesData = await rolesRes.json();
-
-      setUsers(usersData.users);
-      setRoles(rolesData);
+      const rolesData = rolesRes.data;
 
       if (rolesData.length > 0 && newUser.role_id === 0) {
         // デフォルトは一般ユーザー（最もレベルの低いロール）
         const defaultRole = rolesData[rolesData.length - 1];
         setNewUser(prev => ({ ...prev, role_id: defaultRole.id }));
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'データの取得に失敗しました';
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -90,24 +74,16 @@ export const UsersPage: React.FC = () => {
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}${API_PATHS.USERS.LIST}`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(newUser)
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.detail || 'ユーザー作成に失敗しました');
-      }
+      await api.post(API_PATHS.USERS.LIST, newUser);
 
       setSuccessMessage('ユーザーを作成しました。パスワード設定メールを送信しました。');
       setShowCreateModal(false);
       setNewUser({ email: '', name: '', role_id: roles[0]?.id || 0 });
       fetchData();
       setTimeout(() => setSuccessMessage(null), LONG_MESSAGE_TIMEOUT_MS);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'ユーザー作成に失敗しました';
+      setError(message);
     } finally {
       setIsCreating(false);
     }
@@ -115,21 +91,14 @@ export const UsersPage: React.FC = () => {
 
   const handleToggleActive = async (userId: number, currentActive: boolean) => {
     try {
-      const response = await fetch(`${API_BASE_URL}${API_PATHS.USERS.detail(userId)}`, {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ is_active: !currentActive })
-      });
-
-      if (!response.ok) {
-        throw new Error('更新に失敗しました');
-      }
+      await api.put(API_PATHS.USERS.detail(userId), { is_active: !currentActive });
 
       fetchData();
       setSuccessMessage(currentActive ? 'ユーザーを無効化しました' : 'ユーザーを有効化しました');
       setTimeout(() => setSuccessMessage(null), MESSAGE_TIMEOUT_MS);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '更新に失敗しました';
+      setError(message);
     }
   };
 
