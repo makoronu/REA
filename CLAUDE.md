@@ -31,7 +31,7 @@
 | 項目 | 内容 |
 |------|------|
 | 作業中 | なし |
-| 完了 | Seg 17c-3: RegulationPanel分離（法令制限タブ→モーダル化、RegulationTab508行削除）、Seg 17c-2: GeoPanelマップウィザード化（地図→ピン→一括取得→反映）、Seg 17c-1: Geoフィールド表示復元+LocationFieldマップ削除、Seg 17c: Geo UI分離（GeoPanel独立モーダル化）、Seg 17b: 新規物件作成バグ修正（property_name必須バリデーション+エラー日本語化）、Seg 17a: エラーメッセージUI改善（ErrorBanner共通化+alert全廃+setTimeout撤去）、Seg 16b: フロントエンド fetch→apiサービス統一(UsersPage/DynamicForm 8箇所)、Seg 16a: セキュリティ+バックエンド修正(admin認証追加/ZOHO print→logger/httpx timeout/deleted_at/naive datetime)、Seg 15b: 駅/バス/施設セクションをコンパクトカード+管理モーダルに変更(スクロール88%削減)、Seg 15a: CSS間隔圧縮(グループ間32→20/内部24→16/見出し24→12)、Seg 14b: Core API geo.pyデッドコード削除(GET11個/ヘルパー5個/スキーマ9個→931行削減)、Seg 14a: Geo API新サービス作成+サーバー設定完了、Seg 13b: ゴーストカラムDB物理削除(25カラム)、Seg 13a: ゴーストカラムコード参照削除、Seg 12: サーバーセキュリティ強化、Seg 11: deleted_at漏れ+naive datetime+SQLi防御、Seg 10b: バックエンドハードコード排除+未使用コード削除、Seg 10a: フロント ハードコード排除+ZONE_COLORS+準備中バグ修正、Seg 9: deleted_at全コードベース修正(14件)、Seg 8b: 定数整理・ハードコード排除、Seg 8a: console.log削除+zoho datetime修正、Seg 7: naive datetime統一、Seg 6: deleted_at漏れ修正、Seg 4/5: エラー表示改善・コード品質修正、Seg 3: ロジックバグ修正、Seg 2: データ整合性修正、Seg 1: セキュリティ修正、Seg C: フロント定数集約、Seg B: N+1解消(validator+geo)、Seg A: touki.pyログ+N+1解消、物件画像保存機能、最寄駅なし/バス停なしUI、システム設定画面、間取り不明、Googleジオコーディング |
+| 完了 | Seg 18b: GeoPanel駅・バス停・施設の選択UI追加（チェックボックスリスト化+選択ベース反映）、Seg 18a: GeoPanelバス停・施設データ構造修正（BusStopsField/NearbyFacilitiesField期待構造に合わせ）、Seg 17c-3: RegulationPanel分離（法令制限タブ→モーダル化、RegulationTab508行削除）、Seg 17c-2: GeoPanelマップウィザード化（地図→ピン→一括取得→反映）、Seg 17c-1: Geoフィールド表示復元+LocationFieldマップ削除、Seg 17c: Geo UI分離（GeoPanel独立モーダル化）、Seg 17b: 新規物件作成バグ修正（property_name必須バリデーション+エラー日本語化）、Seg 17a: エラーメッセージUI改善（ErrorBanner共通化+alert全廃+setTimeout撤去）、Seg 16b: フロントエンド fetch→apiサービス統一(UsersPage/DynamicForm 8箇所)、Seg 16a: セキュリティ+バックエンド修正(admin認証追加/ZOHO print→logger/httpx timeout/deleted_at/naive datetime)、Seg 15b: 駅/バス/施設セクションをコンパクトカード+管理モーダルに変更(スクロール88%削減)、Seg 15a: CSS間隔圧縮(グループ間32→20/内部24→16/見出し24→12)、Seg 14b: Core API geo.pyデッドコード削除(GET11個/ヘルパー5個/スキーマ9個→931行削減)、Seg 14a: Geo API新サービス作成+サーバー設定完了、Seg 13b: ゴーストカラムDB物理削除(25カラム)、Seg 13a: ゴーストカラムコード参照削除、Seg 12: サーバーセキュリティ強化、Seg 11: deleted_at漏れ+naive datetime+SQLi防御、Seg 10b: バックエンドハードコード排除+未使用コード削除、Seg 10a: フロント ハードコード排除+ZONE_COLORS+準備中バグ修正、Seg 9: deleted_at全コードベース修正(14件)、Seg 8b: 定数整理・ハードコード排除、Seg 8a: console.log削除+zoho datetime修正、Seg 7: naive datetime統一、Seg 6: deleted_at漏れ修正、Seg 4/5: エラー表示改善・コード品質修正、Seg 3: ロジックバグ修正、Seg 2: データ整合性修正、Seg 1: セキュリティ修正、Seg C: フロント定数集約、Seg B: N+1解消(validator+geo)、Seg A: touki.pyログ+N+1解消、物件画像保存機能、最寄駅なし/バス停なしUI、システム設定画面、間取り不明、Googleジオコーディング |
 | 残り | Seg 18: 巨艦分割（DynamicForm+FieldFactory）、HOMES入稿、ZOHO画像同期 |
 | 更新 | 2026-02-20 |
 
@@ -44,6 +44,20 @@
   - 各ファイル200-500行に収める
 
 - Seg 18完了後: HOMES入稿、ZOHO画像同期など残タスク
+
+### 今日完了した作業（2026-02-20 Seg 18a + 18b）
+
+- **Seg 18a: GeoPanelバス停・施設データ構造修正**（コミット: 6d5cdf8）
+  - handleApply バス停: `{name, routes}` → `{bus_stop_name, line_name}`（BusStopsField期待構造に合わせ）
+  - handleApply 施設: `{name}` → `{facility_name}` + `distance_meters`追加（NearbyFacilitiesField期待構造に合わせ）
+
+- **Seg 18b: GeoPanel駅・バス停・施設の選択UI追加**（コミット: 7ac9305）
+  - StationResultSummary → StationSelectList（全駅チェックボックスリスト、デフォルト上位3件選択）
+  - BusStopResultSummary → BusStopSelectList（全バス停チェックボックスリスト、デフォルト上位5件選択）
+  - FacilityResultSummary → FacilitySelectList（カテゴリ別施設リスト+チェックボックス、デフォルト各カテゴリ最寄り1件選択）
+  - handleApply: slice固定 → 選択状態ベースのfilterに変更
+  - セクションヘッダに「N件選択中」カウンター追加
+  - テスト依頼書: docs/test_requests/2026-02-20_seg18_geo_panel_data_fix_and_selection_ui.md
 
 ### 今日完了した作業（2026-02-20 デプロイ: Seg 17c-1 + 17c-2 + 17c-3）
 
