@@ -3,7 +3,7 @@
  *
  * API呼び出し・レスポンスパース・初期選択設定を担当
  */
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { api } from '../../services/api';
 import { API_PATHS } from '../../constants/apiPaths';
 import { GEO_SEARCH_CONFIG } from '../../constants';
@@ -45,11 +45,11 @@ export const useGeoFetch = (): GeoFetchResult => {
     juniorHigh: null, juniorHighMinutes: null,
   });
 
-  const clearResults = () => {
+  const clearResults = useCallback(() => {
     setResults(null);
-  };
+  }, []);
 
-  const handleBulkFetch = async (lat: number, lng: number) => {
+  const handleBulkFetch = useCallback(async (lat: number, lng: number) => {
     setIsFetching(true);
     const errors: string[] = [];
 
@@ -136,7 +136,7 @@ export const useGeoFetch = (): GeoFetchResult => {
     setSelectedFacilityIndices(facilityDefaults);
 
     setIsFetching(false);
-  };
+  }, []);
 
   return {
     isFetching, results,
