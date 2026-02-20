@@ -31,13 +31,13 @@
 | 項目 | 内容 |
 |------|------|
 | 作業中 | なし |
-| 完了 | Seg 17a: エラーメッセージUI改善（ErrorBanner共通化+alert全廃+setTimeout撤去）、Seg 16b: フロントエンド fetch→apiサービス統一(UsersPage/DynamicForm 8箇所)、Seg 16a: セキュリティ+バックエンド修正(admin認証追加/ZOHO print→logger/httpx timeout/deleted_at/naive datetime)、Seg 15b: 駅/バス/施設セクションをコンパクトカード+管理モーダルに変更(スクロール88%削減)、Seg 15a: CSS間隔圧縮(グループ間32→20/内部24→16/見出し24→12)、Seg 14b: Core API geo.pyデッドコード削除(GET11個/ヘルパー5個/スキーマ9個→931行削減)、Seg 14a: Geo API新サービス作成+サーバー設定完了、Seg 13b: ゴーストカラムDB物理削除(25カラム)、Seg 13a: ゴーストカラムコード参照削除、Seg 12: サーバーセキュリティ強化、Seg 11: deleted_at漏れ+naive datetime+SQLi防御、Seg 10b: バックエンドハードコード排除+未使用コード削除、Seg 10a: フロント ハードコード排除+ZONE_COLORS+準備中バグ修正、Seg 9: deleted_at全コードベース修正(14件)、Seg 8b: 定数整理・ハードコード排除、Seg 8a: console.log削除+zoho datetime修正、Seg 7: naive datetime統一、Seg 6: deleted_at漏れ修正、Seg 4/5: エラー表示改善・コード品質修正、Seg 3: ロジックバグ修正、Seg 2: データ整合性修正、Seg 1: セキュリティ修正、Seg C: フロント定数集約、Seg B: N+1解消(validator+geo)、Seg A: touki.pyログ+N+1解消、物件画像保存機能、最寄駅なし/バス停なしUI、システム設定画面、間取り不明、Googleジオコーディング |
-| 残り | Seg 17b: 新規物件作成バグ修正（property_name is required）、Seg 17c: Geo UI分離（フォーム外ポップアップ化・有料サブスク準備）、HOMES入稿、ZOHO画像同期 |
+| 完了 | Seg 17b: 新規物件作成バグ修正（property_name必須バリデーション+エラー日本語化）、Seg 17a: エラーメッセージUI改善（ErrorBanner共通化+alert全廃+setTimeout撤去）、Seg 16b: フロントエンド fetch→apiサービス統一(UsersPage/DynamicForm 8箇所)、Seg 16a: セキュリティ+バックエンド修正(admin認証追加/ZOHO print→logger/httpx timeout/deleted_at/naive datetime)、Seg 15b: 駅/バス/施設セクションをコンパクトカード+管理モーダルに変更(スクロール88%削減)、Seg 15a: CSS間隔圧縮(グループ間32→20/内部24→16/見出し24→12)、Seg 14b: Core API geo.pyデッドコード削除(GET11個/ヘルパー5個/スキーマ9個→931行削減)、Seg 14a: Geo API新サービス作成+サーバー設定完了、Seg 13b: ゴーストカラムDB物理削除(25カラム)、Seg 13a: ゴーストカラムコード参照削除、Seg 12: サーバーセキュリティ強化、Seg 11: deleted_at漏れ+naive datetime+SQLi防御、Seg 10b: バックエンドハードコード排除+未使用コード削除、Seg 10a: フロント ハードコード排除+ZONE_COLORS+準備中バグ修正、Seg 9: deleted_at全コードベース修正(14件)、Seg 8b: 定数整理・ハードコード排除、Seg 8a: console.log削除+zoho datetime修正、Seg 7: naive datetime統一、Seg 6: deleted_at漏れ修正、Seg 4/5: エラー表示改善・コード品質修正、Seg 3: ロジックバグ修正、Seg 2: データ整合性修正、Seg 1: セキュリティ修正、Seg C: フロント定数集約、Seg B: N+1解消(validator+geo)、Seg A: touki.pyログ+N+1解消、物件画像保存機能、最寄駅なし/バス停なしUI、システム設定画面、間取り不明、Googleジオコーディング |
+| 残り | Seg 17c: Geo UI分離（フォーム外ポップアップ化・有料サブスク準備）、HOMES入稿、ZOHO画像同期 |
 | 更新 | 2026-02-20 |
 
 ### 次回やること
 
-- **Seg 17b: 新規物件作成バグ修正**
+- **Seg 17c: Geo UI分離**
   - 「property_name is required」エラー — エラー表示改善後に調査
   - 仮説: property_nameが空で送信 or エラーが見えずユーザーが原因特定できない
 
@@ -46,6 +46,14 @@
   - 独立ポップアップ/モーダルとして配置
   - 理由: Geo機能は将来の有料サブスクリプション（別課金）にする予定
   - TAB_GROUPS.locationからGeo関連グループ除外
+
+### 今日完了した作業（2026-02-20 Seg 17b）
+
+- **Seg 17b: 新規物件作成バグ修正**（コミット: 1cd4a79）
+  - Backend: properties.py エラーメッセージ日本語化（"property_name is required" → "物件名は必須です"）
+  - Frontend: useMetadataForm.ts createZodSchemaでis_required+テキスト型フィールドにmin(1)バリデーション追加
+  - メタデータ駆動: is_requiredフラグ + label_jaでエラーメッセージ自動生成
+  - テスト依頼書: docs/test_requests/2026-02-20_seg17b_property_name_required.md
 
 ### 今日完了した作業（2026-02-20 Seg 17a）
 
