@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { API_PATHS } from '../../constants/apiPaths';
-import { MESSAGE_TIMEOUT_MS, LONG_MESSAGE_TIMEOUT_MS } from '../../constants';
+import ErrorBanner from '../../components/ErrorBanner';
 import { api } from '../../services/api';
 
 interface Integration {
@@ -80,7 +80,6 @@ export const IntegrationsPage: React.FC = () => {
       // 再取得
       fetchData();
       setSuccessMessage(`${code}の設定を更新しました`);
-      setTimeout(() => setSuccessMessage(null), MESSAGE_TIMEOUT_MS);
     } catch (err: any) {
       setError(err.response?.data?.detail || err.message);
     }
@@ -104,7 +103,6 @@ export const IntegrationsPage: React.FC = () => {
 
       const result = response.data;
       setSuccessMessage(`同期完了: 成功 ${result.success}件, 失敗 ${result.failed}件`);
-      setTimeout(() => setSuccessMessage(null), LONG_MESSAGE_TIMEOUT_MS);
 
       // 状態を再取得
       fetchData();
@@ -153,20 +151,10 @@ export const IntegrationsPage: React.FC = () => {
 
       {/* エラー/成功メッセージ */}
       {error && (
-        <div className="mb-4 bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded flex justify-between items-center">
-          <span>{error}</span>
-          <button onClick={() => setError(null)} className="text-red-700 hover:text-red-900">
-            <svg className="h-5 w-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-              <path d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+        <ErrorBanner type="error" message={error} onClose={() => setError(null)} />
       )}
-
       {successMessage && (
-        <div className="mb-4 bg-green-50 border border-green-400 text-green-700 px-4 py-3 rounded">
-          {successMessage}
-        </div>
+        <ErrorBanner type="success" message={successMessage} onClose={() => setSuccessMessage(null)} />
       )}
 
       {/* 連携先カード一覧 */}

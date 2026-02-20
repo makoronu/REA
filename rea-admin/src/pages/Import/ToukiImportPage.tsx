@@ -10,6 +10,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { API_PATHS } from '../../constants/apiPaths';
 import { api } from '../../services/api';
+import ErrorBanner from '../../components/ErrorBanner';
 
 // 型定義
 interface Owner {
@@ -320,14 +321,10 @@ export default function ToukiImportPage() {
 
       {/* メッセージ表示 */}
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-          {error}
-        </div>
+        <ErrorBanner type="error" message={error} onClose={() => setError(null)} />
       )}
       {success && (
-        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700">
-          {success}
-        </div>
+        <ErrorBanner type="success" message={success} onClose={() => setSuccess(null)} />
       )}
 
       {/* PDFアップロード（ドラッグ&ドロップ対応） */}

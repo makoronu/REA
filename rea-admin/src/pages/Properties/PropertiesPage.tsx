@@ -14,6 +14,7 @@ import {
 import { STORAGE_KEYS } from '../../constants/storage';
 import { API_BASE_URL } from '../../config';
 import { API_PATHS } from '../../constants/apiPaths';
+import ErrorBanner from '../../components/ErrorBanner';
 
 // ============================================
 // 型定義
@@ -127,6 +128,7 @@ const PropertiesPage = () => {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [bannerMessage, setBannerMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
   const [totalItems, setTotalItems] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -450,7 +452,7 @@ const PropertiesPage = () => {
       closeContextMenu();
     } catch (err) {
       console.error('ステータス更新エラー:', err);
-      alert('更新に失敗しました');
+      setBannerMessage({ type: 'error', text: '更新に失敗しました' });
     }
   };
 
@@ -477,7 +479,7 @@ const PropertiesPage = () => {
       setEditingCell(null);
     } catch (err) {
       console.error('更新エラー:', err);
-      alert('更新に失敗しました');
+      setBannerMessage({ type: 'error', text: '更新に失敗しました' });
     }
   };
 
@@ -512,11 +514,11 @@ const PropertiesPage = () => {
       }
       setSelectedIds(new Set());
       if (failedCount > 0) {
-        alert(`${succeeded.length}件成功、${failedCount}件失敗しました`);
+        setBannerMessage({ type: 'error', text: `${succeeded.length}件成功、${failedCount}件失敗しました` });
       }
     } catch (err) {
       console.error('一括更新エラー:', err);
-      alert('一括更新に失敗しました');
+      setBannerMessage({ type: 'error', text: '一括更新に失敗しました' });
     }
   };
 
@@ -539,11 +541,11 @@ const PropertiesPage = () => {
       }
       setSelectedIds(new Set());
       if (failedCount > 0) {
-        alert(`${succeeded.length}件成功、${failedCount}件失敗しました`);
+        setBannerMessage({ type: 'error', text: `${succeeded.length}件成功、${failedCount}件失敗しました` });
       }
     } catch (err) {
       console.error('一括取下げエラー:', err);
-      alert('一括取下げに失敗しました');
+      setBannerMessage({ type: 'error', text: '一括取下げに失敗しました' });
     }
   };
 
@@ -634,7 +636,7 @@ const PropertiesPage = () => {
   // ============================================
   const handleHomesExport = async () => {
     if (properties.length === 0) {
-      alert('出力する物件がありません');
+      setBannerMessage({ type: 'error', text: '出力する物件がありません' });
       return;
     }
     setExporting(true);
@@ -657,7 +659,7 @@ const PropertiesPage = () => {
       document.body.removeChild(a);
     } catch (err) {
       console.error('HOMES出力エラー:', err);
-      alert('HOMES CSV出力に失敗しました');
+      setBannerMessage({ type: 'error', text: 'HOMES CSV出力に失敗しました' });
     } finally {
       setExporting(false);
     }
@@ -705,6 +707,11 @@ const PropertiesPage = () => {
   // ============================================
   return (
     <div className="min-h-screen bg-gray-50" ref={containerRef}>
+      {/* バナーメッセージ */}
+      {bannerMessage && (
+        <ErrorBanner type={bannerMessage.type} message={bannerMessage.text} onClose={() => setBannerMessage(null)} />
+      )}
+
       {/* ヘッダー - World-Class Design */}
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-4">

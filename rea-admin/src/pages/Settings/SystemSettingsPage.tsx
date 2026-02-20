@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { API_PATHS } from '../../constants/apiPaths';
-import { MESSAGE_TIMEOUT_MS } from '../../constants';
+import ErrorBanner from '../../components/ErrorBanner';
 import { api } from '../../services/api';
 
 interface Setting {
@@ -53,7 +53,6 @@ export const SystemSettingsPage: React.FC = () => {
       await api.put(API_PATHS.SETTINGS.detail(key), { value });
 
       setSuccessMessage('設定を保存しました');
-      setTimeout(() => setSuccessMessage(null), MESSAGE_TIMEOUT_MS);
 
       // 編集状態をクリアして再取得
       setEditing(prev => {
@@ -101,20 +100,10 @@ export const SystemSettingsPage: React.FC = () => {
 
       {/* エラー/成功メッセージ */}
       {error && (
-        <div className="mb-4 bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded flex justify-between items-center">
-          <span>{error}</span>
-          <button onClick={() => setError(null)} className="text-red-700 hover:text-red-900">
-            <svg className="h-5 w-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-              <path d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+        <ErrorBanner type="error" message={error} onClose={() => setError(null)} />
       )}
-
       {successMessage && (
-        <div className="mb-4 bg-green-50 border border-green-400 text-green-700 px-4 py-3 rounded">
-          {successMessage}
-        </div>
+        <ErrorBanner type="success" message={successMessage} onClose={() => setSuccessMessage(null)} />
       )}
 
       {/* 設定カード一覧 */}

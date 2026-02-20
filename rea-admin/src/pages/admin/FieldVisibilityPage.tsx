@@ -7,7 +7,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { API_PATHS } from '../../constants/apiPaths';
-import { MESSAGE_TIMEOUT_MS } from '../../constants';
+import ErrorBanner from '../../components/ErrorBanner';
 
 // 型定義
 interface PropertyType {
@@ -245,7 +245,6 @@ const FieldVisibilityPage: React.FC = () => {
   const handleSave = async () => {
     if (pendingChanges.size === 0) {
       setMessage({ type: 'error', text: '変更がありません' });
-      setTimeout(() => setMessage(null), MESSAGE_TIMEOUT_MS);
       return;
     }
 
@@ -276,7 +275,6 @@ const FieldVisibilityPage: React.FC = () => {
       setMessage({ type: 'error', text: '保存に失敗しました' });
     } finally {
       setIsSaving(false);
-      setTimeout(() => setMessage(null), MESSAGE_TIMEOUT_MS);
     }
   };
 
@@ -375,16 +373,7 @@ const FieldVisibilityPage: React.FC = () => {
 
       {/* メッセージ */}
       {message && (
-        <div style={{
-          padding: '12px 16px',
-          marginBottom: '16px',
-          borderRadius: '8px',
-          backgroundColor: message.type === 'success' ? '#D1FAE5' : '#FEE2E2',
-          color: message.type === 'success' ? '#065F46' : '#991B1B',
-          fontSize: '14px',
-        }}>
-          {message.text}
-        </div>
+        <ErrorBanner type={message.type} message={message.text} onClose={() => setMessage(null)} />
       )}
 
       {/* テーブル選択 & 保存ボタン */}

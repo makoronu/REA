@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { API_PATHS } from '../../constants/apiPaths';
-import { MESSAGE_TIMEOUT_MS, LONG_MESSAGE_TIMEOUT_MS } from '../../constants';
+import ErrorBanner from '../../components/ErrorBanner';
 
 interface User {
   id: number;
@@ -80,7 +80,6 @@ export const UsersPage: React.FC = () => {
       setShowCreateModal(false);
       setNewUser({ email: '', name: '', role_id: roles[0]?.id || 0 });
       fetchData();
-      setTimeout(() => setSuccessMessage(null), LONG_MESSAGE_TIMEOUT_MS);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'ユーザー作成に失敗しました';
       setError(message);
@@ -95,7 +94,6 @@ export const UsersPage: React.FC = () => {
 
       fetchData();
       setSuccessMessage(currentActive ? 'ユーザーを無効化しました' : 'ユーザーを有効化しました');
-      setTimeout(() => setSuccessMessage(null), MESSAGE_TIMEOUT_MS);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '更新に失敗しました';
       setError(message);
@@ -149,30 +147,10 @@ export const UsersPage: React.FC = () => {
 
       {/* メッセージ */}
       {error && (
-        <div style={{
-          padding: '12px 16px',
-          backgroundColor: '#FEF2F2',
-          border: '1px solid #FECACA',
-          borderRadius: '8px',
-          marginBottom: '16px',
-          color: '#DC2626'
-        }}>
-          {error}
-          <button onClick={() => setError(null)} style={{ float: 'right', background: 'none', border: 'none', cursor: 'pointer' }}>×</button>
-        </div>
+        <ErrorBanner type="error" message={error} onClose={() => setError(null)} />
       )}
-
       {successMessage && (
-        <div style={{
-          padding: '12px 16px',
-          backgroundColor: '#F0FDF4',
-          border: '1px solid #BBF7D0',
-          borderRadius: '8px',
-          marginBottom: '16px',
-          color: '#16A34A'
-        }}>
-          {successMessage}
-        </div>
+        <ErrorBanner type="success" message={successMessage} onClose={() => setSuccessMessage(null)} />
       )}
 
       {/* ユーザーテーブル */}
