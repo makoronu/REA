@@ -213,59 +213,129 @@ const SchoolResultSection: React.FC<{
   );
 };
 
-/** 駅結果サマリー */
-const StationResultSummary: React.FC<{ stations: StationCandidate[] }> = ({ stations }) => {
+/** 駅選択リスト */
+const StationSelectList: React.FC<{
+  stations: StationCandidate[];
+  selectedIndices: Set<number>;
+  onToggle: (index: number) => void;
+}> = ({ stations, selectedIndices, onToggle }) => {
   if (stations.length === 0) return <span style={{ fontSize: '12px', color: '#9CA3AF' }}>候補なし</span>;
-  const top3 = stations.slice(0, 3);
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-      {top3.map((s, i) => (
-        <span key={i} style={{ fontSize: '12px', color: '#374151' }}>
-          {s.station_name}駅（{s.line_name || ''}）徒歩{s.walk_minutes}分
-        </span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+      {stations.map((s, i) => (
+        <label key={i} style={{
+          display: 'flex', alignItems: 'center', gap: '8px',
+          padding: '6px 8px', borderRadius: '6px', cursor: 'pointer',
+          backgroundColor: selectedIndices.has(i) ? '#EFF6FF' : '#F9FAFB',
+          border: selectedIndices.has(i) ? '1px solid #93C5FD' : '1px solid #E5E7EB',
+        }}>
+          <input
+            type="checkbox"
+            checked={selectedIndices.has(i)}
+            onChange={() => onToggle(i)}
+            style={{ accentColor: '#3B82F6' }}
+          />
+          <span style={{ fontSize: '13px', color: '#1F2937', flex: 1 }}>
+            {s.station_name}駅（{s.line_name || ''}）
+          </span>
+          <span style={{ fontSize: '12px', color: '#6B7280', whiteSpace: 'nowrap' }}>
+            徒歩{s.walk_minutes}分
+          </span>
+        </label>
       ))}
-      {stations.length > 3 && (
-        <span style={{ fontSize: '11px', color: '#9CA3AF' }}>他{stations.length - 3}件</span>
-      )}
     </div>
   );
 };
 
-/** バス停結果サマリー */
-const BusStopResultSummary: React.FC<{ busStops: BusStopCandidate[] }> = ({ busStops }) => {
+/** バス停選択リスト */
+const BusStopSelectList: React.FC<{
+  busStops: BusStopCandidate[];
+  selectedIndices: Set<number>;
+  onToggle: (index: number) => void;
+}> = ({ busStops, selectedIndices, onToggle }) => {
   if (busStops.length === 0) return <span style={{ fontSize: '12px', color: '#9CA3AF' }}>候補なし</span>;
-  const top3 = busStops.slice(0, 3);
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-      {top3.map((bs, i) => (
-        <span key={i} style={{ fontSize: '12px', color: '#374151' }}>
-          {bs.name} 徒歩{bs.walk_minutes}分
-        </span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+      {busStops.map((bs, i) => (
+        <label key={i} style={{
+          display: 'flex', alignItems: 'center', gap: '8px',
+          padding: '6px 8px', borderRadius: '6px', cursor: 'pointer',
+          backgroundColor: selectedIndices.has(i) ? '#EFF6FF' : '#F9FAFB',
+          border: selectedIndices.has(i) ? '1px solid #93C5FD' : '1px solid #E5E7EB',
+        }}>
+          <input
+            type="checkbox"
+            checked={selectedIndices.has(i)}
+            onChange={() => onToggle(i)}
+            style={{ accentColor: '#3B82F6' }}
+          />
+          <span style={{ fontSize: '13px', color: '#1F2937', flex: 1 }}>
+            {bs.name}
+            {bs.routes.length > 0 && (
+              <span style={{ fontSize: '11px', color: '#6B7280', marginLeft: '4px' }}>
+                ({bs.routes.join('・')})
+              </span>
+            )}
+          </span>
+          <span style={{ fontSize: '12px', color: '#6B7280', whiteSpace: 'nowrap' }}>
+            徒歩{bs.walk_minutes}分
+          </span>
+        </label>
       ))}
-      {busStops.length > 3 && (
-        <span style={{ fontSize: '11px', color: '#9CA3AF' }}>他{busStops.length - 3}件</span>
-      )}
     </div>
   );
 };
 
-/** 施設結果サマリー */
-const FacilityResultSummary: React.FC<{ facilities: FacilityItem[] }> = ({ facilities }) => {
+/** 施設選択リスト（カテゴリ別） */
+const FacilitySelectList: React.FC<{
+  facilities: FacilityItem[];
+  selectedIndices: Set<number>;
+  onToggle: (index: number) => void;
+}> = ({ facilities, selectedIndices, onToggle }) => {
   if (facilities.length === 0) return <span style={{ fontSize: '12px', color: '#9CA3AF' }}>候補なし</span>;
-  // カテゴリ別に集計
-  const byCategory: Record<string, number> = {};
-  facilities.forEach(f => {
-    byCategory[f.category_name] = (byCategory[f.category_name] || 0) + 1;
+  // カテゴリ別にグルーピング（元の配列インデックスを保持）
+  const byCategory: { catName: string; items: { facility: FacilityItem; originalIndex: number }[] }[] = [];
+  const catMap = new Map<string, number>();
+  facilities.forEach((f, i) => {
+    const catIdx = catMap.get(f.category);
+    if (catIdx !== undefined) {
+      byCategory[catIdx].items.push({ facility: f, originalIndex: i });
+    } else {
+      catMap.set(f.category, byCategory.length);
+      byCategory.push({ catName: f.category_name, items: [{ facility: f, originalIndex: i }] });
+    }
   });
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-      {Object.entries(byCategory).map(([cat, count]) => (
-        <span key={cat} style={{
-          fontSize: '11px', backgroundColor: '#F3F4F6', padding: '2px 8px',
-          borderRadius: '10px', color: '#374151',
-        }}>
-          {cat}: {count}件
-        </span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      {byCategory.map((group) => (
+        <div key={group.catName}>
+          <div style={{ fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
+            {group.catName}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+            {group.items.map(({ facility, originalIndex }) => (
+              <label key={originalIndex} style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '5px 8px', borderRadius: '6px', cursor: 'pointer',
+                backgroundColor: selectedIndices.has(originalIndex) ? '#EFF6FF' : '#F9FAFB',
+                border: selectedIndices.has(originalIndex) ? '1px solid #93C5FD' : '1px solid #E5E7EB',
+              }}>
+                <input
+                  type="checkbox"
+                  checked={selectedIndices.has(originalIndex)}
+                  onChange={() => onToggle(originalIndex)}
+                  style={{ accentColor: '#3B82F6' }}
+                />
+                <span style={{ fontSize: '13px', color: '#1F2937', flex: 1 }}>
+                  {facility.name}
+                </span>
+                <span style={{ fontSize: '12px', color: '#6B7280', whiteSpace: 'nowrap' }}>
+                  {facility.distance_meters}m（徒歩{facility.walk_minutes}分）
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
       ))}
     </div>
   );
@@ -310,6 +380,11 @@ export const GeoPanel: React.FC<GeoPanelProps> = ({ isOpen, onClose, schoolDistr
   const [selectedJuniorHighMinutes, setSelectedJuniorHighMinutes] = useState<number | null>(
     getValues('junior_high_school_minutes') || null
   );
+
+  // 駅・バス停・施設の選択状態（インデックスのSet）
+  const [selectedStationIndices, setSelectedStationIndices] = useState<Set<number>>(new Set());
+  const [selectedBusStopIndices, setSelectedBusStopIndices] = useState<Set<number>>(new Set());
+  const [selectedFacilityIndices, setSelectedFacilityIndices] = useState<Set<number>>(new Set());
 
   // モーダルが開いた時にフォームから座標を同期
   useEffect(() => {
@@ -418,6 +493,26 @@ export const GeoPanel: React.FC<GeoPanelProps> = ({ isOpen, onClose, schoolDistr
     }
 
     setResults({ schools, stations, busStops, facilities, errors });
+
+    // 駅: デフォルト上位N件を選択
+    const stationLimit = GEO_SEARCH_CONFIG.PROPERTY_STATIONS.LIMIT;
+    setSelectedStationIndices(new Set(stations.slice(0, stationLimit).map((_, i) => i)));
+
+    // バス停: デフォルト上位N件を選択
+    const busLimit = GEO_SEARCH_CONFIG.PROPERTY_BUS_STOPS.LIMIT;
+    setSelectedBusStopIndices(new Set(busStops.slice(0, busLimit).map((_, i) => i)));
+
+    // 施設: デフォルト各カテゴリ最寄り1件を選択
+    const facilityDefaults = new Set<number>();
+    const seenCategories = new Set<string>();
+    facilities.forEach((f, i) => {
+      if (!seenCategories.has(f.category)) {
+        seenCategories.add(f.category);
+        facilityDefaults.add(i);
+      }
+    });
+    setSelectedFacilityIndices(facilityDefaults);
+
     setIsFetching(false);
   };
 
@@ -443,38 +538,33 @@ export const GeoPanel: React.FC<GeoPanelProps> = ({ isOpen, onClose, schoolDistr
       }
     }
 
-    // 駅（上位3件を自動設定）
-    if (results.stations.length > 0) {
-      const topStations = results.stations.slice(0, GEO_SEARCH_CONFIG.PROPERTY_STATIONS.LIMIT);
-      const transportationData = topStations.map(s => ({
-        station_name: s.station_name,
-        line_name: s.line_name || '',
-        walk_minutes: s.walk_minutes,
-      }));
-      setValue('transportation', transportationData, { shouldDirty: true });
-    }
+    // 駅（選択した駅のみ反映）
+    const selectedStations = results.stations.filter((_, i) => selectedStationIndices.has(i));
+    const transportationData = selectedStations.map(s => ({
+      station_name: s.station_name,
+      line_name: s.line_name || '',
+      walk_minutes: s.walk_minutes,
+    }));
+    setValue('transportation', transportationData, { shouldDirty: true });
 
-    // バス停（上位5件を自動設定）
-    if (results.busStops.length > 0) {
-      const topBusStops = results.busStops.slice(0, GEO_SEARCH_CONFIG.PROPERTY_BUS_STOPS.LIMIT);
-      const busData = topBusStops.map(bs => ({
-        bus_stop_name: bs.name,
-        line_name: (bs.routes || []).join('・'),
-        walk_minutes: bs.walk_minutes,
-      }));
-      setValue('bus_stops', busData, { shouldDirty: true });
-    }
+    // バス停（選択したバス停のみ反映）
+    const selectedBusStops = results.busStops.filter((_, i) => selectedBusStopIndices.has(i));
+    const busData = selectedBusStops.map(bs => ({
+      bus_stop_name: bs.name,
+      line_name: (bs.routes || []).join('・'),
+      walk_minutes: bs.walk_minutes,
+    }));
+    setValue('bus_stops', busData, { shouldDirty: true });
 
-    // 施設（全件設定）
-    if (results.facilities.length > 0) {
-      const facilityData = results.facilities.map(f => ({
-        facility_name: f.name,
-        category: f.category,
-        distance_meters: f.distance_meters || Math.round((f.walk_minutes || 0) * 80),
-        walk_minutes: f.walk_minutes,
-      }));
-      setValue('nearby_facilities', facilityData, { shouldDirty: true });
-    }
+    // 施設（選択した施設のみ反映）
+    const selectedFacilities = results.facilities.filter((_, i) => selectedFacilityIndices.has(i));
+    const facilityData = selectedFacilities.map(f => ({
+      facility_name: f.name,
+      category: f.category,
+      distance_meters: f.distance_meters || Math.round((f.walk_minutes || 0) * 80),
+      walk_minutes: f.walk_minutes,
+    }));
+    setValue('nearby_facilities', facilityData, { shouldDirty: true });
 
     onClose();
   };
@@ -647,26 +737,74 @@ export const GeoPanel: React.FC<GeoPanelProps> = ({ isOpen, onClose, schoolDistr
 
             {/* 駅 */}
             <div style={{ padding: '14px 16px', borderBottom: '1px solid #E5E7EB' }}>
-              <div style={{ fontSize: '14px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
-                🚃 最寄駅（上位{GEO_SEARCH_CONFIG.PROPERTY_STATIONS.LIMIT}件を自動設定）
+              <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                fontSize: '14px', fontWeight: 600, color: '#374151', marginBottom: '6px',
+              }}>
+                <span>🚃 最寄駅（{results.stations.length}件）</span>
+                <span style={{ fontSize: '11px', fontWeight: 400, color: '#6B7280' }}>
+                  {selectedStationIndices.size}件選択中
+                </span>
               </div>
-              <StationResultSummary stations={results.stations} />
+              <StationSelectList
+                stations={results.stations}
+                selectedIndices={selectedStationIndices}
+                onToggle={(i) => {
+                  setSelectedStationIndices(prev => {
+                    const next = new Set(prev);
+                    next.has(i) ? next.delete(i) : next.add(i);
+                    return next;
+                  });
+                }}
+              />
             </div>
 
             {/* バス停 */}
             <div style={{ padding: '14px 16px', borderBottom: '1px solid #E5E7EB' }}>
-              <div style={{ fontSize: '14px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
-                🚌 バス停（上位{GEO_SEARCH_CONFIG.PROPERTY_BUS_STOPS.LIMIT}件を自動設定）
+              <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                fontSize: '14px', fontWeight: 600, color: '#374151', marginBottom: '6px',
+              }}>
+                <span>🚌 バス停（{results.busStops.length}件）</span>
+                <span style={{ fontSize: '11px', fontWeight: 400, color: '#6B7280' }}>
+                  {selectedBusStopIndices.size}件選択中
+                </span>
               </div>
-              <BusStopResultSummary busStops={results.busStops} />
+              <BusStopSelectList
+                busStops={results.busStops}
+                selectedIndices={selectedBusStopIndices}
+                onToggle={(i) => {
+                  setSelectedBusStopIndices(prev => {
+                    const next = new Set(prev);
+                    next.has(i) ? next.delete(i) : next.add(i);
+                    return next;
+                  });
+                }}
+              />
             </div>
 
             {/* 施設 */}
             <div style={{ padding: '14px 16px' }}>
-              <div style={{ fontSize: '14px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
-                🏪 周辺施設（{results.facilities.length}件）
+              <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                fontSize: '14px', fontWeight: 600, color: '#374151', marginBottom: '6px',
+              }}>
+                <span>🏪 周辺施設（{results.facilities.length}件）</span>
+                <span style={{ fontSize: '11px', fontWeight: 400, color: '#6B7280' }}>
+                  {selectedFacilityIndices.size}件選択中
+                </span>
               </div>
-              <FacilityResultSummary facilities={results.facilities} />
+              <FacilitySelectList
+                facilities={results.facilities}
+                selectedIndices={selectedFacilityIndices}
+                onToggle={(i) => {
+                  setSelectedFacilityIndices(prev => {
+                    const next = new Set(prev);
+                    next.has(i) ? next.delete(i) : next.add(i);
+                    return next;
+                  });
+                }}
+              />
             </div>
           </div>
         )}
