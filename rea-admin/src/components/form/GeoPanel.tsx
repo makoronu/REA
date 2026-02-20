@@ -9,8 +9,6 @@ import { useFormContext } from 'react-hook-form';
 import { MapContainer, TileLayer } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { ColumnWithLabel } from '../../services/metadataService';
-import { FieldGroup } from './FieldFactory';
 import { MAP_TILES, LEAFLET_ICON_URLS } from '../../constants';
 import {
   SchoolCandidate,
@@ -34,10 +32,9 @@ L.Icon.Default.mergeOptions({
 interface GeoPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  schoolDistrictColumns?: ColumnWithLabel[];
 }
 
-export const GeoPanel: React.FC<GeoPanelProps> = ({ isOpen, onClose, schoolDistrictColumns }) => {
+export const GeoPanel: React.FC<GeoPanelProps> = ({ isOpen, onClose }) => {
   const { getValues, setValue } = useFormContext();
 
   // ピン座標（地図操作用のローカル状態）
@@ -380,24 +377,6 @@ export const GeoPanel: React.FC<GeoPanelProps> = ({ isOpen, onClose, schoolDistr
                 }}
               />
             </div>
-          </div>
-        )}
-
-        {/* 学区フィールド（FieldGroup経由で表示） */}
-        {results && results.schools && schoolDistrictColumns && schoolDistrictColumns.length > 0 && (
-          <div style={{
-            padding: '14px 16px', marginBottom: '16px',
-            backgroundColor: '#F9FAFB', borderRadius: '8px',
-            border: '1px solid #E5E7EB',
-          }}>
-            <div style={{ fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>
-              学区フィールド（手動修正可）
-            </div>
-            <FieldGroup
-              groupName="学区"
-              columns={schoolDistrictColumns}
-              disabled={false}
-            />
           </div>
         )}
 

@@ -351,11 +351,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
       }, {} as Record<string, ColumnWithLabel[]>)
     } : null;
 
-    // GeoPanel用: 学区カラムを取得
-    const schoolDistrictColumns = propertiesColumns.filter(col =>
-      col.group_name === '学区' &&
-      isFieldVisibleForPropertyType(col.visible_for, currentPropertyType, col.column_name)
-    );
+
 
     // タブを追加（propertiesは所在地・周辺情報を除外）
     orderedTables.forEach(table => {
@@ -1175,7 +1171,6 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
             <GeoPanel
               isOpen={isGeoPanelOpen}
               onClose={() => setIsGeoPanelOpen(false)}
-              schoolDistrictColumns={schoolDistrictColumns}
             />
 
             {/* 法令制限パネル（FormProvider内に配置） */}
