@@ -1,9 +1,61 @@
 /**
- * GeoPanel結果表示コンポーネント
+ * GeoPanel補助コンポーネント
  *
- * GeoPanel一括取得結果の学区・駅・バス停・施設を表示する子コンポーネント群
+ * 地図コンポーネント + 一括取得結果の学区・駅・バス停・施設表示
  */
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
+import { Marker, useMap, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+
+// =============================================================================
+// 地図コンポーネント
+// =============================================================================
+
+/** 地図の中心・ズーム変更 */
+export const MapController: React.FC<{ center: [number, number]; zoom: number }> = ({ center, zoom }) => {
+  const map = useMap();
+  useEffect(() => {
+    map.setView(center, zoom);
+  }, [center, zoom, map]);
+  return null;
+};
+
+/** ドラッグ可能マーカー */
+export const DraggableMarker: React.FC<{
+  position: [number, number];
+  onPositionChange: (lat: number, lng: number) => void;
+}> = ({ position, onPositionChange }) => {
+  const markerRef = useRef<L.Marker>(null);
+
+  return (
+    <Marker
+      draggable={true}
+      eventHandlers={{
+        dragend() {
+          const marker = markerRef.current;
+          if (marker) {
+            const latlng = marker.getLatLng();
+            onPositionChange(latlng.lat, latlng.lng);
+          }
+        },
+      }}
+      position={position}
+      ref={markerRef}
+    />
+  );
+};
+
+/** 地図クリックで座標変更 */
+export const MapClickHandler: React.FC<{
+  onPositionChange: (lat: number, lng: number) => void;
+}> = ({ onPositionChange }) => {
+  useMapEvents({
+    click(e) {
+      onPositionChange(e.latlng.lat, e.latlng.lng);
+    },
+  });
+  return null;
+};
 
 // =============================================================================
 // 型定義（GeoPanel共通）

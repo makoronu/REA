@@ -4,20 +4,20 @@
  * 地図でピン指定 → 学区・駅・バス・施設を一括取得 → 結果確認 → フォームに反映
  * useFormContext経由でDynamicFormのフォームと連携
  */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useFormContext } from 'react-hook-form';
-import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { ColumnWithLabel } from '../../services/metadataService';
 import { FieldGroup } from './FieldFactory';
-import { API_PATHS } from '../../constants/apiPaths';
-import { api } from '../../services/api';
-import { GEO_SEARCH_CONFIG, MAP_TILES, LEAFLET_ICON_URLS } from '../../constants';
+import { MAP_TILES, LEAFLET_ICON_URLS } from '../../constants';
 import {
-  SchoolCandidate, StationCandidate, BusStopCandidate, FacilityItem, FetchResults,
+  SchoolCandidate,
+  MapController, DraggableMarker, MapClickHandler,
   SchoolResultSection, StationSelectList, BusStopSelectList, FacilitySelectList,
 } from './GeoResultComponents';
+import { useGeoFetch } from './useGeoFetch';
 
 // Leafletアイコン修正
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -26,56 +26,6 @@ L.Icon.Default.mergeOptions({
   iconUrl: LEAFLET_ICON_URLS.MARKER,
   shadowUrl: LEAFLET_ICON_URLS.SHADOW,
 });
-
-// =============================================================================
-// 地図コンポーネント
-// =============================================================================
-
-/** 地図の中心・ズーム変更 */
-const MapController: React.FC<{ center: [number, number]; zoom: number }> = ({ center, zoom }) => {
-  const map = useMap();
-  useEffect(() => {
-    map.setView(center, zoom);
-  }, [center, zoom, map]);
-  return null;
-};
-
-/** ドラッグ可能マーカー */
-const DraggableMarker: React.FC<{
-  position: [number, number];
-  onPositionChange: (lat: number, lng: number) => void;
-}> = ({ position, onPositionChange }) => {
-  const markerRef = useRef<L.Marker>(null);
-
-  return (
-    <Marker
-      draggable={true}
-      eventHandlers={{
-        dragend() {
-          const marker = markerRef.current;
-          if (marker) {
-            const latlng = marker.getLatLng();
-            onPositionChange(latlng.lat, latlng.lng);
-          }
-        },
-      }}
-      position={position}
-      ref={markerRef}
-    />
-  );
-};
-
-/** 地図クリックで座標変更 */
-const MapClickHandler: React.FC<{
-  onPositionChange: (lat: number, lng: number) => void;
-}> = ({ onPositionChange }) => {
-  useMapEvents({
-    click(e) {
-      onPositionChange(e.latlng.lat, e.latlng.lng);
-    },
-  });
-  return null;
-};
 
 // =============================================================================
 // GeoPanel メインコンポーネント
@@ -99,28 +49,14 @@ export const GeoPanel: React.FC<GeoPanelProps> = ({ isOpen, onClose, schoolDistr
   const [pinLng, setPinLng] = useState<number>(hasFormCoords ? Number(formLng) : 139.7671);
   const [hasPin, setHasPin] = useState(hasFormCoords);
 
-  // 取得状態
-  const [isFetching, setIsFetching] = useState(false);
-  const [results, setResults] = useState<FetchResults | null>(null);
-
-  // 学区選択状態
-  const [selectedElementary, setSelectedElementary] = useState<string | null>(
-    getValues('elementary_school') || null
-  );
-  const [selectedJuniorHigh, setSelectedJuniorHigh] = useState<string | null>(
-    getValues('junior_high_school') || null
-  );
-  const [selectedElementaryMinutes, setSelectedElementaryMinutes] = useState<number | null>(
-    getValues('elementary_school_minutes') || null
-  );
-  const [selectedJuniorHighMinutes, setSelectedJuniorHighMinutes] = useState<number | null>(
-    getValues('junior_high_school_minutes') || null
-  );
-
-  // 駅・バス停・施設の選択状態（インデックスのSet）
-  const [selectedStationIndices, setSelectedStationIndices] = useState<Set<number>>(new Set());
-  const [selectedBusStopIndices, setSelectedBusStopIndices] = useState<Set<number>>(new Set());
-  const [selectedFacilityIndices, setSelectedFacilityIndices] = useState<Set<number>>(new Set());
+  // 一括取得フック
+  const {
+    isFetching, results,
+    selectedStationIndices, selectedBusStopIndices, selectedFacilityIndices,
+    schoolSelection, setSchoolSelection,
+    setSelectedStationIndices, setSelectedBusStopIndices, setSelectedFacilityIndices,
+    handleBulkFetch, clearResults,
+  } = useGeoFetch();
 
   // モーダルが開いた時にフォームから座標を同期
   useEffect(() => {
@@ -132,13 +68,15 @@ export const GeoPanel: React.FC<GeoPanelProps> = ({ isOpen, onClose, schoolDistr
         setPinLng(Number(lng));
         setHasPin(true);
       }
-      setSelectedElementary(getValues('elementary_school') || null);
-      setSelectedJuniorHigh(getValues('junior_high_school') || null);
-      setSelectedElementaryMinutes(getValues('elementary_school_minutes') || null);
-      setSelectedJuniorHighMinutes(getValues('junior_high_school_minutes') || null);
-      setResults(null);
+      setSchoolSelection({
+        elementary: getValues('elementary_school') || null,
+        elementaryMinutes: getValues('elementary_school_minutes') || null,
+        juniorHigh: getValues('junior_high_school') || null,
+        juniorHighMinutes: getValues('junior_high_school_minutes') || null,
+      });
+      clearResults();
     }
-  }, [isOpen, getValues]);
+  }, [isOpen, getValues, setSchoolSelection, clearResults]);
 
   if (!isOpen) return null;
 
@@ -147,109 +85,7 @@ export const GeoPanel: React.FC<GeoPanelProps> = ({ isOpen, onClose, schoolDistr
     setPinLat(Math.round(lat * 1000000) / 1000000);
     setPinLng(Math.round(lng * 1000000) / 1000000);
     setHasPin(true);
-    // ピンを動かしたら前回の結果をクリア
-    setResults(null);
-  };
-
-  // 一括取得
-  const handleBulkFetch = async () => {
-    if (!hasPin) return;
-
-    setIsFetching(true);
-    const errors: string[] = [];
-
-    const [schoolRes, stationRes, busRes, facilityRes] = await Promise.allSettled([
-      api.get(API_PATHS.GEO.SCHOOL_DISTRICTS, { params: { lat: pinLat, lng: pinLng } }),
-      api.get(API_PATHS.GEO.NEAREST_STATIONS, {
-        params: { lat: pinLat, lng: pinLng, radius: GEO_SEARCH_CONFIG.STATION.RADIUS_M, limit: GEO_SEARCH_CONFIG.STATION.LIMIT }
-      }),
-      api.get(API_PATHS.GEO.NEAREST_BUS_STOPS, {
-        params: { lat: pinLat, lng: pinLng, limit: GEO_SEARCH_CONFIG.BUS_STOP.LIMIT }
-      }),
-      api.get(API_PATHS.GEO.NEAREST_FACILITIES, {
-        params: { lat: pinLat, lng: pinLng, limit_per_category: GEO_SEARCH_CONFIG.FACILITY.LIMIT_PER_CATEGORY }
-      }),
-    ]);
-
-    // 学区
-    let schools: FetchResults['schools'] = null;
-    if (schoolRes.status === 'fulfilled') {
-      const d = schoolRes.value.data;
-      schools = { elementary: d.elementary || [], juniorHigh: d.junior_high || [] };
-      // 学区内の学校を自動選択
-      const inDistrictElem = (d.elementary || []).find((s: SchoolCandidate) => s.is_in_district);
-      const inDistrictJH = (d.junior_high || []).find((s: SchoolCandidate) => s.is_in_district);
-      if (inDistrictElem) {
-        setSelectedElementary(inDistrictElem.school_name);
-        setSelectedElementaryMinutes(inDistrictElem.walk_minutes);
-      }
-      if (inDistrictJH) {
-        setSelectedJuniorHigh(inDistrictJH.school_name);
-        setSelectedJuniorHighMinutes(inDistrictJH.walk_minutes);
-      }
-    } else {
-      errors.push('学区');
-    }
-
-    // 駅
-    let stations: StationCandidate[] = [];
-    if (stationRes.status === 'fulfilled') {
-      stations = stationRes.value.data.stations || [];
-    } else {
-      errors.push('駅');
-    }
-
-    // バス
-    let busStops: BusStopCandidate[] = [];
-    if (busRes.status === 'fulfilled') {
-      busStops = busRes.value.data.bus_stops || [];
-    } else {
-      errors.push('バス停');
-    }
-
-    // 施設
-    const facilities: FacilityItem[] = [];
-    if (facilityRes.status === 'fulfilled') {
-      const catData = facilityRes.value.data.categories || {};
-      Object.entries(catData).forEach(([catCode, catVal]: [string, any]) => {
-        (catVal.facilities || []).forEach((f: any) => {
-          facilities.push({
-            id: f.id,
-            name: f.name,
-            category: catCode,
-            category_name: catVal.category_name,
-            address: f.address,
-            distance_meters: f.distance_meters,
-            walk_minutes: f.walk_minutes,
-          });
-        });
-      });
-    } else {
-      errors.push('施設');
-    }
-
-    setResults({ schools, stations, busStops, facilities, errors });
-
-    // 駅: デフォルト上位N件を選択
-    const stationLimit = GEO_SEARCH_CONFIG.PROPERTY_STATIONS.LIMIT;
-    setSelectedStationIndices(new Set(stations.slice(0, stationLimit).map((_, i) => i)));
-
-    // バス停: デフォルト上位N件を選択
-    const busLimit = GEO_SEARCH_CONFIG.PROPERTY_BUS_STOPS.LIMIT;
-    setSelectedBusStopIndices(new Set(busStops.slice(0, busLimit).map((_, i) => i)));
-
-    // 施設: デフォルト各カテゴリ最寄り1件を選択
-    const facilityDefaults = new Set<number>();
-    const seenCategories = new Set<string>();
-    facilities.forEach((f, i) => {
-      if (!seenCategories.has(f.category)) {
-        seenCategories.add(f.category);
-        facilityDefaults.add(i);
-      }
-    });
-    setSelectedFacilityIndices(facilityDefaults);
-
-    setIsFetching(false);
+    clearResults();
   };
 
   // フォームに反映して閉じる
@@ -261,16 +97,16 @@ export const GeoPanel: React.FC<GeoPanelProps> = ({ isOpen, onClose, schoolDistr
     setValue('longitude', pinLng, { shouldDirty: true });
 
     // 学区
-    if (selectedElementary) {
-      setValue('elementary_school', selectedElementary, { shouldDirty: true });
-      if (selectedElementaryMinutes !== null) {
-        setValue('elementary_school_minutes', selectedElementaryMinutes, { shouldDirty: true });
+    if (schoolSelection.elementary) {
+      setValue('elementary_school', schoolSelection.elementary, { shouldDirty: true });
+      if (schoolSelection.elementaryMinutes !== null) {
+        setValue('elementary_school_minutes', schoolSelection.elementaryMinutes, { shouldDirty: true });
       }
     }
-    if (selectedJuniorHigh) {
-      setValue('junior_high_school', selectedJuniorHigh, { shouldDirty: true });
-      if (selectedJuniorHighMinutes !== null) {
-        setValue('junior_high_school_minutes', selectedJuniorHighMinutes, { shouldDirty: true });
+    if (schoolSelection.juniorHigh) {
+      setValue('junior_high_school', schoolSelection.juniorHigh, { shouldDirty: true });
+      if (schoolSelection.juniorHighMinutes !== null) {
+        setValue('junior_high_school_minutes', schoolSelection.juniorHighMinutes, { shouldDirty: true });
       }
     }
 
@@ -307,12 +143,14 @@ export const GeoPanel: React.FC<GeoPanelProps> = ({ isOpen, onClose, schoolDistr
 
   // 学区選択ハンドラ
   const handleSelectElementary = (school: SchoolCandidate) => {
-    setSelectedElementary(school.school_name);
-    setSelectedElementaryMinutes(school.walk_minutes);
+    setSchoolSelection(prev => ({
+      ...prev, elementary: school.school_name, elementaryMinutes: school.walk_minutes,
+    }));
   };
   const handleSelectJuniorHigh = (school: SchoolCandidate) => {
-    setSelectedJuniorHigh(school.school_name);
-    setSelectedJuniorHighMinutes(school.walk_minutes);
+    setSchoolSelection(prev => ({
+      ...prev, juniorHigh: school.school_name, juniorHighMinutes: school.walk_minutes,
+    }));
   };
 
   const mapCenter: [number, number] = [pinLat, pinLng];
@@ -405,7 +243,7 @@ export const GeoPanel: React.FC<GeoPanelProps> = ({ isOpen, onClose, schoolDistr
         <div style={{ marginBottom: '16px' }}>
           <button
             type="button"
-            onClick={() => { void handleBulkFetch(); }}
+            onClick={() => { void handleBulkFetch(pinLat, pinLng); }}
             disabled={!hasPin || isFetching}
             style={{
               width: '100%',
@@ -463,8 +301,8 @@ export const GeoPanel: React.FC<GeoPanelProps> = ({ isOpen, onClose, schoolDistr
                 <SchoolResultSection
                   elementary={results.schools.elementary}
                   juniorHigh={results.schools.juniorHigh}
-                  selectedElementary={selectedElementary}
-                  selectedJuniorHigh={selectedJuniorHigh}
+                  selectedElementary={schoolSelection.elementary}
+                  selectedJuniorHigh={schoolSelection.juniorHigh}
                   onSelectElementary={handleSelectElementary}
                   onSelectJuniorHigh={handleSelectJuniorHigh}
                 />
