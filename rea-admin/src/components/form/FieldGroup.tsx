@@ -10,6 +10,7 @@ import { useFormContext } from 'react-hook-form';
 import { ColumnWithLabel } from '../../services/metadataService';
 import { FieldFactory } from './FieldFactory';
 import { LocationField } from './LocationField';
+import { DELIVERY_TIMING } from '../../constants';
 
 interface FieldGroupProps {
   groupName: string;
@@ -37,10 +38,10 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
   // 条件付き表示フィールドのフィルタリング
   const shouldShowField = (columnName: string): boolean => {
     if (columnName === 'delivery_date') {
-      return deliveryTiming === '3:期日指定';
+      return deliveryTiming === DELIVERY_TIMING.SPECIFIED_DATE;
     }
     if (columnName === 'move_in_consultation') {
-      return deliveryTiming === '2:相談';
+      return deliveryTiming === DELIVERY_TIMING.CONSULTATION;
     }
     return true;
   };

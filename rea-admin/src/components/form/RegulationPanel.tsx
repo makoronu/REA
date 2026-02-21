@@ -8,7 +8,7 @@
  *
  * データ格納はしない。入力補助のみ。
  */
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { api } from '../../services/api';
 import { API_PATHS } from '../../constants/apiPaths';
@@ -119,6 +119,14 @@ export const RegulationPanel: React.FC<RegulationPanelProps> = ({ isOpen, onClos
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<RegulationResponse | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // パネル再オープン時に前回結果をリセット（座標変更後の古い結果表示を防止）
+  useEffect(() => {
+    if (isOpen) {
+      setResults(null);
+      setMessage(null);
+    }
+  }, [isOpen]);
 
   const lat = watch('latitude');
   const lng = watch('longitude');

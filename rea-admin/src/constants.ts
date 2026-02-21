@@ -88,6 +88,12 @@ export const ZONE_COLORS: Record<number, string> = {
   99: '#CCCCCC',  // 無指定
 } as const;
 
+// === 引渡時期（条件付き表示用） ===
+export const DELIVERY_TIMING = {
+  SPECIFIED_DATE: '3:期日指定',
+  CONSULTATION: '2:相談',
+} as const;
+
 // === 地理情報 ===
 export const DEFAULT_SEARCH_RADIUS_M = 2000;  // デフォルト検索半径（メートル）
 
