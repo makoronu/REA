@@ -1,9 +1,10 @@
 /**
- * RegulationPanel: 法令制限自動取得ポップアップ
+ * RegulationPanel: 法令制限自動取得パネル（入力補助ツール）
  *
- * 地図表示 + reinfolib API自動取得 + 重要事項説明書チェックリスト
- * フォームフィールド（用途地域、建ぺい率等）はland_infoタブのFieldGroupで表示
- * このパネルは自動取得とチェックリストのみ担当
+ * GeoPanel同様の入力補助パターン:
+ * 1. reinfolib APIで法令制限+ハザード情報を取得
+ * 2. 取得結果を画面に表示（ユーザー確認）
+ * 3. 「フォームに反映して閉じる」で一括setValue
  */
 import React, { useState, useCallback } from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
@@ -11,16 +12,27 @@ import { api } from '../../services/api';
 import { API_PATHS } from '../../constants/apiPaths';
 import { RegulationMap } from '../regulations/RegulationMap';
 import { LEGAL_REGULATION_CATEGORIES } from '../../constants/legalRegulations';
-import { MESSAGE_TIMEOUT_MS } from '../../constants';
 
 // API返却の型定義
 interface RegulationCodes {
-  use_district?: string;
+  use_district?: number;
   building_coverage_ratio?: number;
   floor_area_ratio?: number;
-  fire_prevention_area?: string;
+  fire_prevention_area?: number;
   district_plan_name?: string;
-  city_planning?: string;
+  city_planning?: number;
+}
+
+interface RegulationResponse {
+  regulations: Record<string, Record<string, string> | null>;
+  codes: RegulationCodes;
+}
+
+// 結果表示用の行データ
+interface ResultRow {
+  label: string;
+  value: string;
+  willApply: boolean;
 }
 
 interface RegulationPanelProps {
@@ -28,17 +40,91 @@ interface RegulationPanelProps {
   onClose: () => void;
 }
 
+/** regulations生データ → 表示用行リストに変換 */
+function buildResultRows(
+  regulations: Record<string, Record<string, string> | null>,
+  codes: RegulationCodes
+): ResultRow[] {
+  const rows: ResultRow[] = [];
+
+  // 用途地域
+  const useArea = regulations.use_area;
+  if (useArea) {
+    if (useArea['用途地域']) {
+      rows.push({ label: '用途地域', value: useArea['用途地域'], willApply: codes.use_district !== undefined });
+    }
+    if (useArea['建ぺい率']) {
+      rows.push({ label: '建ぺい率', value: useArea['建ぺい率'], willApply: codes.building_coverage_ratio !== undefined });
+    }
+    if (useArea['容積率']) {
+      rows.push({ label: '容積率', value: useArea['容積率'], willApply: codes.floor_area_ratio !== undefined });
+    }
+  }
+
+  // 都市計画
+  const cityPlanning = regulations.city_planning;
+  if (cityPlanning?.['区域区分']) {
+    rows.push({ label: '都市計画', value: cityPlanning['区域区分'], willApply: codes.city_planning !== undefined });
+  }
+
+  // 防火地域
+  const firePrevention = regulations.fire_prevention;
+  if (firePrevention?.['防火地域区分']) {
+    rows.push({ label: '防火地域', value: firePrevention['防火地域区分'], willApply: codes.fire_prevention_area !== undefined });
+  }
+
+  // 地区計画
+  const districtPlan = regulations.district_plan;
+  if (districtPlan?.['地区計画名']) {
+    rows.push({ label: '地区計画', value: districtPlan['地区計画名'], willApply: codes.district_plan_name !== undefined });
+  }
+
+  // 立地適正化計画
+  const locationOpt = regulations.location_optimization;
+  if (locationOpt) {
+    const text = Object.entries(locationOpt).map(([k, v]) => `${k}: ${v}`).join('、');
+    rows.push({ label: '立地適正化計画', value: text, willApply: false });
+  }
+
+  // 都市計画道路
+  const plannedRoad = regulations.planned_road;
+  if (plannedRoad) {
+    const text = Object.entries(plannedRoad).map(([k, v]) => `${k}: ${v}`).join('、');
+    rows.push({ label: '都市計画道路', value: text, willApply: false });
+  }
+
+  // ハザード情報
+  const hazardMap: Record<string, string> = {
+    flood: '洪水浸水想定',
+    landslide: '土砂災害警戒',
+    tsunami: '津波浸水想定',
+    storm_surge: '高潮浸水想定',
+  };
+  for (const [key, label] of Object.entries(hazardMap)) {
+    const data = regulations[key];
+    if (data) {
+      const text = Object.entries(data).map(([k, v]) => `${k}: ${v}`).join('、');
+      rows.push({ label, value: text, willApply: false });
+    } else {
+      rows.push({ label, value: '該当なし', willApply: false });
+    }
+  }
+
+  return rows;
+}
+
 export const RegulationPanel: React.FC<RegulationPanelProps> = ({ isOpen, onClose }) => {
   const { setValue, watch, control } = useFormContext();
   const [isLoading, setIsLoading] = useState(false);
+  const [results, setResults] = useState<RegulationResponse | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const lat = watch('latitude');
   const lng = watch('longitude');
   const hasCoordinates = lat && lng && !isNaN(Number(lat)) && !isNaN(Number(lng));
 
-  // 法令制限を自動取得 → フォームに代入
-  const handleFetchRegulations = useCallback(async () => {
+  // 法令制限を取得 → ローカルstateに保存（フォームには書き込まない）
+  const handleFetch = useCallback(async () => {
     if (!hasCoordinates) {
       setMessage({ type: 'error', text: '緯度・経度を先に入力してください' });
       return;
@@ -46,56 +132,60 @@ export const RegulationPanel: React.FC<RegulationPanelProps> = ({ isOpen, onClos
 
     setIsLoading(true);
     setMessage(null);
+    setResults(null);
 
     try {
       const response = await api.get(
         `${API_PATHS.REINFOLIB.REGULATIONS}?lat=${String(lat)}&lng=${String(lng)}`
       );
 
+      const regulations = response.data?.regulations || {};
       const codes: RegulationCodes = response.data?.codes || {};
+      setResults({ regulations, codes });
 
-      const updated: string[] = [];
-
-      if (codes.use_district) {
-        setValue('use_district', [codes.use_district], { shouldDirty: true });
-        updated.push('用途地域');
-      }
-      if (codes.building_coverage_ratio !== undefined) {
-        setValue('building_coverage_ratio', codes.building_coverage_ratio, { shouldDirty: true });
-        updated.push('建ぺい率');
-      }
-      if (codes.floor_area_ratio !== undefined) {
-        setValue('floor_area_ratio', codes.floor_area_ratio, { shouldDirty: true });
-        updated.push('容積率');
-      }
-      if (codes.fire_prevention_area) {
-        setValue('fire_prevention_area', codes.fire_prevention_area, { shouldDirty: true });
-        updated.push('防火地域');
-      }
-      if (codes.district_plan_name) {
-        setValue('district_plan_name', codes.district_plan_name, { shouldDirty: true });
-        updated.push('地区計画');
-      }
-      if (codes.city_planning) {
-        setValue('city_planning', [codes.city_planning], { shouldDirty: true });
-        updated.push('都市計画');
-      }
-
-      if (updated.length > 0) {
-        setMessage({ type: 'success', text: `${updated.join('・')}を設定しました` });
-      } else {
-        setMessage({ type: 'success', text: '法令制限情報を取得しました（該当データなし）' });
-      }
-      setTimeout(() => setMessage(null), MESSAGE_TIMEOUT_MS);
+      const appliedCount = Object.keys(codes).length;
+      setMessage({
+        type: 'success',
+        text: `法令制限情報を取得しました（自動反映対象: ${appliedCount}項目）`,
+      });
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : '取得に失敗しました';
       setMessage({ type: 'error', text: errorMessage });
     } finally {
       setIsLoading(false);
     }
-  }, [lat, lng, hasCoordinates, setValue]);
+  }, [lat, lng, hasCoordinates]);
+
+  // フォームに反映して閉じる
+  const handleApply = useCallback(() => {
+    if (!results) return;
+    const codes = results.codes;
+
+    if (codes.use_district !== undefined) {
+      setValue('use_district', [codes.use_district], { shouldDirty: true });
+    }
+    if (codes.building_coverage_ratio !== undefined) {
+      setValue('building_coverage_ratio', codes.building_coverage_ratio, { shouldDirty: true });
+    }
+    if (codes.floor_area_ratio !== undefined) {
+      setValue('floor_area_ratio', codes.floor_area_ratio, { shouldDirty: true });
+    }
+    if (codes.fire_prevention_area !== undefined) {
+      setValue('fire_prevention_area', codes.fire_prevention_area, { shouldDirty: true });
+    }
+    if (codes.district_plan_name !== undefined) {
+      setValue('district_plan_name', codes.district_plan_name, { shouldDirty: true });
+    }
+    if (codes.city_planning !== undefined) {
+      setValue('city_planning', [codes.city_planning], { shouldDirty: true });
+    }
+
+    onClose();
+  }, [results, setValue, onClose]);
 
   if (!isOpen) return null;
+
+  const resultRows = results ? buildResultRows(results.regulations, results.codes) : [];
 
   return (
     <div style={{
@@ -162,11 +252,11 @@ export const RegulationPanel: React.FC<RegulationPanelProps> = ({ isOpen, onClos
           </div>
         )}
 
-        {/* 自動取得ボタン */}
+        {/* 取得ボタン */}
         <div style={{ marginBottom: '16px' }}>
           <button
             type="button"
-            onClick={() => { void handleFetchRegulations(); }}
+            onClick={() => { void handleFetch(); }}
             disabled={!hasCoordinates || isLoading}
             style={{
               width: '100%',
@@ -220,13 +310,61 @@ export const RegulationPanel: React.FC<RegulationPanelProps> = ({ isOpen, onClos
           </div>
         )}
 
-        {/* 取得結果の反映先ガイド */}
-        {message?.type === 'success' && (
+        {/* 取得結果テーブル */}
+        {resultRows.length > 0 && (
           <div style={{
-            padding: '10px 14px', marginBottom: '16px', borderRadius: '8px',
-            backgroundColor: '#EFF6FF', fontSize: '12px', color: '#1E40AF',
+            marginBottom: '16px',
+            border: '1px solid #E5E7EB',
+            borderRadius: '8px',
+            overflow: 'hidden',
           }}>
-            取得した値は「土地情報」タブのフィールドに反映されています。閉じてご確認ください。
+            <div style={{
+              padding: '10px 16px',
+              backgroundColor: '#F3F4F6',
+              fontWeight: 600,
+              fontSize: '13px',
+              color: '#374151',
+              display: 'flex',
+              justifyContent: 'space-between',
+            }}>
+              <span>取得結果</span>
+              <span style={{ fontSize: '11px', color: '#9CA3AF' }}>
+                ● 反映対象 / ○ 情報表示のみ
+              </span>
+            </div>
+            {resultRows.map((row) => (
+              <div key={row.label} style={{
+                display: 'flex',
+                alignItems: 'center',
+                padding: '10px 16px',
+                borderTop: '1px solid #F3F4F6',
+                fontSize: '13px',
+                gap: '8px',
+              }}>
+                <span style={{
+                  width: '16px',
+                  textAlign: 'center',
+                  color: row.willApply ? '#059669' : '#D1D5DB',
+                  fontSize: '10px',
+                }}>
+                  {row.willApply ? '●' : '○'}
+                </span>
+                <span style={{
+                  width: '120px',
+                  flexShrink: 0,
+                  fontWeight: 500,
+                  color: '#374151',
+                }}>
+                  {row.label}
+                </span>
+                <span style={{
+                  color: row.value === '該当なし' ? '#9CA3AF' : '#111827',
+                  flex: 1,
+                }}>
+                  {row.value}
+                </span>
+              </div>
+            ))}
           </div>
         )}
 
@@ -292,16 +430,16 @@ export const RegulationPanel: React.FC<RegulationPanelProps> = ({ isOpen, onClos
 
         {/* フッター */}
         <div style={{
-          display: 'flex', justifyContent: 'flex-end',
+          display: 'flex', justifyContent: 'flex-end', gap: '12px',
           paddingTop: '16px', borderTop: '1px solid #E5E7EB',
         }}>
           <button
             type="button"
             onClick={onClose}
             style={{
-              padding: '10px 32px',
-              backgroundColor: '#3B82F6',
-              color: '#fff',
+              padding: '10px 24px',
+              backgroundColor: '#F3F4F6',
+              color: '#374151',
               border: 'none',
               borderRadius: '8px',
               cursor: 'pointer',
@@ -309,7 +447,24 @@ export const RegulationPanel: React.FC<RegulationPanelProps> = ({ isOpen, onClos
               fontSize: '14px',
             }}
           >
-            閉じる
+            キャンセル
+          </button>
+          <button
+            type="button"
+            onClick={handleApply}
+            disabled={!results}
+            style={{
+              padding: '10px 32px',
+              backgroundColor: results ? '#3B82F6' : '#D1D5DB',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: results ? 'pointer' : 'not-allowed',
+              fontWeight: 500,
+              fontSize: '14px',
+            }}
+          >
+            フォームに反映して閉じる
           </button>
         </div>
       </div>
