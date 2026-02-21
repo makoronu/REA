@@ -5,9 +5,10 @@ import { MESSAGE_TIMEOUT_MS } from '../../constants';
 
 interface LocationFieldProps {
   disabled?: boolean;
+  onOpenGeoPanel?: () => void;
 }
 
-export const LocationField: React.FC<LocationFieldProps> = ({ disabled = false }) => {
+export const LocationField: React.FC<LocationFieldProps> = ({ disabled = false, onOpenGeoPanel }) => {
   const { watch, setValue } = useFormContext();
 
   // フォームの値を監視
@@ -167,6 +168,48 @@ export const LocationField: React.FC<LocationFieldProps> = ({ disabled = false }
           </span>
         )}
       </div>
+
+      {/* 周辺情報自動取得ボタン */}
+      {onOpenGeoPanel && (
+        <div style={{ marginTop: '12px' }}>
+          {hasValidCoords ? (
+            <button
+              type="button"
+              onClick={onOpenGeoPanel}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 16px',
+                backgroundColor: '#EFF6FF',
+                border: '1px solid #BFDBFE',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: 500,
+                color: '#1D4ED8',
+                width: '100%',
+                justifyContent: 'center',
+              }}
+            >
+              <span style={{ fontSize: '16px' }}>🗺️</span>
+              周辺情報を自動取得（学区・駅・バス・施設）
+            </button>
+          ) : (
+            <div style={{
+              padding: '10px 16px',
+              backgroundColor: '#F9FAFB',
+              border: '1px dashed #D1D5DB',
+              borderRadius: '8px',
+              fontSize: '13px',
+              color: '#9CA3AF',
+              textAlign: 'center',
+            }}>
+              座標を取得すると、周辺情報（学区・駅・バス・施設）の自動取得が使えます
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
