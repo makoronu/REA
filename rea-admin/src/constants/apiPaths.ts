@@ -81,6 +81,7 @@ export const API_PATHS = {
   // メタデータ
   METADATA: {
     BASE: '/metadata',
+    options: (categoryCode: string) => `/metadata/options/${categoryCode}`,
   },
 
   // システム設定

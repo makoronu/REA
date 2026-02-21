@@ -22,6 +22,7 @@ import { NearbyFacilitiesField } from './NearbyFacilitiesField';
 import { parseOptions } from '../../utils/options';
 import { PostalCodeField } from './PostalCodeField';
 import { SelectionField } from './SelectionFields';
+import { LegalChecklistField } from './LegalChecklistField';
 import { getInputTypeFromDataType, inputBaseStyle, READONLY_FIELDS } from './fieldUtils';
 
 interface FieldFactoryProps {
@@ -397,6 +398,9 @@ export const FieldFactory: React.FC<FieldFactoryProps> = ({ column, disabled = f
             )}
           />
         );
+
+      case 'json_legal_checklist':
+        return <LegalChecklistField disabled={disabled || isReadOnly} />;
 
       case 'text':
       default:
