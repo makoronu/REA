@@ -5,13 +5,14 @@
  * 1. reinfolib APIで法令制限+ハザード情報を取得
  * 2. 取得結果を画面に表示（ユーザー確認）
  * 3. 「フォームに反映して閉じる」で一括setValue
+ *
+ * データ格納はしない。入力補助のみ。
  */
 import React, { useState, useCallback } from 'react';
-import { useFormContext, Controller } from 'react-hook-form';
+import { useFormContext } from 'react-hook-form';
 import { api } from '../../services/api';
 import { API_PATHS } from '../../constants/apiPaths';
 import { RegulationMap } from '../regulations/RegulationMap';
-import { LEGAL_REGULATION_CATEGORIES } from '../../constants/legalRegulations';
 
 // API返却の型定義
 interface RegulationCodes {
@@ -81,14 +82,14 @@ function buildResultRows(
 
   // 立地適正化計画
   const locationOpt = regulations.location_optimization;
-  if (locationOpt) {
+  if (locationOpt && Object.keys(locationOpt).length > 0) {
     const text = Object.entries(locationOpt).map(([k, v]) => `${k}: ${v}`).join('、');
     rows.push({ label: '立地適正化計画', value: text, willApply: false });
   }
 
   // 都市計画道路
   const plannedRoad = regulations.planned_road;
-  if (plannedRoad) {
+  if (plannedRoad && Object.keys(plannedRoad).length > 0) {
     const text = Object.entries(plannedRoad).map(([k, v]) => `${k}: ${v}`).join('、');
     rows.push({ label: '都市計画道路', value: text, willApply: false });
   }
@@ -102,7 +103,7 @@ function buildResultRows(
   };
   for (const [key, label] of Object.entries(hazardMap)) {
     const data = regulations[key];
-    if (data) {
+    if (data && Object.keys(data).length > 0) {
       const text = Object.entries(data).map(([k, v]) => `${k}: ${v}`).join('、');
       rows.push({ label, value: text, willApply: false });
     } else {
@@ -114,7 +115,7 @@ function buildResultRows(
 }
 
 export const RegulationPanel: React.FC<RegulationPanelProps> = ({ isOpen, onClose }) => {
-  const { setValue, watch, control } = useFormContext();
+  const { setValue, watch } = useFormContext();
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<RegulationResponse | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -156,8 +157,8 @@ export const RegulationPanel: React.FC<RegulationPanelProps> = ({ isOpen, onClos
     }
   }, [lat, lng, hasCoordinates]);
 
-  // フォームに反映して閉じる
-  const handleApply = useCallback(() => {
+  // フォームに反映して閉じる（GeoPanel同様の通常関数パターン）
+  const handleApply = () => {
     if (!results) return;
     const codes = results.codes;
 
@@ -181,7 +182,7 @@ export const RegulationPanel: React.FC<RegulationPanelProps> = ({ isOpen, onClos
     }
 
     onClose();
-  }, [results, setValue, onClose]);
+  };
 
   if (!isOpen) return null;
 
@@ -367,66 +368,6 @@ export const RegulationPanel: React.FC<RegulationPanelProps> = ({ isOpen, onClos
             ))}
           </div>
         )}
-
-        {/* 法令制限チェックリスト */}
-        <div style={{
-          padding: '16px',
-          backgroundColor: '#FFFBEB',
-          borderRadius: '8px',
-          marginBottom: '16px',
-          border: '1px solid #FCD34D',
-        }}>
-          <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: '#92400E' }}>
-            重要事項説明書 法令制限（該当するものをチェック）
-          </h4>
-          <Controller
-            name="legal_regulations_checked"
-            control={control}
-            defaultValue={[]}
-            render={({ field }) => {
-              const checkedItems: string[] = Array.isArray(field.value) ? field.value : [];
-              const toggleItem = (item: string) => {
-                const newValue = checkedItems.includes(item)
-                  ? checkedItems.filter(i => i !== item)
-                  : [...checkedItems, item];
-                field.onChange(newValue);
-              };
-              return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {LEGAL_REGULATION_CATEGORIES.map((category) => (
-                    <div key={category.name}>
-                      <div style={{
-                        fontSize: '12px', fontWeight: 600, color: '#78350F',
-                        marginBottom: '8px', borderBottom: '1px solid #FCD34D', paddingBottom: '4px',
-                      }}>
-                        {category.name}
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '4px 16px' }}>
-                        {category.items.map((item) => (
-                          <label
-                            key={item}
-                            style={{
-                              display: 'flex', alignItems: 'flex-start', gap: '6px',
-                              fontSize: '12px', color: '#374151', cursor: 'pointer', padding: '2px 0',
-                            }}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={checkedItems.includes(item)}
-                              onChange={() => toggleItem(item)}
-                              style={{ width: '14px', height: '14px', marginTop: '1px', flexShrink: 0 }}
-                            />
-                            <span style={{ lineHeight: '1.3' }}>{item}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              );
-            }}
-          />
-        </div>
 
         {/* フッター */}
         <div style={{
