@@ -94,15 +94,18 @@ export const SelectionField: React.FC<SelectionFieldProps> = ({ column, disabled
         name={column.column_name}
         control={control}
         render={({ field }) => {
+          const isJsonb = column.data_type?.toLowerCase() === 'jsonb';
+          // 型を文字列に正規化（DB由来の数値配列[5]とoption.value"5"の不一致を防止）
           const selectedValues: string[] = Array.isArray(field.value)
-            ? field.value
+            ? field.value.map(String)
             : (field.value ? String(field.value).split(',').map(v => v.trim()) : []);
 
           const toggleValue = (value: string) => {
             const newValues = selectedValues.includes(value)
               ? selectedValues.filter(v => v !== value)
               : [...selectedValues, value];
-            field.onChange(newValues.join(','));
+            // JSONB列は数値配列で保存、それ以外はカンマ区切り文字列
+            field.onChange(isJsonb ? newValues.map(Number) : newValues.join(','));
           };
 
           return (
@@ -262,15 +265,16 @@ export const SelectionField: React.FC<SelectionFieldProps> = ({ column, disabled
         name={column.column_name}
         control={control}
         render={({ field }) => {
+          const isJsonb = column.data_type?.toLowerCase() === 'jsonb';
           const selectedValues: string[] = Array.isArray(field.value)
-            ? field.value
+            ? field.value.map(String)
             : (field.value ? String(field.value).split(',').map(v => v.trim()) : []);
 
           const toggleValue = (value: string) => {
             const newValues = selectedValues.includes(value)
               ? selectedValues.filter(v => v !== value)
               : [...selectedValues, value];
-            field.onChange(newValues.join(','));
+            field.onChange(isJsonb ? newValues.map(Number) : newValues.join(','));
           };
 
           return (
