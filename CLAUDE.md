@@ -42,11 +42,23 @@
 
 - Seg 18完了後: HOMES入稿、ZOHO画像同期など残タスク
 
-### 今日完了した作業（2026-02-21 デプロイ: Seg 18f）
+### 今日完了した作業（2026-02-21 デプロイ: Seg 18f品質修正）
+
+- **Seg 18f品質修正: RegulationPanel状態リセット+定数化+デッドコード削除**（コミット: 45d91ca）
+  - RegulationPanel.tsx: パネル再オープン時にresults/messageをリセット（GeoPanel準拠useEffect追加）
+  - FieldGroup.tsx: 引渡時期の条件分岐マジックストリング→DELIVERY_TIMING定数参照に変更
+  - constants.ts: DELIVERY_TIMING定数追加
+  - regulations/RegulationPanel.tsx: import先ゼロのデッドコード削除（261行）
+  - 本番: デプロイ済み（GitHub Actions run #22251168320）
+
+- **Seg 18f: RegulationPanel反映バグ修正+チェックリスト削除**（コミット: 24c07eb）
+  - RegulationPanel.tsx: handleApply useCallback→通常関数に変更（GeoPanel準拠、クロージャ問題解消）
+  - RegulationPanel.tsx: チェックリスト削除（入力補助ツールにデータ格納機能は不適切）
+  - 本番: デプロイ済み
 
 - **Seg 18f: RegulationPanel入力補助化+FieldGroup法規制自動取得ボタン削除**（コミット: 2d14184）
   - FieldGroup.tsx: 法規制（自動取得）グループの特別処理を全削除（handleFetchZoning/ZoningMapField/isAutoFetchGroup）、368→212行
-  - RegulationPanel.tsx: GeoPanel同様の入力補助パターンに改修（325→479行）
+  - RegulationPanel.tsx: GeoPanel同様の入力補助パターンに改修（325→429行）
     - 即setValue → ローカルstate保存+取得結果テーブル表示
     - 「閉じる」→「キャンセル」+「フォームに反映して閉じる」
     - ハザード情報4項目（洪水/土砂/津波/高潮）の表示追加
