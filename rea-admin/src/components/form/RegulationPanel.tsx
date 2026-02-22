@@ -170,22 +170,22 @@ export const RegulationPanel: React.FC<RegulationPanelProps> = ({ isOpen, onClos
     if (!results) return;
     const codes = results.codes;
 
-    if (codes.use_district !== undefined) {
+    if (codes.use_district != null) {
       setValue('use_district', [codes.use_district], { shouldDirty: true });
     }
-    if (codes.building_coverage_ratio !== undefined) {
+    if (codes.building_coverage_ratio != null) {
       setValue('building_coverage_ratio', codes.building_coverage_ratio, { shouldDirty: true });
     }
-    if (codes.floor_area_ratio !== undefined) {
+    if (codes.floor_area_ratio != null) {
       setValue('floor_area_ratio', codes.floor_area_ratio, { shouldDirty: true });
     }
-    if (codes.fire_prevention_area !== undefined) {
+    if (codes.fire_prevention_area != null) {
       setValue('fire_prevention_area', codes.fire_prevention_area, { shouldDirty: true });
     }
-    if (codes.district_plan_name !== undefined) {
+    if (codes.district_plan_name != null) {
       setValue('district_plan_name', codes.district_plan_name, { shouldDirty: true });
     }
-    if (codes.city_planning !== undefined) {
+    if (codes.city_planning != null) {
       setValue('city_planning', [codes.city_planning], { shouldDirty: true });
     }
 

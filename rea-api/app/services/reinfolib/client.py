@@ -24,7 +24,10 @@ API_DEFINITIONS = {
             "area_classification_ja": "区域区分",
             "prefecture": "都道府県",
             "city_name": "市区町村"
-        }
+        },
+        # kubun_id=21:都市計画区域（広域）, 22:区域区分（市街化/調整/非線引）
+        # 22のみ対象にしないと常に「都市計画区域」が返りマッピング不能
+        "preferred_kubun_ids": [22],
     },
     "XKT002": {
         "name": "用途地域",
@@ -48,7 +51,10 @@ API_DEFINITIONS = {
             "fire_prevention_ja": "防火地域区分",
             "prefecture": "都道府県",
             "city_name": "市区町村"
-        }
+        },
+        # kubun_id=24:防火地域, 25:準防火地域
+        # 境界で両方ヒット時、より厳しい防火地域(24)を優先
+        "preferred_kubun_ids": [24, 25],
     },
     "XKT026": {
         "name": "洪水浸水想定区域",
@@ -280,6 +286,22 @@ class ReinfLibClient:
 
             if not features:
                 return None
+
+            # preferred_kubun_ids: 対象kubun_idでフィルタ+優先順ソート
+            api_def = API_DEFINITIONS.get(api_code, {})
+            preferred = api_def.get("preferred_kubun_ids")
+            if preferred:
+                preferred_set = set(preferred)
+                features = [
+                    f for f in features
+                    if f.get("properties", {}).get("kubun_id") in preferred_set
+                ]
+                priority = {k: i for i, k in enumerate(preferred)}
+                features.sort(
+                    key=lambda f: priority.get(
+                        f.get("properties", {}).get("kubun_id"), 999
+                    )
+                )
 
             # 座標を含むfeatureを検索
             feature = find_containing_feature(lat, lng, features)
