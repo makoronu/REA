@@ -160,7 +160,6 @@ export interface PropertyImage {
   display_order: number;
   caption: string;
   is_public: boolean;
-  uploaded_at?: string;
   file?: File;
   preview?: string;
 }

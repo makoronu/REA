@@ -205,7 +205,7 @@ class GenericCRUD:
         images_result = self.db.execute(
             text("""
                 SELECT id, property_id, image_type, file_path, file_url,
-                       display_order, caption, is_public, uploaded_at
+                       display_order, caption, is_public
                 FROM property_images
                 WHERE property_id = :pid AND deleted_at IS NULL
                 ORDER BY display_order, id

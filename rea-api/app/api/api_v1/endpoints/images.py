@@ -66,7 +66,7 @@ def get_property_images(
     result = db.execute(
         text("""
             SELECT id, property_id, image_type, file_path, file_url,
-                   display_order, caption, is_public, uploaded_at,
+                   display_order, caption, is_public,
                    created_at, updated_at
             FROM property_images
             WHERE property_id = :property_id
@@ -87,7 +87,6 @@ def get_property_images(
             "display_order": row.display_order,
             "caption": row.caption,
             "is_public": row.is_public,
-            "uploaded_at": str(row.uploaded_at) if row.uploaded_at else None,
         })
 
     return images
@@ -141,9 +140,9 @@ async def upload_property_image(
         result = db.execute(
             text("""
                 INSERT INTO property_images
-                (property_id, image_type, file_path, file_url, display_order, caption, is_public, uploaded_at)
-                VALUES (:property_id, :image_type, :file_path, :file_url, :display_order, :caption, :is_public, NOW())
-                RETURNING id, property_id, image_type, file_path, file_url, display_order, caption, is_public, uploaded_at
+                (property_id, image_type, file_path, file_url, display_order, caption, is_public)
+                VALUES (:property_id, :image_type, :file_path, :file_url, :display_order, :caption, :is_public)
+                RETURNING id, property_id, image_type, file_path, file_url, display_order, caption, is_public
             """),
             {
                 "property_id": property_id,
@@ -167,7 +166,6 @@ async def upload_property_image(
             "display_order": row.display_order,
             "caption": row.caption,
             "is_public": row.is_public,
-            "uploaded_at": str(row.uploaded_at) if row.uploaded_at else None,
         }
     except Exception as e:
         db.rollback()
@@ -228,7 +226,7 @@ def update_property_image(
         result = db.execute(
             text("""
                 SELECT id, property_id, image_type, file_path, file_url,
-                       display_order, caption, is_public, uploaded_at
+                       display_order, caption, is_public
                 FROM property_images
                 WHERE id = :image_id AND deleted_at IS NULL
             """),
@@ -244,7 +242,6 @@ def update_property_image(
             "display_order": result.display_order,
             "caption": result.caption,
             "is_public": result.is_public,
-            "uploaded_at": str(result.uploaded_at) if result.uploaded_at else None,
         }
     except Exception as e:
         db.rollback()
