@@ -361,12 +361,17 @@ class GenericCRUD:
         result = self.db.execute(text(query), params).scalar()
         return result or 0
 
-    def create(self, table_name: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    def create(self, table_name: str, data: Dict[str, Any], extra_fields: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         レコード作成
+        extra_fields: _filter_dataを通さずINSERTするシステムカラム（organization_id等）
         """
         self._validate_table(table_name)
         filtered_data = self._filter_data(table_name, data)
+
+        # システムカラムはフィルタを通さず追加
+        if extra_fields:
+            filtered_data.update(extra_fields)
 
         if not filtered_data:
             raise ValueError("No valid data to insert")

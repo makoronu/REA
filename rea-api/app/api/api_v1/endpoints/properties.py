@@ -214,9 +214,6 @@ def create_property(request: Request, property_data: Dict[str, Any], db: Session
     user = require_auth(request)
     crud = GenericCRUD(db)
 
-    # 認証ユーザーの組織IDを付与（NOT NULLカラム）
-    property_data['organization_id'] = user['organization_id']
-
     # 文字列フィールドのトリム処理
     for key, value in property_data.items():
         if isinstance(value, str):
@@ -227,7 +224,10 @@ def create_property(request: Request, property_data: Dict[str, Any], db: Session
         raise HTTPException(status_code=400, detail="物件名は必須です")
 
     try:
-        result = crud.create("properties", property_data)
+        # organization_idはシステムカラム（_filter_dataを通さず注入）
+        result = crud.create("properties", property_data, extra_fields={
+            "organization_id": user["organization_id"],
+        })
         return result
     except ValueError as e:
         logger.error(f"Validation error creating property: {e}")
