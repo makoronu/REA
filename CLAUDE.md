@@ -37,10 +37,11 @@
 
 ### 今日完了した作業（2026-02-22 デプロイ: Seg 23）
 
-- **Seg 23: 新規物件作成organization_id NOT NULL違反修正**（コミット: ebd3494）
+- **Seg 23: 新規物件作成organization_id NOT NULL違反修正**（コミット: ebd3494 → 007172e）
   - 原因: create_propertyでorganization_idをINSERTに含めていない（NOT NULLかつDEFAULTなし）
-  - properties.py: require_auth戻り値からuser['organization_id']をproperty_dataに付与
-  - 本番: デプロイ済み（GitHub Actions run #22271659305）
+  - 1回目修正(ebd3494): property_dataに直接付与 → _filter_dataで除外されていた
+  - 2回目修正(007172e): generic.py create()にextra_fieldsパラメータ追加、_filter_dataバイパスで注入
+  - 本番: デプロイ済み（GitHub Actions run #22271781564）
 
 ### 今日完了した作業（2026-02-22 デプロイ: Seg 22）
 
