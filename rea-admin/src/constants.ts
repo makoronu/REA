@@ -22,6 +22,20 @@ export const PUBLICATION_STATUS = {
   PRE_CHECK: '公開前確認',
 } as const;
 
+// === 税区分（properties.tax_type: INTEGER） ===
+export const TAX_TYPE = {
+  TAX_INCLUDED: 1,   // 税込
+  TAX_EXCLUDED: 2,   // 税抜
+  NO_DISPLAY: 3,     // 税表示無し
+} as const;
+
+// === 価格状態（properties.price_status: INTEGER） ===
+export const PRICE_STATUS = {
+  NEGOTIABLE: 1,  // 相談
+  FIXED: 2,       // 確定
+  BIDDING: 3,     // 入札
+} as const;
+
 // === ページ設定 ===
 export const PAGE_CONFIG = {
   DEFAULT_PAGE_SIZE: 20,

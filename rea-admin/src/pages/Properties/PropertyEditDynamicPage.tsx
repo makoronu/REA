@@ -5,7 +5,7 @@ import { propertyService } from '../../services/propertyService';
 import { Property } from '../../types/property';
 import { API_BASE_URL } from '../../config';
 import { API_PATHS } from '../../constants/apiPaths';
-import { MESSAGE_TIMEOUT_MS, SALES_STATUS, PUBLICATION_STATUS } from '../../constants';
+import { MESSAGE_TIMEOUT_MS, SALES_STATUS, PUBLICATION_STATUS, TAX_TYPE, PRICE_STATUS } from '../../constants';
 import ErrorBanner from '../../components/ErrorBanner';
 
 export const PropertyEditDynamicPage: React.FC = () => {
@@ -377,8 +377,8 @@ export const PropertyEditDynamicPage: React.FC = () => {
           defaultValues={property || {
             sales_status: SALES_STATUS.PREPARING,
             publication_status: PUBLICATION_STATUS.PRIVATE,
-            price_status: '1',
-            tax_type: '税込',
+            price_status: PRICE_STATUS.FIXED,
+            tax_type: TAX_TYPE.TAX_INCLUDED,
             is_residential: true,
             is_commercial: false,
             is_investment: false,

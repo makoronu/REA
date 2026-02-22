@@ -26,8 +26,8 @@ DUMMY_DATA = {
 
     # 価格
     "sale_price": "12000000",
-    "price_status": "確定",  # radio
-    "tax_type": "税込",  # radio
+    "price_status": 2,  # 確定（INTEGER: rea_2→2）
+    "tax_type": 1,  # 税込（INTEGER: rea_1→1）
 
     # 取引
     "current_status": "販売中",
