@@ -24,9 +24,17 @@ interface RegulationCodes {
   city_planning?: number;
 }
 
+// API返却ラベル（●項目の実際のフォーム表示名）
+interface RegulationLabels {
+  use_district?: string;
+  fire_prevention_area?: string;
+  city_planning?: string;
+}
+
 interface RegulationResponse {
   regulations: Record<string, Record<string, string> | null>;
   codes: RegulationCodes;
+  labels: RegulationLabels;
 }
 
 // 結果表示用の行データ
@@ -41,18 +49,20 @@ interface RegulationPanelProps {
   onClose: () => void;
 }
 
-/** regulations生データ → 表示用行リストに変換 */
+/** regulations生データ → 表示用行リストに変換
+ *  ●項目はlabels（実際にフォームに入る値のラベル）を優先表示 */
 function buildResultRows(
   regulations: Record<string, Record<string, string> | null>,
-  codes: RegulationCodes
+  codes: RegulationCodes,
+  labels: RegulationLabels
 ): ResultRow[] {
   const rows: ResultRow[] = [];
 
-  // 用途地域
+  // 用途地域（●: labelsがあればフォーム反映値を表示）
   const useArea = regulations.use_area;
   if (useArea) {
     if (useArea['用途地域']) {
-      rows.push({ label: '用途地域', value: useArea['用途地域'], willApply: codes.use_district !== undefined });
+      rows.push({ label: '用途地域', value: labels.use_district || useArea['用途地域'], willApply: codes.use_district !== undefined });
     }
     if (useArea['建ぺい率']) {
       rows.push({ label: '建ぺい率', value: useArea['建ぺい率'], willApply: codes.building_coverage_ratio !== undefined });
@@ -62,19 +72,19 @@ function buildResultRows(
     }
   }
 
-  // 都市計画
+  // 都市計画（●: labelsがあればフォーム反映値を表示）
   const cityPlanning = regulations.city_planning;
   if (cityPlanning?.['区域区分']) {
-    rows.push({ label: '都市計画', value: cityPlanning['区域区分'], willApply: codes.city_planning !== undefined });
+    rows.push({ label: '都市計画', value: labels.city_planning || cityPlanning['区域区分'], willApply: codes.city_planning !== undefined });
   }
 
-  // 防火地域
+  // 防火地域（●: labelsがあればフォーム反映値を表示）
   const firePrevention = regulations.fire_prevention;
   if (firePrevention?.['防火地域区分']) {
-    rows.push({ label: '防火地域', value: firePrevention['防火地域区分'], willApply: codes.fire_prevention_area !== undefined });
+    rows.push({ label: '防火地域', value: labels.fire_prevention_area || firePrevention['防火地域区分'], willApply: codes.fire_prevention_area !== undefined });
   }
 
-  // 地区計画
+  // 地区計画（文字列そのまま反映、labelsなし）
   const districtPlan = regulations.district_plan;
   if (districtPlan?.['地区計画名']) {
     rows.push({ label: '地区計画', value: districtPlan['地区計画名'], willApply: codes.district_plan_name !== undefined });
@@ -150,7 +160,8 @@ export const RegulationPanel: React.FC<RegulationPanelProps> = ({ isOpen, onClos
 
       const regulations = response.data?.regulations || {};
       const codes: RegulationCodes = response.data?.codes || {};
-      setResults({ regulations, codes });
+      const labels: RegulationLabels = response.data?.labels || {};
+      setResults({ regulations, codes, labels });
 
       const appliedCount = Object.keys(codes).length;
       setMessage({
@@ -194,7 +205,7 @@ export const RegulationPanel: React.FC<RegulationPanelProps> = ({ isOpen, onClos
 
   if (!isOpen) return null;
 
-  const resultRows = results ? buildResultRows(results.regulations, results.codes) : [];
+  const resultRows = results ? buildResultRows(results.regulations, results.codes, results.labels) : [];
 
   return (
     <div style={{

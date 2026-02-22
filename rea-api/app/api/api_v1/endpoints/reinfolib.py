@@ -33,18 +33,24 @@ def _convert_option_code_to_int(option_code: str):
         return option_code
 
 
-def _get_code_mapping(category_code: str) -> Dict[str, Any]:
+def _get_code_mapping(category_code: str) -> tuple:
     """
-    マスタオプションからapi_aliases→option_codeのマッピングを取得
+    マスタオプションからapi_aliases→(option_code, option_value)のマッピングを取得
     メタデータ駆動: DBのapi_aliasesを使用
     option_codeは数値に変換して返す（DBカラムがINTEGER型のため）
+
+    Returns:
+        (code_mapping, label_mapping):
+            code_mapping: {alias: converted_code}  — DB保存用
+            label_mapping: {alias: option_value}    — 表示用
     """
-    mapping = {}
+    code_mapping: Dict[str, Any] = {}
+    label_mapping: Dict[str, str] = {}
     try:
         conn = get_connection()
         cur = conn.cursor()
         cur.execute('''
-            SELECT mo.option_code, mo.api_aliases
+            SELECT mo.option_code, mo.api_aliases, mo.option_value
             FROM master_options mo
             JOIN master_categories mc ON mo.category_id = mc.id
             WHERE mc.category_code = %s
@@ -55,32 +61,40 @@ def _get_code_mapping(category_code: str) -> Dict[str, Any]:
         cur.close()
         conn.close()
 
-        for option_code, aliases in rows:
+        for option_code, aliases, option_value in rows:
             if aliases:
-                # option_codeを数値に変換（'rea_3' → 3）
                 converted_code = _convert_option_code_to_int(option_code)
                 for alias in aliases:
-                    mapping[alias] = converted_code
+                    code_mapping[alias] = converted_code
+                    label_mapping[alias] = option_value
     except Exception as e:
         logger.error(f"Failed to get code mapping for {category_code}: {e}")
 
-    return mapping
+    return code_mapping, label_mapping
 
 
-def _convert_to_codes(regulations: Dict[str, Any]) -> Dict[str, Any]:
+def _convert_to_codes(regulations: Dict[str, Any]) -> tuple:
     """
     規制情報の日本語名をDBコードに変換
     メタデータ駆動: api_aliasesマッピングを使用
+
+    Returns:
+        (codes, labels):
+            codes: DB保存用の数値コード
+            labels: フォームに反映される実際のラベル（パネル表示用）
     """
     codes = {}
+    labels = {}
 
     # 用途地域
     if regulations.get('use_area') and regulations['use_area'].get('用途地域'):
-        zoning_map = _get_code_mapping('zoning_district')
+        code_map, label_map = _get_code_mapping('zoning_district')
         zone_name = regulations['use_area']['用途地域']
-        codes['use_district'] = zoning_map.get(zone_name)
+        codes['use_district'] = code_map.get(zone_name)
+        if zone_name in label_map:
+            labels['use_district'] = label_map[zone_name]
 
-    # 建ぺい率・容積率（数値変換）
+    # 建ぺい率・容積率（数値変換、labels不要）
     if regulations.get('use_area'):
         coverage = regulations['use_area'].get('建ぺい率', '')
         if coverage:
@@ -98,21 +112,25 @@ def _convert_to_codes(regulations: Dict[str, Any]) -> Dict[str, Any]:
 
     # 防火地域
     if regulations.get('fire_prevention') and regulations['fire_prevention'].get('防火地域区分'):
-        fire_map = _get_code_mapping('fire_prevention')
+        code_map, label_map = _get_code_mapping('fire_prevention')
         fire_name = regulations['fire_prevention']['防火地域区分']
-        codes['fire_prevention_area'] = fire_map.get(fire_name)
+        codes['fire_prevention_area'] = code_map.get(fire_name)
+        if fire_name in label_map:
+            labels['fire_prevention_area'] = label_map[fire_name]
 
-    # 地区計画名
+    # 地区計画名（文字列そのまま、labels不要）
     if regulations.get('district_plan') and regulations['district_plan'].get('地区計画名'):
         codes['district_plan_name'] = regulations['district_plan']['地区計画名']
 
     # 都市計画区域（メタデータ駆動: XKT001 API -> 区域区分）
     if regulations.get('city_planning') and regulations['city_planning'].get('区域区分'):
-        city_planning_map = _get_code_mapping('city_planning')
+        code_map, label_map = _get_code_mapping('city_planning')
         area_type = regulations['city_planning']['区域区分']
-        codes['city_planning'] = city_planning_map.get(area_type)
+        codes['city_planning'] = code_map.get(area_type)
+        if area_type in label_map:
+            labels['city_planning'] = label_map[area_type]
 
-    return codes
+    return codes, labels
 
 
 @router.get("/regulations")
@@ -140,13 +158,14 @@ async def get_regulations(
         results = client.get_all_regulations(lat, lng)
 
         # メタデータ駆動: API値→DBコードに変換
-        codes = _convert_to_codes(results)
+        codes, labels = _convert_to_codes(results)
 
         return {
             "status": "success",
             "coordinates": {"lat": lat, "lng": lng},
             "regulations": results,
-            "codes": codes  # フロントエンドはこれを使ってsetValue
+            "codes": codes,   # フロントエンドはこれを使ってsetValue
+            "labels": labels  # ●項目の実際のフォーム表示ラベル
         }
     except ValueError as e:
         raise HTTPException(status_code=500, detail=str(e))
