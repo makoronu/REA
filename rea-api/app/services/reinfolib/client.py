@@ -25,9 +25,9 @@ API_DEFINITIONS = {
             "prefecture": "都道府県",
             "city_name": "市区町村"
         },
-        # kubun_id=21:都市計画区域（広域）, 22:区域区分（市街化/調整/非線引）
-        # 22のみ対象にしないと常に「都市計画区域」が返りマッピング不能
-        "preferred_kubun_ids": [22],
+        # kubun_id=22:区域区分（市街化/調整）を優先、21:都市計画区域はフォールバック
+        # 22がなければ21→「都市計画区域」→api_aliasesで非線引にマッピング
+        "preferred_kubun_ids": [22, 21],
     },
     "XKT002": {
         "name": "用途地域",

@@ -35,12 +35,7 @@
 → 2_implement/quality.md
 ```
 
-### 3. テスト依頼（中プロンプト）
-```
-→ 3_test/request.md  ← 他人に丸投げ用のテスト依頼書作成
-```
-
-### 4. 完了（中プロンプト）
+### 3. 完了（中プロンプト）
 ```
 → 4_complete/commit.md
 → 4_complete/schema_update.md
@@ -64,12 +59,10 @@ afplay /System/Library/Sounds/Glass.aiff
 ━━━━━━━━━━━━━━━━━━━━
 ✓ 準備
 ✓ 実装
-✓ テスト依頼
 ✓ 完了
 
 【成果物】
 - コミット: [hash] "[message]"
-- テスト依頼: docs/test_requests/[ファイル名].md
 
 【次のステップ】
 → 3_deploy/_main.md（デプロイ必須）
