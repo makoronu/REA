@@ -35,7 +35,7 @@
 | 残り | HOMES入稿、ZOHO画像同期 |
 | 更新 | 2026-02-22 |
 
-### 今日完了した作業（2026-02-22 Seg 19）
+### 今日完了した作業（2026-02-22 デプロイ: Seg 19）
 
 - **Seg 19: reinfolib XKT001/XKT014 区域区分取得バグ修正**（コミット: 60b5e26）
   - 問題: reinfolib XKT001が複数レイヤー（kubun_id=21:都市計画区域, 22:区域区分）を返し、find_containing_featureが常にkubun_id=21を先に返すため、全都市で「非線引区域」になる
@@ -45,6 +45,7 @@
   - RegulationPanel.tsx: null値のsetValue防止（!== undefined → != null、6箇所）
   - 検証: 6都市すべて「市街化区域」が正しく取得されることを確認
   - テスト依頼書: docs/test_requests/2026-02-22_seg19_reinfolib_kubun_id_fix.md
+  - 本番: デプロイ済み（GitHub Actions run #22267249464）、4都市で本番API確認済み
 
 ### 次回やること
 
