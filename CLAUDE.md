@@ -40,12 +40,13 @@
 - **Seg 19: reinfolib XKT001/XKT014 区域区分取得バグ修正**（コミット: 60b5e26）
   - 問題: reinfolib XKT001が複数レイヤー（kubun_id=21:都市計画区域, 22:区域区分）を返し、find_containing_featureが常にkubun_id=21を先に返すため、全都市で「非線引区域」になる
   - 問題: XKT014も防火/準防火境界で準防火が先にヒット
-  - client.py: API_DEFINITIONSにpreferred_kubun_ids追加（XKT001:[22], XKT014:[24,25]）
+  - client.py: API_DEFINITIONSにpreferred_kubun_ids追加（XKT001:[22,21], XKT014:[24,25]）
   - client.py: get_regulation_at_pointにkubun_idフィルタ+優先順ソート追加（+16行）
   - RegulationPanel.tsx: null値のsetValue防止（!== undefined → != null、6箇所）
-  - 検証: 6都市すべて「市街化区域」が正しく取得されることを確認
-  - テスト依頼書: docs/test_requests/2026-02-22_seg19_reinfolib_kubun_id_fix.md
-  - 本番: デプロイ済み（GitHub Actions run #22267249464）、4都市で本番API確認済み
+  - 検証: 6都市すべて「市街化区域」が正しく取得、美幌町で非線引フォールバック確認
+  - ホットフィックス: kubun_id=22のみ→[22,21]に変更（非線引区域でデータ消失するバグ修正）
+  - 開発プロンプト: テスト依頼工程を削除（ユーザー指示）
+  - 本番: デプロイ済み（run #22267249464 + ホットフィックス run #22267380338）
 
 ### 次回やること
 
