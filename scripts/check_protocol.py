@@ -36,7 +36,7 @@ def check_audit_columns():
     cur = conn.cursor()
 
     # 除外テーブル（一時テーブルなど）
-    excluded_tables = ['password_reset_tokens', 'zoho_import_staging', 'spatial_ref_sys']
+    excluded_tables = ['password_reset_tokens', 'spatial_ref_sys']
 
     cur.execute('''
         SELECT
@@ -184,7 +184,7 @@ def check_physical_delete():
     violations = []
 
     # 除外パターン（テスト用、一時テーブルなど）
-    exclude_patterns = ['zoho_import_staging', 'password_reset_tokens']
+    exclude_patterns = ['password_reset_tokens']
 
     for py_file in api_dir.rglob("*.py"):
         try:

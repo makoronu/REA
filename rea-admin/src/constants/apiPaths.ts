@@ -57,12 +57,6 @@ export const API_PATHS = {
     tile: (layerCode: string) => `/reinfolib/tile/${layerCode}`,
   },
 
-  // ZOHO連携
-  ZOHO: {
-    CALLBACK: '/zoho/callback',
-    sync: (id: number) => `/zoho/sync/${id}`,
-  },
-
   // 設備
   EQUIPMENT: {
     GROUPED: '/equipment/grouped',

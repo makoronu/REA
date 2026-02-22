@@ -126,10 +126,7 @@ async def get_sync_status(limit: int = 100, offset: int = 0):
         cur.execute("""
             SELECT
                 p.id,
-                p.property_name,
-                p.zoho_id,
-                p.zoho_synced_at,
-                p.zoho_sync_status
+                p.property_name
             FROM properties p
             WHERE p.deleted_at IS NULL
             ORDER BY p.updated_at DESC
@@ -140,16 +137,7 @@ async def get_sync_status(limit: int = 100, offset: int = 0):
         for row in cur.fetchall():
             integrations = {}
 
-            # ZOHO同期状態
-            if 'zoho' in active_codes:
-                integrations['zoho'] = {
-                    'synced': row[2] is not None,
-                    'external_id': row[2],
-                    'synced_at': str(row[3]) if row[3] else None,
-                    'status': row[4]
-                }
-
-            # 他の連携先は将来対応（homes_id, reins_id等をpropertiesに追加時）
+            # 連携先は将来対応（homes_id, reins_id等をpropertiesに追加時）
             for code in active_codes:
                 if code not in integrations:
                     integrations[code] = {
@@ -186,10 +174,6 @@ async def get_sync_summary():
         cur.execute("SELECT COUNT(*) FROM properties WHERE deleted_at IS NULL")
         total = cur.fetchone()[0]
 
-        # ZOHO同期済み
-        cur.execute("SELECT COUNT(*) FROM properties WHERE zoho_id IS NOT NULL AND deleted_at IS NULL")
-        zoho_synced = cur.fetchone()[0]
-
         # アクティブな連携先
         cur.execute("""
             SELECT code, name, is_active, sync_endpoint
@@ -199,9 +183,7 @@ async def get_sync_summary():
         integrations = []
         for row in cur.fetchall():
             synced_count = 0
-            if row[0] == 'zoho':
-                synced_count = zoho_synced
-            # 他の連携先は将来対応
+            # 連携先別の同期カウントは将来対応
 
             integrations.append({
                 'code': row[0],
@@ -243,20 +225,8 @@ async def bulk_sync(request: BulkSyncRequest):
         if not row[0]:
             raise HTTPException(status_code=400, detail=f"連携先 {request.integration_code} の同期エンドポイントが設定されていません")
 
-    # 対応する同期処理を呼び出し
-    if request.integration_code == 'zoho':
-        # ZOHOの場合は既存のsync APIを利用
-        from app.api.api_v1.endpoints.zoho import sync_to_zoho, ZohoSyncRequest
-        zoho_request = ZohoSyncRequest(property_ids=request.property_ids)
-        result = await sync_to_zoho(zoho_request)
-        return {
-            'success': result['success'],
-            'failed': result['failed'],
-            'errors': result['errors']
-        }
-    else:
-        # 他の連携先は将来対応
-        raise HTTPException(
-            status_code=501,
-            detail=f"連携先 {request.integration_code} の同期処理は未実装です"
-        )
+    # 対応する同期処理を呼び出し（将来対応）
+    raise HTTPException(
+        status_code=501,
+        detail=f"連携先 {request.integration_code} の同期処理は未実装です"
+    )

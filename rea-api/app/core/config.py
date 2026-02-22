@@ -24,9 +24,6 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
     # 外部API URL設定（ハードコード回避）
-    ZOHO_AUTH_URL: str = "https://accounts.zoho.jp/oauth/v2/auth"
-    ZOHO_TOKEN_URL: str = "https://accounts.zoho.jp/oauth/v2/token"
-    ZOHO_API_DOMAIN: str = "https://www.zohoapis.jp"
     REINFOLIB_BASE_URL: str = "https://www.reinfolib.mlit.go.jp/ex-api/external"
     GSI_GEOCODE_URL: str = "https://msearch.gsi.go.jp/address-search/AddressSearch"
     NOMINATIM_GEOCODE_URL: str = "https://nominatim.openstreetmap.org/search"

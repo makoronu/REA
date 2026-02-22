@@ -11,7 +11,6 @@ import PropertiesPage from './pages/Properties/PropertiesPage';
 import PropertyEditDynamicPage from './pages/Properties/PropertyEditDynamicPage';
 import FieldVisibilityPage from './pages/admin/FieldVisibilityPage';
 import ZoningMapPage from './pages/ZoningMap/ZoningMapPage';
-import ZohoImportPage from './pages/Import/ZohoImportPage';
 import ToukiImportPage from './pages/Import/ToukiImportPage';
 import IntegrationsPage from './pages/Settings/IntegrationsPage';
 import UsersPage from './pages/Settings/UsersPage';
@@ -85,13 +84,6 @@ function AppContent() {
           <PrivateRoute>
             <Layout onOpenCommandPalette={() => setCommandPaletteOpen(true)}>
               <ZoningMapPage />
-            </Layout>
-          </PrivateRoute>
-        } />
-        <Route path="/import/zoho" element={
-          <PrivateRoute>
-            <Layout onOpenCommandPalette={() => setCommandPaletteOpen(true)}>
-              <ZohoImportPage />
             </Layout>
           </PrivateRoute>
         } />

@@ -58,7 +58,7 @@ class ConfigurationError(REAException):
 
 
 class ExternalServiceError(REAException):
-    """外部サービスエラー（ZOHO等）"""
+    """外部サービスエラー（外部API等）"""
     status_code = 502
     detail = "外部サービスへの接続に失敗しました"
 

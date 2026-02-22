@@ -3,8 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { PropertyFullForm } from '../../components/form/DynamicForm';
 import { propertyService } from '../../services/propertyService';
 import { Property } from '../../types/property';
-import { API_BASE_URL } from '../../config';
-import { API_PATHS } from '../../constants/apiPaths';
 import { MESSAGE_TIMEOUT_MS, SALES_STATUS, PUBLICATION_STATUS, TAX_TYPE, PRICE_STATUS } from '../../constants';
 import ErrorBanner from '../../components/ErrorBanner';
 
@@ -18,7 +16,6 @@ export const PropertyEditDynamicPage: React.FC = () => {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
   const [errorDetail, setErrorDetail] = useState<{ detail: string; traceback?: string; path?: string } | null>(null);
-  const [isSyncingToZoho, setIsSyncingToZoho] = useState(false);
   const [showErrorDetail, setShowErrorDetail] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -41,47 +38,6 @@ export const PropertyEditDynamicPage: React.FC = () => {
       fetchProperty();
     }
   }, [id, isNew]);
-
-  // ZOHOに同期
-  const handleSyncToZoho = async () => {
-    if (!id || isNew) return;
-
-    setIsSyncingToZoho(true);
-    setError(null);
-    try {
-      const response = await fetch(`${API_BASE_URL}${API_PATHS.ZOHO.sync(parseInt(id))}`, {
-        method: 'POST',
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'ZOHOへの同期に失敗しました');
-      }
-
-      const result = await response.json();
-
-      if (result.success > 0) {
-        // 成功メッセージ
-        setSaveStatus('saved');
-        setTimeout(() => setSaveStatus('idle'), MESSAGE_TIMEOUT_MS);
-
-        if (result.created > 0) {
-          setSuccessMessage('ZOHOに新規作成しました');
-          // ページをリロードしてzoho_idを反映
-          window.location.reload();
-        } else {
-          setSuccessMessage('ZOHOに同期しました');
-        }
-      } else {
-        throw new Error(result.errors?.[0]?.message || 'ZOHOへの同期に失敗しました');
-      }
-    } catch (err: any) {
-      setError(err.message || 'ZOHOへの同期に失敗しました');
-      setSaveStatus('error');
-    } finally {
-      setIsSyncingToZoho(false);
-    }
-  };
 
   // 画像保存処理
   const saveImages = async (propertyId: number, images: any[]) => {
@@ -256,31 +212,6 @@ export const PropertyEditDynamicPage: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2" style={{ flexShrink: 0 }}>
-            {/* ZOHOに同期ボタン */}
-            {!isNew && (
-              <button
-                onClick={handleSyncToZoho}
-                disabled={isSyncingToZoho}
-                className="px-4 py-2 text-sm font-medium text-white bg-orange-600 border border-orange-600 rounded-md hover:bg-orange-700 disabled:bg-gray-400 disabled:border-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {isSyncingToZoho ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    同期中...
-                  </>
-                ) : (
-                  <>
-                    <svg className="h-4 w-4" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                      <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    ZOHOに同期
-                  </>
-                )}
-              </button>
-            )}
             {/* 戻るボタン */}
             <button
               onClick={() => navigate('/properties')}
