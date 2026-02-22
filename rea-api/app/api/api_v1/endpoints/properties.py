@@ -211,8 +211,11 @@ def create_property(request: Request, property_data: Dict[str, Any], db: Session
     物件新規作成
     メタデータ駆動: 有効なカラムのみ受け付け
     """
-    require_auth(request)
+    user = require_auth(request)
     crud = GenericCRUD(db)
+
+    # 認証ユーザーの組織IDを付与（NOT NULLカラム）
+    property_data['organization_id'] = user['organization_id']
 
     # 文字列フィールドのトリム処理
     for key, value in property_data.items():
