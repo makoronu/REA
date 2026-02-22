@@ -182,7 +182,7 @@ export const GeoPanel: React.FC<GeoPanelProps> = ({ isOpen, onClose }) => {
           borderBottom: '1px solid #E5E7EB',
         }}>
           <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#1F2937', margin: 0 }}>
-            🗺️ 周辺情報を自動取得
+            🗺️ 地図確定＋周辺取得
           </h2>
           <button
             type="button"
@@ -268,7 +268,7 @@ export const GeoPanel: React.FC<GeoPanelProps> = ({ isOpen, onClose }) => {
                 取得中...
               </>
             ) : (
-              <>📍 この位置で周辺情報を一括取得</>
+              <>📍 この位置で一括取得</>
             )}
           </button>
         </div>

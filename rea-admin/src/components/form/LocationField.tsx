@@ -193,7 +193,7 @@ export const LocationField: React.FC<LocationFieldProps> = ({ disabled = false, 
               }}
             >
               <span style={{ fontSize: '16px' }}>🗺️</span>
-              周辺情報を自動取得（学区・駅・バス・施設）
+              地図確定＋周辺取得（学区・駅・バス・施設）
             </button>
           ) : (
             <div style={{
@@ -205,7 +205,7 @@ export const LocationField: React.FC<LocationFieldProps> = ({ disabled = false, 
               color: '#9CA3AF',
               textAlign: 'center',
             }}>
-              座標を取得すると、周辺情報（学区・駅・バス・施設）の自動取得が使えます
+              座標を取得すると、地図確定＋周辺取得（学区・駅・バス・施設）が使えます
             </div>
           )}
         </div>
