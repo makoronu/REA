@@ -522,6 +522,35 @@ const PropertiesPage = () => {
     }
   };
 
+  // 一括論理削除（deleted_at設定）
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`${selectedIds.size}件の物件を削除します。\n復元には運営への依頼が必要です。\nよろしいですか？`)) return;
+
+    try {
+      const settled = await Promise.allSettled(
+        Array.from(selectedIds).map(id => propertyService.deleteProperty(id))
+      );
+      const succeededCount = settled.filter(r => r.status === 'fulfilled').length;
+      const failedCount = settled.filter(r => r.status === 'rejected').length;
+
+      if (succeededCount > 0) {
+        setProperties(prev => prev.filter(p => !selectedIds.has(p.id)));
+        setTotalItems(prev => prev - succeededCount);
+      }
+      setSelectedIds(new Set());
+
+      if (failedCount > 0) {
+        setBannerMessage({ type: 'error', text: `${succeededCount}件削除、${failedCount}件失敗しました` });
+      } else {
+        setBannerMessage({ type: 'success', text: `${succeededCount}件の物件を削除しました` });
+      }
+    } catch (err) {
+      console.error('一括削除エラー:', err);
+      setBannerMessage({ type: 'error', text: '一括削除に失敗しました' });
+    }
+  };
+
   // 論理削除: 「取下げ」ステータスに変更（物理削除禁止・定数使用）
   const handleBulkArchive = async () => {
     if (selectedIds.size === 0) return;
@@ -593,7 +622,7 @@ const PropertiesPage = () => {
           break;
         case 'Delete':
         case 'Backspace':
-          if (selectedIds.size > 0) handleBulkArchive();
+          if (selectedIds.size > 0) handleBulkDelete();
           break;
         case 'a':
           if (e.metaKey || e.ctrlKey) {
@@ -746,6 +775,12 @@ const PropertiesPage = () => {
                 className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 取下げ
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                className="px-3 py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                削除
               </button>
             </>
           )}
