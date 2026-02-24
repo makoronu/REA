@@ -15,6 +15,12 @@
 
 ## 実行順序
 
+### 0. サイト予備調査
+```
+→ 0_research/site_survey.md   ← 対象サイトの物件種別・URL・掲載項目調査
+→ 0_research/field_mapping.md ← 掲載項目 × REAフィールド対応表
+```
+
 ### 1. 準備
 ```
 → 1_prepare/session.md
