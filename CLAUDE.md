@@ -49,7 +49,7 @@
 - **Seg 26b: ページヘッダー削除→FormHeader統合**（コミット: 7a1d402）
   - PropertyEditDynamicPage.tsx: ヘッダーブロック丸ごと削除（タイトル「物件編集」+説明文+戻るボタン、-24行）
   - FormHeader.tsx: ステータスバー上段左端に「← 戻る」、右端に「更新 MM/DD HH:MM」統合
-  - 本番: 未デプロイ
+  - 本番: デプロイ済み（GitHub Actions run #22336535450）
 
 ### 今日完了した作業（2026-02-23 デプロイ: Seg 25）
 
