@@ -10,6 +10,8 @@
 | デプロイ | `.claude/prompts/3_deploy/_main.md` |
 | ポータル入稿 | `.claude/prompts/portal_submission/_main.md` |
 | マニュアル作成 | `.claude/prompts/manual_creation/_main.md` |
+| スクレイパー基盤構築 | `.claude/prompts/8_scraper_foundation/_main.md` |
+| スクレイパーサイト追加 | `.claude/prompts/9_scraper_site/_main.md` |
 | 緊急 | `.claude/prompts/emergency.md` |
 
 ### プロトコル調査の使い分け
