@@ -76,7 +76,9 @@ REA（自社物件管理）           Market Intelligence（市場情報収集�
 別リポジトリ                  別リポジトリ
 別DB（rea_db）                別DB（market_intel_db）
 別デプロイ                    別デプロイ
-本番: port 8005               本番: port 8010（予定）
+本番: port 8005               本番: port 8010
+URL: realestateautomation.net  URL: mi.realestateautomation.net
+nginx: 既存                    nginx: サブドメイン振り分け追加
 
          ↓ 必要時のみ REST API で読み取り連携 ↓
 ```
@@ -262,6 +264,16 @@ CREATE TABLE scraped_properties (
     total_floor_area DECIMAL(10,2),
     room_count INTEGER,
     room_type INTEGER,                           -- REA master_options準拠
+
+    -- 交通情報
+    nearest_station VARCHAR(100),                -- 最寄り駅
+    walking_minutes INTEGER,                     -- 徒歩分
+    line_name VARCHAR(100),                      -- 路線名
+
+    -- 接道情報
+    road_direction VARCHAR(50),                  -- 接道方向
+    road_width DECIMAL(5,2),                     -- 前面道路幅員（m）
+    road_type VARCHAR(50),                       -- 道路種類
 
     -- 掲載元情報
     listing_company_name VARCHAR(200),
