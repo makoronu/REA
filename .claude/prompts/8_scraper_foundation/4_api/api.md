@@ -16,4 +16,4 @@
 - [ ] 主要エンドポイントが動作する
 - [ ] 全ファイル500行以下
 
-## 次 → ../5_complete/quality.md
+## 次 → ../5_complete/type_check.md

@@ -15,4 +15,4 @@
 ## 完了条件
 - [ ] 更新/価格変更/消失が全て正常動作
 
-## 次 → ../4_complete/quality.md
+## 次 → ../4_complete/type_check.md

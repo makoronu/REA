@@ -12,4 +12,4 @@
 ## 中断条件
 - 1つでもNG → 修正してから次へ
 
-## 次 → commit.md
+## 次 → schema_update.md

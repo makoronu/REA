@@ -9,4 +9,4 @@
 ## 完了条件
 - [ ] ユーザーから承認を得た
 
-## 次 → ../2_database/ddl.md
+## 次 → repo_init.md

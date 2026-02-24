@@ -19,10 +19,13 @@
 ```
 → 1_prepare/session.md
 → 1_prepare/plan.md
+→ 1_prepare/repo_init.md  ← git init/.gitignore/requirements.txt
+→ 1_prepare/backup.md
 ```
 
 ### 2. データベース
 ```
+→ 2_database/schema.md    ← 対象テーブル・カラム型確認
 → 2_database/ddl.md
 → 2_database/seed.md
 ```
@@ -33,6 +36,8 @@
 → 3_pipeline/normalizers.md
 → 3_pipeline/converter.md
 → 3_pipeline/registrar.md
+→ 3_pipeline/cli.md       ← CLIエントリーポイント（main.py）
+→ 3_pipeline/scheduler.md ← 日次/週次スケジューラー
 ```
 
 ### 4. API
@@ -42,7 +47,9 @@
 
 ### 5. 完了
 ```
+→ 5_complete/type_check.md  ← Python構文チェック
 → 5_complete/quality.md
+→ 5_complete/schema_update.md ← column_labels登録・型定義確認
 → 5_complete/commit.md
 → 5_complete/log.md
 ```

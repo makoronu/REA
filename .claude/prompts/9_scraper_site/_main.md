@@ -43,7 +43,9 @@
 
 ### 4. 完了
 ```
+→ 4_complete/type_check.md    ← Python構文チェック
 → 4_complete/quality.md
+→ 4_complete/schema_update.md ← api_aliases登録確認
 → 4_complete/commit.md
 → 4_complete/log.md
 ```
