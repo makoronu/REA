@@ -22,8 +22,8 @@ export const getInputTypeFromDataType = (dataType?: string): string => {
 // 共通インプットスタイル - 枠線なし、下線のみ
 export const inputBaseStyle: CSSProperties = {
   width: '100%',
-  padding: '12px 0',
-  fontSize: '15px',
+  padding: '6px 0',
+  fontSize: '14px',
   backgroundColor: 'transparent',
   border: 'none',
   borderBottom: '1.5px solid #E5E7EB',

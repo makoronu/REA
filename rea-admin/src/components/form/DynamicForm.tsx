@@ -171,7 +171,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
             }}>
               <div style={{ textAlign: 'center', marginBottom: '32px' }}>
                 <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏠</div>
-                <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1A1A1A', margin: '0 0 8px' }}>
+                <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#1A1A1A', margin: '0 0 8px' }}>
                   物件種別を選択してください
                 </h2>
                 <p style={{ fontSize: '14px', color: '#6B7280', margin: 0 }}>
@@ -222,9 +222,9 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
             {/* タブコンテンツ */}
             <div style={{
               backgroundColor: '#ffffff',
-              borderRadius: '12px',
-              padding: '16px',
-              marginTop: '16px',
+              borderRadius: '8px',
+              padding: '12px',
+              marginTop: '8px',
               minHeight: '400px',
               boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
             }}>
@@ -237,9 +237,9 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                     <>
                       <div style={{ marginBottom: '12px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <span style={{ fontSize: '32px' }}>{tabGroup.tableIcon}</span>
+                          <span style={{ fontSize: '20px' }}>{tabGroup.tableIcon}</span>
                           <div>
-                            <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1A1A1A', margin: 0 }}>
+                            <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#1A1A1A', margin: 0 }}>
                               {tabGroup.tableLabel}
                             </h2>
                             <p style={{ fontSize: '13px', color: '#9CA3AF', margin: '4px 0 0' }}>
@@ -270,9 +270,9 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                       {/* タブタイトル */}
                       <div style={{ marginBottom: '12px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <span style={{ fontSize: '32px' }}>{tabGroup.tableIcon}</span>
+                          <span style={{ fontSize: '20px' }}>{tabGroup.tableIcon}</span>
                           <div>
-                            <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1A1A1A', margin: 0 }}>
+                            <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#1A1A1A', margin: 0 }}>
                               {tabGroup.tableLabel}
                             </h2>
                             <p style={{ fontSize: '13px', color: '#9CA3AF', margin: '4px 0 0' }}>
@@ -311,7 +311,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                       )}
 
                       {/* フィールドグループ */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {Object.entries(tabGroup.groups).map(([groupName, groupColumns]) => {
                           if (groupName === '元請会社') {
                             const transactionType = formData.transaction_type;
@@ -344,10 +344,10 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
 
             {/* ナビゲーションボタン */}
             <div style={{
-              marginTop: '12px',
-              padding: '16px',
+              marginTop: '8px',
+              padding: '10px',
               backgroundColor: '#F9FAFB',
-              borderRadius: '12px',
+              borderRadius: '8px',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',

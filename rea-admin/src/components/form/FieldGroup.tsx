@@ -86,17 +86,17 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
 
   return (
     <div style={{
-      marginBottom: '20px',
-      padding: '16px',
+      marginBottom: '10px',
+      padding: '10px',
       backgroundColor: '#FAFAFA',
-      borderRadius: '12px',
+      borderRadius: '8px',
     }}>
       {/* グループヘッダー */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
-          marginBottom: isCollapsed ? '0' : '16px',
+          marginBottom: isCollapsed ? '0' : '8px',
           flexWrap: 'wrap',
           gap: '8px',
           cursor: collapsible ? 'pointer' : 'default',
@@ -115,9 +115,9 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
             ▼
           </span>
         )}
-        <span style={{ fontSize: '24px', marginRight: '4px' }}>{getGroupIcon(groupName)}</span>
+        <span style={{ fontSize: '18px', marginRight: '4px' }}>{getGroupIcon(groupName)}</span>
         <h3 style={{
-          fontSize: '18px',
+          fontSize: '15px',
           fontWeight: 600,
           color: '#1A1A1A',
           margin: 0
@@ -139,8 +139,8 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(2, 1fr)',
-              gap: '16px',
-              marginBottom: isLocationGroup || jsonFields.length > 0 || checkboxFields.length > 0 || textareaFields.length > 0 ? '16px' : 0,
+              gap: '10px',
+              marginBottom: isLocationGroup || jsonFields.length > 0 || checkboxFields.length > 0 || textareaFields.length > 0 ? '10px' : 0,
             }}>
               {filteredRegularFields.map(column => (
                 <div key={column.column_name}>
@@ -157,9 +157,9 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
 
           {/* チェックボックス群 - 3列 */}
           {checkboxFields.length > 0 && (
-            <div style={{ marginBottom: jsonFields.length > 0 || textareaFields.length > 0 ? '24px' : 0 }}>
-              <h4 style={{ fontSize: '13px', fontWeight: 600, color: '#6B7280', marginBottom: '12px' }}>設定項目</h4>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+            <div style={{ marginBottom: jsonFields.length > 0 || textareaFields.length > 0 ? '10px' : 0 }}>
+              <h4 style={{ fontSize: '13px', fontWeight: 600, color: '#6B7280', marginBottom: '8px' }}>設定項目</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
                 {checkboxFields.map(column => (
                   <div key={column.column_name}>
                     <FieldFactory column={column} disabled={disabled} />
@@ -171,7 +171,7 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
 
           {/* JSON専用フィールド - フル幅 */}
           {jsonFields.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: textareaFields.length > 0 || imageFields.length > 0 ? '24px' : 0 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: textareaFields.length > 0 || imageFields.length > 0 ? '10px' : 0 }}>
               {jsonFields.map(column => (
                 <div key={column.column_name}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#6B7280', marginBottom: '8px' }}>
@@ -185,7 +185,7 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
 
           {/* 画像アップロード - フル幅 */}
           {imageFields.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: textareaFields.length > 0 ? '24px' : 0 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: textareaFields.length > 0 ? '10px' : 0 }}>
               {imageFields.map(column => (
                 <div key={column.column_name}>
                   <FieldFactory column={column} disabled={disabled} />
@@ -196,7 +196,7 @@ export const FieldGroup: React.FC<FieldGroupProps> = ({
 
           {/* テキストエリア - フル幅 */}
           {textareaFields.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <h4 style={{ fontSize: '13px', fontWeight: 600, color: '#6B7280' }}>詳細項目</h4>
               {textareaFields.map(column => (
                 <div key={column.column_name}>

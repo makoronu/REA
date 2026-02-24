@@ -165,7 +165,7 @@ export const FieldFactory: React.FC<FieldFactoryProps> = ({ column, disabled = f
                 display: 'flex',
                 alignItems: 'center',
                 cursor: disabled || isReadOnly ? 'not-allowed' : 'pointer',
-                padding: '8px 0',
+                padding: '4px 0',
               }}>
                 <input
                   {...field}
@@ -432,7 +432,7 @@ export const FieldFactory: React.FC<FieldFactoryProps> = ({ column, disabled = f
   // checkboxは特別扱い（ラベルなし）
   if (column.input_type === 'checkbox' || (column.data_type && column.data_type.toLowerCase().includes('bool'))) {
     return (
-      <div style={{ marginBottom: '16px' }}>
+      <div style={{ marginBottom: '8px' }}>
         {renderField()}
         {renderHelpText()}
         {renderError()}
@@ -441,7 +441,7 @@ export const FieldFactory: React.FC<FieldFactoryProps> = ({ column, disabled = f
   }
 
   return (
-    <div style={{ marginBottom: '16px' }}>
+    <div style={{ marginBottom: '8px' }}>
       {renderLabel()}
       {renderField()}
       {renderHelpText()}

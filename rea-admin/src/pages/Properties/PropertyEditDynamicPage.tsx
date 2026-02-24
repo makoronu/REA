@@ -198,9 +198,9 @@ export const PropertyEditDynamicPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
       {/* ヘッダー */}
-      <div className="mb-8">
+      <div className="mb-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
@@ -301,7 +301,7 @@ export const PropertyEditDynamicPage: React.FC = () => {
       )}
 
       {/* 動的フォーム（全タブ統合済み） */}
-      <div className="bg-white shadow rounded-lg p-6">
+      <div className="bg-white shadow rounded-lg p-3">
         <PropertyFullForm
           key={isNew ? 'new' : `edit-${id}-${property ? 'loaded' : 'loading'}`}
           onSubmit={handleSubmit}
