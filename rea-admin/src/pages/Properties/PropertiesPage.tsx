@@ -170,7 +170,6 @@ const PropertiesPage = () => {
 
   // 選択状態
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
 
   // UI状態
@@ -360,34 +359,6 @@ const PropertiesPage = () => {
   // ============================================
   // 選択操作
   // ============================================
-  const handleRowSelect = (id: number, index: number, event: React.MouseEvent) => {
-    event.stopPropagation();
-    const newSelected = new Set(selectedIds);
-
-    if (event.shiftKey && lastSelectedIndex !== null) {
-      // 範囲選択
-      const start = Math.min(lastSelectedIndex, index);
-      const end = Math.max(lastSelectedIndex, index);
-      for (let i = start; i <= end; i++) {
-        newSelected.add(properties[i].id);
-      }
-    } else if (event.metaKey || event.ctrlKey) {
-      // 追加/解除
-      if (newSelected.has(id)) {
-        newSelected.delete(id);
-      } else {
-        newSelected.add(id);
-      }
-    } else {
-      // 単一選択
-      newSelected.clear();
-      newSelected.add(id);
-    }
-
-    setSelectedIds(newSelected);
-    setLastSelectedIndex(index);
-  };
-
   const handleSelectAll = () => {
     if (selectedIds.size === properties.length) {
       setSelectedIds(new Set());
@@ -1218,8 +1189,15 @@ const PropertiesPage = () => {
                         <input
                           type="checkbox"
                           checked={selectedIds.has(property.id)}
-                          onChange={(e) => handleRowSelect(property.id, index, e as unknown as React.MouseEvent)}
-                          onClick={(e) => handleRowSelect(property.id, index, e as unknown as React.MouseEvent)}
+                          onChange={() => {
+                            setSelectedIds(prev => {
+                              const next = new Set(prev);
+                              if (next.has(property.id)) next.delete(property.id);
+                              else next.add(property.id);
+                              return next;
+                            });
+                          }}
+                          onClick={(e) => e.stopPropagation()}
                           className="accent-blue-600"
                         />
                       </td>
