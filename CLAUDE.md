@@ -37,11 +37,12 @@
 
 ### 今日完了した作業（2026-02-23 デプロイ: Seg 25）
 
-- **Seg 25: 物件一括削除機能**（コミット: 14d6bbb）
+- **Seg 25: 物件一括削除機能**（コミット: 14d6bbb → 27f597e）
   - PropertiesPage.tsx: handleBulkDelete関数追加（Promise.allSettled、確認ダイアログ付き）
   - ヘッダーに赤い「削除」ボタン追加（選択時のみ表示）
   - Delete/Backspaceショートカット→削除に変更
-  - 本番: デプロイ済み（GitHub Actions run #22298512225）
+  - バグ修正: チェックボックス複数選択不可→トグル動作に変更、handleRowSelect/lastSelectedIndex削除
+  - 本番: デプロイ済み（GitHub Actions run #22333088762）
 
 ### 今日完了した作業（2026-02-22 デプロイ: Seg 24a + 24b）
 
