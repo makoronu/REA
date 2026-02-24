@@ -198,31 +198,7 @@ export const PropertyEditDynamicPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-      {/* ヘッダー */}
-      <div className="mb-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              {isNew ? '物件新規登録' : '物件編集'}
-            </h1>
-            <p className="mt-1 text-sm text-gray-600">
-              全項目を一括で編集できます
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2" style={{ flexShrink: 0 }}>
-            {/* 戻るボタン */}
-            <button
-              onClick={() => navigate('/properties')}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-            >
-              一覧に戻る
-            </button>
-          </div>
-        </div>
-      </div>
-
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
       {/* エラー詳細モーダル（デバッグ用） */}
       {showErrorDetail && errorDetail && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

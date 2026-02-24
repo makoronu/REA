@@ -5,6 +5,7 @@
  * タブヘッダーボタンを表示する。DynamicFormから切り出し。
  */
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { UseStatusSyncReturn } from './useStatusSync';
 import { TabGroup } from './buildTabGroups';
 import { PUBLICATION_STATUS } from '../../constants';
@@ -41,6 +42,8 @@ export const FormHeader: React.FC<FormHeaderProps> = ({
     handlePublicationStatusChange,
   } = statusSync;
 
+  const navigate = useNavigate();
+
   return (
     <div style={{
       position: 'sticky',
@@ -54,25 +57,6 @@ export const FormHeader: React.FC<FormHeaderProps> = ({
       paddingLeft: '16px',
       paddingRight: '16px',
     }}>
-      {/* 最終更新日時（編集時のみ・日本時間） */}
-      {formData.updated_at && (
-        <div style={{
-          fontSize: '11px',
-          color: '#9CA3AF',
-          marginBottom: '8px',
-          textAlign: 'right',
-        }}>
-          最終更新: {new Date(formData.updated_at).toLocaleString('ja-JP', {
-            timeZone: 'Asia/Tokyo',
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit'
-          })}
-        </div>
-      )}
-
       {/* ステータスバー - 二段レイアウト */}
       <div style={{
         marginBottom: '12px',
@@ -81,8 +65,24 @@ export const FormHeader: React.FC<FormHeaderProps> = ({
         borderRadius: '8px',
         boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
       }}>
-        {/* 上段：案件ステータス */}
+        {/* 上段：戻る + 案件ステータス + 最終更新 */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+          <button
+            type="button"
+            onClick={() => navigate('/properties')}
+            style={{
+              border: '1px solid #E5E7EB',
+              borderRadius: '4px',
+              padding: '2px 8px',
+              fontSize: '11px',
+              color: '#6B7280',
+              backgroundColor: 'transparent',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            ← 戻る
+          </button>
           <span style={{ fontSize: '11px', color: '#9CA3AF', fontWeight: 500, width: '32px' }}>案件</span>
           <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap' }}>
             {Object.entries(salesStatusConfig).map(([status, config]) => (
@@ -106,6 +106,17 @@ export const FormHeader: React.FC<FormHeaderProps> = ({
               </button>
             ))}
           </div>
+          {formData.updated_at && (
+            <span style={{ marginLeft: 'auto', fontSize: '11px', color: '#9CA3AF', whiteSpace: 'nowrap' }}>
+              更新 {new Date(formData.updated_at).toLocaleString('ja-JP', {
+                timeZone: 'Asia/Tokyo',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+            </span>
+          )}
         </div>
 
         {/* 下段：公開ステータス + 保存ボタン */}
