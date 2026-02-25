@@ -1,0 +1,31 @@
+# REA Scraper API（スクレイピングデータ用サブドメイン）
+#
+# 同じrea-apiコード、別DB（rea_scraper）で起動
+# EnvironmentFileで.envを読み込み、DB_NAMEのみ上書き
+#
+# セットアップ:
+#   sudo cp /opt/REA/server/rea-scr.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable rea-scr
+#   sudo systemctl start rea-scr
+#
+# CORS注意:
+#   rea-api/app/main.pyのallow_originsにscr.realestateautomation.netを追加すること
+
+[Unit]
+Description=REA Scraper API (scr.realestateautomation.net)
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/REA/rea-api
+EnvironmentFile=/opt/REA/.env
+Environment=PYTHONPATH=/opt/REA
+Environment=DB_NAME=rea_scraper
+ExecStart=/opt/REA/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8008
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

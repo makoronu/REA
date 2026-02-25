@@ -36,32 +36,32 @@ jobs:
             cd /opt/REA
 
             echo ""
-            echo "=== 1/8 設定ファイルバックアップ ==="
+            echo "=== 1/9 設定ファイルバックアップ ==="
             cp -f .env /tmp/env_backup || true
             cp -f rea-admin/.env.production /tmp/env_production_backup || true
             echo "完了"
 
             echo ""
-            echo "=== 2/8 DBバックアップ ==="
+            echo "=== 2/9 DBバックアップ ==="
             BACKUP_FILE="/tmp/rea_backup_$(date +%Y%m%d_%H%M%S).sql"
             sudo -u postgres pg_dump real_estate_db > $BACKUP_FILE
             echo "バックアップ: $BACKUP_FILE"
 
             echo ""
-            echo "=== 3/8 コード更新 ==="
+            echo "=== 3/9 コード更新 ==="
             git fetch origin main
             git reset --hard origin/main
             echo "完了"
 
             echo ""
-            echo "=== 4/8 設定ファイル復元 ==="
+            echo "=== 4/9 設定ファイル復元 ==="
             cp -f /tmp/env_backup .env || true
             chmod 600 .env
             cp -f /tmp/env_production_backup rea-admin/.env.production || true
             echo "完了"
 
             echo ""
-            echo "=== 5/8 フロントエンドビルド ==="
+            echo "=== 5/9 フロントエンドビルド ==="
             cd rea-admin
             npm install --legacy-peer-deps
             npm run build
@@ -69,16 +69,20 @@ jobs:
             echo "完了"
 
             echo ""
-            echo "=== 6/8 API再起動 ==="
+            echo "=== 6/9 API再起動 ==="
             sudo systemctl restart rea-api
             echo "完了"
 
             echo ""
-            echo "=== 7/8 Geo API再起動 ==="
+            echo "=== 7/9 Geo API再起動 ==="
             test -f /etc/systemd/system/rea-geo.service && sudo systemctl restart rea-geo && echo "完了" || echo "rea-geo未設定（スキップ）"
 
             echo ""
-            echo "=== 8/8 ヘルスチェック ==="
+            echo "=== 8/9 Scraper API再起動 ==="
+            test -f /etc/systemd/system/rea-scr.service && sudo systemctl restart rea-scr && echo "完了" || echo "rea-scr未設定（スキップ）"
+
+            echo ""
+            echo "=== 9/9 ヘルスチェック ==="
             sleep 5
             HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8005/health)
             if [ "$HTTP_CODE" = "200" ]; then
@@ -89,6 +93,8 @@ jobs:
             fi
 
             curl -sf http://localhost:8007/health > /dev/null 2>&1 && echo "Geo API ヘルスチェック OK" || echo "Geo API ヘルスチェック: 未応答（未設定時はスキップ）"
+
+            curl -sf http://localhost:8008/health > /dev/null 2>&1 && echo "Scraper API ヘルスチェック OK" || echo "Scraper API ヘルスチェック: 未応答（未設定時はスキップ）"
 
             echo ""
             echo "========================================"
