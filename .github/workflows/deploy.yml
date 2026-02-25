@@ -83,18 +83,33 @@ jobs:
 
             echo ""
             echo "=== 9/9 ヘルスチェック ==="
-            sleep 5
-            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8005/health)
-            if [ "$HTTP_CODE" = "200" ]; then
-              echo "Core API ヘルスチェック OK (HTTP $HTTP_CODE)"
-            else
-              echo "Core API ヘルスチェック失敗 (HTTP $HTTP_CODE)"
-              exit 1
-            fi
-
-            curl -sf http://localhost:8007/health > /dev/null 2>&1 && echo "Geo API ヘルスチェック OK" || echo "Geo API ヘルスチェック: 未応答（未設定時はスキップ）"
-
-            curl -sf http://localhost:8008/health > /dev/null 2>&1 && echo "Scraper API ヘルスチェック OK" || echo "Scraper API ヘルスチェック: 未応答（未設定時はスキップ）"
+            for endpoint in "Core API:8005:rea-api" "Geo API:8007:rea-geo" "Scraper API:8008:rea-scr"; do
+              NAME="${endpoint%%:*}"
+              REST="${endpoint#*:}"
+              PORT="${REST%%:*}"
+              SVC="${REST##*:}"
+              REQUIRED=false
+              test -f "/etc/systemd/system/${SVC}.service" && REQUIRED=true
+              if [ "$REQUIRED" = false ]; then
+                echo "${NAME}: 未設定（スキップ）"
+                continue
+              fi
+              OK=false
+              for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+                HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${PORT}/health" 2>/dev/null) || true
+                if [ "$HTTP_CODE" = "200" ]; then
+                  echo "${NAME} ヘルスチェック OK（${i}回目、port ${PORT}）"
+                  OK=true
+                  break
+                fi
+                echo "${NAME} 待機中...（${i}/20）"
+                sleep 5
+              done
+              if [ "$OK" = false ]; then
+                echo "${NAME} ヘルスチェック失敗（port ${PORT}、20回リトライ後）"
+                exit 1
+              fi
+            done
 
             echo ""
             echo "========================================"
