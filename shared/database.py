@@ -70,7 +70,8 @@ class READatabase:
                 for line in f:
                     if "=" in line and not line.startswith("#"):
                         key, value = line.strip().split("=", 1)
-                        os.environ[key] = value.strip("\"'")
+                        # systemd等で既に設定された環境変数は上書きしない
+                        os.environ.setdefault(key, value.strip("\"'"))
         else:
             print(f"警告: .envファイルが見つかりません: {env_path}")
             print("デフォルト値を使用します。")
