@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from .endpoints import metadata, properties, equipment, geo, admin, touki, registries, integrations, reinfolib, flyer, portal, auth, users, settings, images
+from .endpoints import metadata, properties, equipment, geo, admin, touki, registries, integrations, reinfolib, flyer, portal, auth, users, settings, images, scraper_sync
 
 api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
@@ -18,3 +18,4 @@ api_router.include_router(reinfolib.router, prefix="/reinfolib", tags=["reinfoli
 api_router.include_router(flyer.router, prefix="/flyer", tags=["flyer"])
 api_router.include_router(portal.router, prefix="/portal", tags=["portal"])
 api_router.include_router(users.router, prefix="/users", tags=["users"])
+api_router.include_router(scraper_sync.router, prefix="/properties", tags=["scraper-sync"])

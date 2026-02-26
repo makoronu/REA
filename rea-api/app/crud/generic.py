@@ -361,10 +361,11 @@ class GenericCRUD:
         result = self.db.execute(text(query), params).scalar()
         return result or 0
 
-    def create(self, table_name: str, data: Dict[str, Any], extra_fields: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def create(self, table_name: str, data: Dict[str, Any], extra_fields: Optional[Dict[str, Any]] = None, commit: bool = True) -> Dict[str, Any]:
         """
         レコード作成
         extra_fields: _filter_dataを通さずINSERTするシステムカラム（organization_id等）
+        commit: Falseで複数テーブル操作時のトランザクション制御（呼び出し元でcommit）
         """
         self._validate_table(table_name)
         filtered_data = self._filter_data(table_name, data)
@@ -388,7 +389,8 @@ class GenericCRUD:
         """
 
         result = self.db.execute(text(query), serialized_data).fetchone()
-        self.db.commit()
+        if commit:
+            self.db.commit()
 
         return dict(result._mapping)
 
