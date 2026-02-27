@@ -29,7 +29,6 @@ def _require_auth(request: Request) -> dict:
 
 # フィールド振り分け定数
 _LAND_INFO_KEYS = frozenset({
-    "postal_code", "prefecture", "city", "address", "latitude", "longitude",
     "land_area", "land_category", "use_district", "city_planning",
     "building_coverage_ratio", "floor_area_ratio",
 })

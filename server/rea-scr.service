@@ -1,7 +1,7 @@
 # REA Scraper API（スクレイピングデータ用サブドメイン）
 #
 # 同じrea-apiコード、別DB（rea_scraper）で起動
-# EnvironmentFileで.envを読み込み、DB_NAMEのみ上書き
+# EnvironmentFileで.envを読み込み、.env.scrでDB_NAMEを上書き
 #
 # セットアップ:
 #   sudo cp /opt/REA/server/rea-scr.service /etc/systemd/system/
@@ -21,8 +21,8 @@ Type=simple
 User=root
 WorkingDirectory=/opt/REA/rea-api
 EnvironmentFile=/opt/REA/.env
+EnvironmentFile=/opt/REA/.env.scr
 Environment=PYTHONPATH=/opt/REA
-Environment=DB_NAME=rea_scraper
 ExecStart=/opt/REA/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8008
 Restart=always
 RestartSec=5
