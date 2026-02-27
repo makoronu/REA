@@ -111,11 +111,11 @@ def _upsert_one_property(
         db.commit()
         return "updated"
     else:
-        props_data["property_url"] = property_url
         if not props_data.get("property_name"):
             props_data["property_name"] = "（スクレイピング物件）"
         new_prop = crud.create("properties", props_data, extra_fields={
             "organization_id": organization_id,
+            "property_url": property_url,
         }, commit=False)
         property_id = new_prop["id"]
         if land_data:
