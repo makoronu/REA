@@ -33,9 +33,52 @@
 | 項目 | 内容 |
 |------|------|
 | 作業中 | なし |
-| 完了 | Seg H3: scr.realestateautomation.netサブドメイン構築（rea-scr.service/nginx-scr.conf/create_rea_scraper_db.sql/deploy.yml）、MI Seg H4: MI→rea_scraper同期サービス、MI Seg H2: マルチワーカー並列処理、MI Seg H: プロキシローテーション、MI Seg G: 全量検査12件修正（会社名抽出追加、四日市市住所パースバグ修正、JSONB型修正、デッドコード削除、WAFドライバー解放、dedup_key安定化、設定修正6件）、MI Seg F: E2Eバッチテスト完了（HOMES戸建13件DB保存、CAPTCHA誤検知修正、JSONB型修正、差分更新/価格変更/消失検知動作確認済み）、Seg 27: 現況（current_status）土地用オプション追加（master_options 4値追加: 更地/古屋あり/古屋あり更地引渡可/未完成、孤立データ整理、input_type multi_select→radio）、Seg 26b: ページヘッダー削除→FormHeader統合（タイトル・説明文廃止、戻るボタン+最終更新をステータスバーに統合）、Seg 26: スペーシング圧縮（バックオフィス情報密度最適化、6ファイル27箇所CSS数値変更、スクロール量約40%減）、Seg 25: 物件一括削除機能追加（一覧画面チェックボックス選択→削除ボタン、確認ダイアログ付き論理削除）、Seg 24b: ZOHO CRM連携完全削除（コード2,114行削除+DBカラム3件DROP+テーブル3件DROP）、Seg 24a: zoho_id UNIQUE/NOT NULL制約解除（即時修正）、Seg 23: 新規物件作成organization_id NOT NULL違反修正（認証ユーザーから自動付与）、Seg 22: RegulationPanel表示/反映値一致修正（labelsフィールド追加、●項目がフォーム反映値と同じラベルを表示）、Seg 21: 新規物件作成tax_type INTEGERバグ修正（デフォルト値ラベル文字列→数値定数、TAX_TYPE/PRICE_STATUS定数追加）、Seg 20: 不要フィールド物理削除（column_labels 14件DELETE+DBカラム3件DROP+uploaded_at参照8箇所削除）、Seg 19b: GeoPanel UIラベル「地図確定＋周辺取得」統一（4箇所）、Seg 19: reinfolib XKT001/XKT014区域区分取得バグ修正（kubun_idフィルタ追加、市街化区域が非線引になるバグ+防火地域境界誤判定修正）、Seg 18h: 法令制限チェックリストDB化（ハードコード撤廃→マスターテーブル駆動、LegalChecklistField新規作成）、Seg 18g: multi_select JSONB型不一致修正（用途地域・都市計画の表示・保存バグ修正）+road_* 404修正、Seg 18f: RegulationPanel入力補助化+FieldGroup法規制自動取得ボタン削除（GeoPanel同様パターン: 取得→結果表示→一括反映、ハザード情報表示追加）、Seg 18e: DynamicForm+FieldFactory責務分割（DynamicForm 1190→465行、FieldFactory 1241→447行、8ファイル新規抽出、全ファイル500行以下）、Seg 18d: GeoPanel学区FieldGroup重複削除（モーダル内の学区手動修正欄を削除、通常フォームに一本化）、Seg 18c: useGeoFetch関数参照安定化（clearResults/handleBulkFetch useCallback化、無限ループバグ修正）、Seg 18b: GeoPanel駅・バス停・施設の選択UI追加（チェックボックスリスト化+選択ベース反映）、Seg 18a: GeoPanelバス停・施設データ構造修正（BusStopsField/NearbyFacilitiesField期待構造に合わせ）、Seg 17c-3: RegulationPanel分離（法令制限タブ→モーダル化、RegulationTab508行削除）、Seg 17c-2: GeoPanelマップウィザード化（地図→ピン→一括取得→反映）、Seg 17c-1: Geoフィールド表示復元+LocationFieldマップ削除、Seg 17c: Geo UI分離（GeoPanel独立モーダル化）、Seg 17b: 新規物件作成バグ修正（property_name必須バリデーション+エラー日本語化）、Seg 17a: エラーメッセージUI改善（ErrorBanner共通化+alert全廃+setTimeout撤去）、Seg 16b: フロントエンド fetch→apiサービス統一(UsersPage/DynamicForm 8箇所)、Seg 16a: セキュリティ+バックエンド修正(admin認証追加/ZOHO print→logger/httpx timeout/deleted_at/naive datetime)、Seg 15b: 駅/バス/施設セクションをコンパクトカード+管理モーダルに変更(スクロール88%削減)、Seg 15a: CSS間隔圧縮(グループ間32→20/内部24→16/見出し24→12)、Seg 14b: Core API geo.pyデッドコード削除(GET11個/ヘルパー5個/スキーマ9個→931行削減)、Seg 14a: Geo API新サービス作成+サーバー設定完了、Seg 13b: ゴーストカラムDB物理削除(25カラム)、Seg 13a: ゴーストカラムコード参照削除、Seg 12: サーバーセキュリティ強化、Seg 11: deleted_at漏れ+naive datetime+SQLi防御、Seg 10b: バックエンドハードコード排除+未使用コード削除、Seg 10a: フロント ハードコード排除+ZONE_COLORS+準備中バグ修正、Seg 9: deleted_at全コードベース修正(14件)、Seg 8b: 定数整理・ハードコード排除、Seg 8a: console.log削除+zoho datetime修正、Seg 7: naive datetime統一、Seg 6: deleted_at漏れ修正、Seg 4/5: エラー表示改善・コード品質修正、Seg 3: ロジックバグ修正、Seg 2: データ整合性修正、Seg 1: セキュリティ修正、Seg C: フロント定数集約、Seg B: N+1解消(validator+geo)、Seg A: touki.pyログ+N+1解消、物件画像保存機能、最寄駅なし/バス停なしUI、システム設定画面、間取り不明、Googleジオコーディング |
-| 残り | HOMES入稿、本番.env ZOHO_*5行削除、REA scrサブドメイン手動セットアップ（DNS/DB/systemd/nginx/CORS） |
-| 更新 | 2026-02-25 |
+| 完了 | MI Seg N: 不動産ジャパン パイプライン統合（SITE_MODULES登録、daily_scrape.sh複数サイト対応、scrape_sources札幌3種別登録、systemd timeout拡張）、MI Seg M: 不動産ジャパンスクレイパー追加（4ファイル775行、14件INSERT、diff/価格変更/消失テスト全PASS）、MI Seg K: requests軽量モード+DataImpulseプロキシ+隔週タイマー、Seg H5: Contabo→ConoHa bulk-upsert API同期デプロイ（scraper_sync.py新規/GenericCRUD.create commit制御/READatabase._load_env上書き修正/rea_scraperサービスユーザー作成/Contabo MI .env+コード更新/E2E動作確認済み）、Seg H3: scr.realestateautomation.netサブドメイン構築（rea-scr.service/nginx-scr.conf/create_rea_scraper_db.sql/deploy.yml）、MI Seg H4: MI→rea_scraper同期サービス、MI Seg H2: マルチワーカー並列処理、MI Seg H: プロキシローテーション、MI Seg G: 全量検査12件修正（会社名抽出追加、四日市市住所パースバグ修正、JSONB型修正、デッドコード削除、WAFドライバー解放、dedup_key安定化、設定修正6件）、MI Seg F: E2Eバッチテスト完了（HOMES戸建13件DB保存、CAPTCHA誤検知修正、JSONB型修正、差分更新/価格変更/消失検知動作確認済み）、Seg 27: 現況（current_status）土地用オプション追加（master_options 4値追加: 更地/古屋あり/古屋あり更地引渡可/未完成、孤立データ整理、input_type multi_select→radio）、Seg 26b: ページヘッダー削除→FormHeader統合（タイトル・説明文廃止、戻るボタン+最終更新をステータスバーに統合）、Seg 26: スペーシング圧縮（バックオフィス情報密度最適化、6ファイル27箇所CSS数値変更、スクロール量約40%減）、Seg 25: 物件一括削除機能追加（一覧画面チェックボックス選択→削除ボタン、確認ダイアログ付き論理削除）、Seg 24b: ZOHO CRM連携完全削除（コード2,114行削除+DBカラム3件DROP+テーブル3件DROP）、Seg 24a: zoho_id UNIQUE/NOT NULL制約解除（即時修正）、Seg 23: 新規物件作成organization_id NOT NULL違反修正（認証ユーザーから自動付与）、Seg 22: RegulationPanel表示/反映値一致修正（labelsフィールド追加、●項目がフォーム反映値と同じラベルを表示）、Seg 21: 新規物件作成tax_type INTEGERバグ修正（デフォルト値ラベル文字列→数値定数、TAX_TYPE/PRICE_STATUS定数追加）、Seg 20: 不要フィールド物理削除（column_labels 14件DELETE+DBカラム3件DROP+uploaded_at参照8箇所削除）、Seg 19b: GeoPanel UIラベル「地図確定＋周辺取得」統一（4箇所）、Seg 19: reinfolib XKT001/XKT014区域区分取得バグ修正（kubun_idフィルタ追加、市街化区域が非線引になるバグ+防火地域境界誤判定修正）、Seg 18h: 法令制限チェックリストDB化（ハードコード撤廃→マスターテーブル駆動、LegalChecklistField新規作成）、Seg 18g: multi_select JSONB型不一致修正（用途地域・都市計画の表示・保存バグ修正）+road_* 404修正、Seg 18f: RegulationPanel入力補助化+FieldGroup法規制自動取得ボタン削除（GeoPanel同様パターン: 取得→結果表示→一括反映、ハザード情報表示追加）、Seg 18e: DynamicForm+FieldFactory責務分割（DynamicForm 1190→465行、FieldFactory 1241→447行、8ファイル新規抽出、全ファイル500行以下）、Seg 18d: GeoPanel学区FieldGroup重複削除（モーダル内の学区手動修正欄を削除、通常フォームに一本化）、Seg 18c: useGeoFetch関数参照安定化（clearResults/handleBulkFetch useCallback化、無限ループバグ修正）、Seg 18b: GeoPanel駅・バス停・施設の選択UI追加（チェックボックスリスト化+選択ベース反映）、Seg 18a: GeoPanelバス停・施設データ構造修正（BusStopsField/NearbyFacilitiesField期待構造に合わせ）、Seg 17c-3: RegulationPanel分離（法令制限タブ→モーダル化、RegulationTab508行削除）、Seg 17c-2: GeoPanelマップウィザード化（地図→ピン→一括取得→反映）、Seg 17c-1: Geoフィールド表示復元+LocationFieldマップ削除、Seg 17c: Geo UI分離（GeoPanel独立モーダル化）、Seg 17b: 新規物件作成バグ修正（property_name必須バリデーション+エラー日本語化）、Seg 17a: エラーメッセージUI改善（ErrorBanner共通化+alert全廃+setTimeout撤去）、Seg 16b: フロントエンド fetch→apiサービス統一(UsersPage/DynamicForm 8箇所)、Seg 16a: セキュリティ+バックエンド修正(admin認証追加/ZOHO print→logger/httpx timeout/deleted_at/naive datetime)、Seg 15b: 駅/バス/施設セクションをコンパクトカード+管理モーダルに変更(スクロール88%削減)、Seg 15a: CSS間隔圧縮(グループ間32→20/内部24→16/見出し24→12)、Seg 14b: Core API geo.pyデッドコード削除(GET11個/ヘルパー5個/スキーマ9個→931行削減)、Seg 14a: Geo API新サービス作成+サーバー設定完了、Seg 13b: ゴーストカラムDB物理削除(25カラム)、Seg 13a: ゴーストカラムコード参照削除、Seg 12: サーバーセキュリティ強化、Seg 11: deleted_at漏れ+naive datetime+SQLi防御、Seg 10b: バックエンドハードコード排除+未使用コード削除、Seg 10a: フロント ハードコード排除+ZONE_COLORS+準備中バグ修正、Seg 9: deleted_at全コードベース修正(14件)、Seg 8b: 定数整理・ハードコード排除、Seg 8a: console.log削除+zoho datetime修正、Seg 7: naive datetime統一、Seg 6: deleted_at漏れ修正、Seg 4/5: エラー表示改善・コード品質修正、Seg 3: ロジックバグ修正、Seg 2: データ整合性修正、Seg 1: セキュリティ修正、Seg C: フロント定数集約、Seg B: N+1解消(validator+geo)、Seg A: touki.pyログ+N+1解消、物件画像保存機能、最寄駅なし/バス停なしUI、システム設定画面、間取り不明、Googleジオコーディング |
+| 残り | HOMES入稿、本番.env ZOHO_*5行削除 |
+| 更新 | 2026-03-01 |
+
+### 今日完了した作業（2026-03-01 MI Seg M: 不動産ジャパンスクレイパー追加）
+
+- **MI Seg M: 不動産ジャパン（fudousan.or.jp）スクレイパー追加**（コミット: b45e52a、MIリポジトリ）
+  - selectors.py（71行）: CSSセレクタ定義（一覧/詳細/ページネーション）
+  - field_mapping.py（118行）: サイトラベル→中間フィールド対応表（土地15/戸建24/マンション25フィールド）
+  - parser.py（284行）: HTML→中間形式dict変換（ptm/HTML種別自動判定+正規化16項目）
+  - scraper.py（302行）: URL収集+バッチ処理
+    - robots.txtキャッシュ注入（ContaboIPからの直接取得ブロック回避）
+    - Refererヘッダー永続化（セッションリセット後も復元）
+    - _PROPERTY_TYPE_MAP（URLに種別情報なしのため手動マッピング）
+  - テスト結果:
+    - URL収集: 20件/ページ（1ページ目のみテスト）
+    - バッチ: 14件INSERT成功（sale_price/address NULL率0%）
+    - 差分: 3件再取得→全てupdated（INSERT重複なし）
+    - 価格変更: +100万円→price_history記録確認
+    - 消失検知: 14件中11件正常検知
+  - master_options api_aliases追加済み: RC/ＲＣ/ＲＣ造、SRC/ＳＲＣ/ＳＲＣ造
+  - scrape_sources: source_id=10（hokkaido_sapporo_chuo/tochi）テスト用登録済み
+  - 未デプロイ（Contabo直接配置のみ）
+
+### 今日完了した作業（2026-03-01 MI Seg N: パイプライン統合）
+
+- **MI Seg N: 不動産ジャパン パイプライン統合**（コミット: d485bf9、MIリポジトリ）
+  - main.py: SITE_MODULESにfudousan_japan追加（1行）
+  - daily_scrape.sh: 複数サイト対応（SITES配列ループ、set -euo→set -uo、サイト別ログ）
+  - systemd: TimeoutStartSec 3600→7200、Description更新
+  - scrape_sources DB: 札幌全10区×3種別登録（id=10更新tochi, id=11新規kodate, id=12新規mansion）
+  - 物件数概算: tochi=1,514 / kodate=1,145 / mansion=1,452 = 合計4,111件
+  - 未デプロイ（Contabo直接配置のみ、systemd変更済み）
+
+### 今日完了した作業（2026-02-27 Seg H5: bulk-upsert APIデプロイ）
+
+- **Seg H5: Contabo→ConoHa bulk-upsert API同期デプロイ**（コミット: 154c109, a165264, c6fb091, 0abf609）
+  - scraper_sync.py新規（165行）: POST /properties/bulk-upsert エンドポイント
+  - generic.py: GenericCRUD.create()にcommitパラメータ追加（複数テーブル原子性確保）
+  - shared/database.py: READatabase._load_env() os.environ.setdefault化（systemd環境変数上書き防止）
+  - server/rea-scr.service: EnvironmentFile=/opt/REA/.env.scr追加（DB_NAME=rea_scraper確実上書き）
+  - ConoHa rea_scraper DB: organizations/m_roles/usersにサービスアカウント作成
+  - ConoHa rea_scraper DB: property_urlカラム+UNIQUEインデックス追加
+  - Contabo: MI .env更新（REA_SCR_API_URL/USER/PASSWORD）、コードrsync、httpxインストール
+  - E2Eテスト: CREATE→UPDATE→Contabo外部経由 全パス
+  - 既知制限: building_structure/room_typeがINTEGER型のためスクレイパーの文字列は要コード変換（MI側対応予定）
 
 ### 今日完了した作業（2026-02-25 Seg H3 + MI Seg H/H2/H4）
 

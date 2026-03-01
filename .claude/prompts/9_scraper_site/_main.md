@@ -10,10 +10,11 @@
 2. **問題発生時 → 即停止 → 報告 → 指示待ち**
 3. **共通基盤を改変するな**（バグ発見→報告→指示待ち）
 4. **基盤（8_scraper_foundation）が構築済みであること**
-5. **サイトアクセスは必ずSeleniumヘッドレスを使え**（curl/WebFetch禁止。ボットガード前提）
+5. **curl/WebFetchでのHTML取得は禁止**（ローカルからの直接アクセスはブロックされる）
+6. **フェッチモードはhtml_analysis.mdで判定**（SSR→requests、CSR/WAF→Selenium）
 
 ## 対象サイト
-作業開始時にユーザーが指定: homes / suumo / athome / 他
+作業開始時にユーザーが指定: homes / suumo / athome / fudousan_japan / 他
 
 ---
 
@@ -30,6 +31,7 @@
 
 ### 2. 実装
 ```
+→ 2_implement/fetcher_config.md ← サイト固有のfetcher設定
 → 2_implement/discovery.md
 → 2_implement/parser.md
 → 2_implement/mapping.md

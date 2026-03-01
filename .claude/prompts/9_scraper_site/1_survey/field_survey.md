@@ -14,4 +14,4 @@
 - [ ] フィールド対応表を完成した
 - [ ] 表記ゆれを収集した
 
-## 次 → ../2_implement/discovery.md
+## 次 → ../2_implement/fetcher_config.md
