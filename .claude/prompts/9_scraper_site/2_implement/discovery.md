@@ -1,7 +1,7 @@
 # URL発見（Discovery）
 
 ## やること
-1. {site_name}_scraper.pyにcollect_urls()を実装
+1. `sites/{site_name}/scraper.py`にcollect_urls()を実装
 2. 一覧ページ巡回→物件詳細URLを抽出→URLQueueに追加
 3. pagination.mdで確定したパターンを使用
 
